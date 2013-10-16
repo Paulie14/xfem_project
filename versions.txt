@@ -1,0 +1,10 @@
+001 
+  - copy of diplomka/009
+  - Deal II version 8.0.0 and cmake compatible
+  - optimalization of adaptive_integration
+  - other small improvements in code
+  - solver setting and preconditiong improved
+  
+  
+doc_diplomka
+  - typing corrections
