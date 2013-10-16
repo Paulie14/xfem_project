@@ -1,0 +1,14 @@
+# LaTeX files
+*.bbl
+*.aux
+*.blg
+*.kate-swp
+*.lof
+*.log
+*.lol
+*.lot
+*.out
+*.swp
+*.toc
+*.bib~
+*.tex~

@@ -1,0 +1,2400 @@
+% ******************************************************************************
+% Zacatek preambule
+% ******************************************************************************
+
+% ******************************************************************************
+% Trida dokumentu, cestina, kodovani
+\documentclass[a4paper,11pt]{article}
+
+\title{Metody rozkladu jednotky pro aproximaci bodovıch zdrojù vody v~porézním prostøedí}
+\author{Pavel Exner}
+
+\usepackage{cite}
+\usepackage[cp1250]{inputenc}
+%\usepackage[czech]{babel}			%Windows
+\usepackage{czech}
+\usepackage{url}
+
+\usepackage{listings}
+\renewcommand{\lstlistingname}{Kód}
+\renewcommand{\lstlistlistingname}{Seznam kódù}
+\newcommand{\kod}[1]{kód~\ref{#1}}
+\newcommand{\kodr}[2]{kód~\ref{#1}, ø.~#2}
+
+\lstset{language=C++,
+				aboveskip = 0.3cm,					%mezera nad kodem
+				belowskip = 0.3cm,					%mezera pod kodem
+				lineskip = -0.1pt,					%zmensuje radkovani
+				basicstyle=\small, 					%velikost pisma
+				keywordstyle=\bfseries,
+				identifierstyle=,
+				commentstyle=\textsl,%\color={red}
+				stringstyle=\ttfamily,
+				numberstyle=\tiny,					%velikost cisel cislovani
+				extendedchars=true,
+				tabsize=2,
+				numbers=left, 							%pozice cislovani
+				numbersep=0.3cm,						%mezera mezi cislovanim a~kodem
+				frame= lines,								%jakej je ramecek
+					%<none|leftline|topline|bottomline|lines|single|shadowbox>
+				xleftmargin = 1.0cm,					%odsazeni zleva
+				xrightmargin = 0cm,					%odsazeni zprava
+				abovecaptionskip = 10pt,		%prostor nad caption
+				belowcaptionskip = 10pt,		%prostor pod caption			
+				framexleftmargin = 1cm,			%zajistuje, ze ramecek jde i nad cislovani
+				}
+	
+
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{subfig}
+\usepackage{epsfig}
+
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{mathtools}
+\theoremstyle{definition}
+\numberwithin{equation}{section}
+
+\usepackage{hyperref}
+\hypersetup{
+		 %bookmarks=true,
+     unicode=true,
+     pdftoolbar=true,
+     pdfmenubar=true,
+     pdffitwindow=true,
+     pdftitle={},
+     pdfauthor={},
+     pdfsubject={},
+     pdfnewwindow=true,
+     pdfkeywords={},
+     colorlinks=true,
+     %linkcolor=blue,
+     %citecolor=red,
+     linkcolor=black, %for print
+     citecolor=black, %for print
+     filecolor=black,		%magenta,
+     urlcolor=black %cyan
+}
+
+\providecommand{\abs}[1]{\lvert#1\rvert}
+\providecommand{\norm}[1]{\lVert#1\rVert}
+
+\usepackage[dvips,top=2.5cm,bottom=2.5cm,left=3.5cm,right=2.5cm,a4paper]{geometry}
+%\usepackage{indentfirst} %odsazeni prvniho radku
+%\pagestyle{headings}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+
+  %\fancyhf{}
+  \cfoot{\thepage}
+  \renewcommand{\headrulewidth}{1pt}
+  \renewcommand{\footrulewidth}{0pt}  
+
+  \addtolength{\headheight}{2pt}
+  \addtolength{\topmargin}{5pt}
+  \addtolength{\footskip}{-5pt}
+  \lhead{}
+
+
+% \fancypagestyle{number}
+% {
+%   \fancyhf{}
+%   \cfoot{\thepage}
+%   \renewcommand{\headrulewidth}{0pt}
+%   \renewcommand{\footrulewidth}{0pt}  
+% }
+
+
+\renewcommand{\baselinestretch}{1.5}  % to je radkovani
+\renewcommand\figurename{obr.} 
+
+\newcommand{\figpath}{graphics/}
+
+% ******************************************************************************
+% Konec preambule
+% ******************************************************************************
+% Zacatek dokumentu
+% ******************************************************************************
+\begin{document}
+\newtheorem{definition}{Definice}[section]
+\newtheorem{theorem}{Vìta}[section]
+%\hyphenation{o-ko-lí ètyø-úhel-ní-ky}		%only without babel package
+
+\begin{titlepage}
+	\begin{center}
+		\Large{\textbf{TECHNICKÁ UNIVERZITA V~LIBERCI}}\\
+		\vspace{5px}
+		{\large{\textbf{Fakulta mechatroniky, informatiky a~mezioborovıch studií}}}
+		
+		\vspace{1,5cm}
+		
+		\begin{figure}[!htb]
+			\begin{center}
+				\includegraphics[height=28mm]{\figpath TUL_logo.pdf}
+			\end{center}
+		\end{figure}
+		
+		\vspace{7cm}
+		\LARGE{\textbf{DIPLOMOVÁ PRÁCE}}\\
+		\vspace{6cm}
+		
+		\large{Liberec 2013 \hspace{\stretch{1}} \textbf{Pavel Exner}}\\
+	\end{center}
+\end{titlepage}
+
+%TITUL---------------------------------------------------------------
+\thispagestyle{empty}
+	\begin{center}
+		\Large{\textbf{\textbf{TECHNICKÁ UNIVERZITA V~LIBERCI}}}
+		
+		\vspace{5px}
+		\large{\textbf{Fakulta mechatroniky, informatiky a~mezioborovıch studií}}
+
+		\vspace{0,8cm}
+		\begin{flushleft}
+		\hspace{0,5cm} Studijní program: N3901 - Aplikované vìdy v~inenırství
+		
+		\hspace{0,5cm} Studijní obor: 3901T025 - Pøírodovìdné inenırství
+		
+		\end{flushleft}
+		
+		\vspace{1.8cm}
+
+		\LARGE{\textbf{Metody rozkladu jednotky pro aproximaci bodovıch zdrojù vody v~porézním prostøedí}}
+		
+		\vspace{0,7cm}
+		\LARGE{\textbf{Partition of unity methods for approximation of point water sources in~porous media}}
+													 
+		\vspace{1,5cm}
+		\Large{\textbf{Diplomová práce}}
+		
+		\vspace{2.5cm}
+	\end{center}
+	
+	\begin{tabular}{l p{1cm} l}
+			\Large{Autor:}	&& \Large{\textbf {Bc. Pavel Exner}}      \\
+			\Large{Vedoucí práce:} && \Large{Mgr. Jan Bøezina, Ph.D.}				
+		\end{tabular}
+	
+	\vfill
+	\large{V Liberci \today{}}
+
+%v pøípadì oboustranného tisku je druhá strana titul prázdná(vakát)
+%\newpage
+%\thispagestyle{empty} 
+%\mbox{}
+
+%ZADANI---------------------------------------------------------------
+\newpage
+
+\section*{Zadání}
+\mbox{}
+\addcontentsline{toc}{section}{Zadání}
+\thispagestyle{plain}
+%PROHLÁŠENÍ---------------------------------------------------------------
+\newpage
+\addcontentsline{toc}{section}{Prohlášení}
+%\thispagestyle{myheadings}
+\thispagestyle{plain}
+\section*{Prohlášení}
+Byl jsem seznámen s~tím, e na mou diplomovou práci se plnì vztahuje zákon è.~121/2000 Sb., o~právu autorském, zejména § 60 -- školní dílo.
+
+Beru na vìdomí, e Technická univerzita v Liberci (TUL) nezasahuje do mıch autorskıch práv uitím mé diplomové práce pro vnitøní potøebu TUL.
+
+Uiji-li diplomovou práci nebo poskytnu-li licenci k jejímu vyuití, jsem si vìdom povinnosti informovat o~této skuteènosti TUL; v tomto pøípadì má TUL právo ode mne poadovat úhradu nákladù, které vynaloila na vytvoøení díla, a do jejich skuteèné vıše.
+
+Diplomovou práci jsem vypracoval samostatnì s pouitím uvedené literatury a~na základì konzultací s vedoucím diplomové práce a~konzultantem.
+
+\vspace{3cm}
+Datum: \hspace{0.5cm} \today{}
+
+\vspace{1.5cm}
+Podpis: 
+
+\vfil
+
+\newpage
+\addcontentsline{toc}{section}{Podìkování}
+\thispagestyle{plain}
+\section*{Podìkování}
+Mé podìkování patøí pøedevším Mgr. Janu Bøezinovi, Ph.D., vedoucímu diplomové práce, za odborné vedení a~také za èas a~zájem, kterı mi vìnoval.
+
+Dále dìkuji Mgr. Janu Stebelovi, Ph.D. za cenné rady a~pomoc v~pochopení nìkterıch souvislostí.
+
+Dìkuji také prof. Dr. Ing. Jiøímu Maryškovi, CSc. za podporu a~podnìtné pøipomínky.
+
+\vspace{3cm}
+\hfill Bc. Pavel Exner
+
+
+%ABSTRAKT---------------------------------------------------------------
+\newpage
+\thispagestyle{plain}
+\begin{center} \textbf{Abstrakt} \end{center}
+\addcontentsline{toc}{section}{Abstrakt}
+V modelech proudìní podzemních vod jsou èasto zahrnuty rozsáhlé oblasti, vùèi kterım se zdroje jeví jako bodové. Pøíkladem mùe bıt území s~hydrogeologickımi vrty èi území, kde probíhala dùlní èinnost. Rozloha oblasti vzhledem k~rozmìrùm vrtù se mùe lišit o~nìkolik øádù. Metoda koneènıch prvkù nedokáe dostateènì pøesnì aproximovat tlak a~proudové pole v~blízkém okolí vrtù.
+
+Hlavním cílem této práce je pouití moderní metody rozšíøenıch koneènıch prvkù (XFEM), která dokáe kompenzovat chybu aproximace lineárními koneènımi prvky a~poskytnout pøesnìjší øešení ne metoda koneènıch prvkù. 
+
+V práci je popsán model porézního proudìní ve vícezvodòovém systému s~vrty, je pøedstavena jeho matematická formulace a~ukázána existence jednoznaèného slabého øešení metody koneènıch prvkù. Dále je model øešen pomocí metody lineárních koneènıch prvkù na adaptivnì zjemòované síti. Následnì je pøedvedeno pouití metody XFEM a~její porovnání s~pøedchozí metodou na nìkolika úlohách.
+
+\vspace{5mm}
+Klíèová slova:
+
+vícezvodòovı systém s~vrty, aproximace bodovıch zdrojù, metoda koneènıch prvkù, FEM, metoda rozšíøenıch koneènıch prvkù, XFEM, Deal II
+
+\newpage
+\begin{center} \textbf{Abstract} \end{center}
+\thispagestyle{plain}
+Large areas are often included in models of an underground water flow where sources compared to the dimensions of areas seem to be point sources. Good examples of these are areas with hydrogeological wells or areas where mining is going on (or was). There can be a~difference of several orders between dimensions of an area and a~well. The finite element method cannot approximate an accurate solution of a~pressure and flow properly.
+
+The main aim of this paper is an application of a~modern method of extended finite elements (XFEM) which can compensate an error of an approximation by linear finite elements and provides us more accurate solution than the finite element method.
+
+A~multiaquifer model of a~flow in a~porous media with wells is described in the paper. Its mathematical formulation is introduced and the existence of the unique weak solution of the finite element method is shown. Next the model is solved by a~linear finite element method on an adaptively refined grid. Finally the use of XFEM is introduced and it is compared with other methods in several numerical tests. 
+
+\vspace{5mm}
+Keywords:
+
+multiaquifer system with wells, approximation of point sources, finite element method, FEM, extended finite element method, XFEM, Deal II
+
+
+\newpage
+\cleardoublepage
+\renewcommand{\baselinestretch}{1.1}  % to je radkovani
+\addcontentsline{toc}{section}{Obsah}
+\thispagestyle{plain}
+\tableofcontents
+
+
+\newpage
+\thispagestyle{plain}
+\addcontentsline{toc}{section}{Seznam obrázkù}
+\listoffigures
+% \vspace{0.2cm}
+% \addcontentsline{toc}{section}{Seznam kódù}
+% \lstlistoflistings
+% \vspace{0.2cm}
+\addcontentsline{toc}{section}{Seznam tabulek}
+\listoftables
+\vspace{0.2cm}
+\renewcommand{\baselinestretch}{1.5}  % to je radkovani
+\thispagestyle{plain}
+\newpage
+\thispagestyle{plain}
+%ZNAÈKY---------------------------------------------------------------
+\addcontentsline{toc}{section}{Seznam pouitıch znaèení}
+\section*{Seznam pouitıch znaèení}
+\begin{table*}[htbp]
+  \centering
+    \begin{tabular}{lcl}
+      FEM &--& Finite Element Method (Metoda koneènıch prvkù) \\
+      XFEM &--& Extended Finite Element Method (Rozšíøená metoda FEM) \\
+      $\nabla$ & -- & nabla, operátor gradientu $\nabla = \left(\frac{\partial}{\partial{}x},\frac{\partial}{\partial{}y}\right)$\\
+      $\Delta$ & -- & Laplaceùv operátor $\nabla \cdot \nabla = \frac{\partial^2}{\partial{}x^2} + \frac{\partial^2}        
+          {\partial{}y^2}$\\
+      $\mathbb{N}, \mathbb{R}^n$ & -- & prostor pøirozenıch èísel, prostor reálnıch èísel dimenze $n$\\
+      $\partial\Omega,\; \overline{\Omega} $& -- & hranice mnoiny $\Omega$, uzávìr mnoiny $\Omega$ \\
+      $\mathrm{L}^2(\Omega)$ & -- & prostor všech funkcí integrovatelnıch s 2. mocninou na $\Omega$\\
+      $\mathbf{n}$ & -- & normálovı vektor v~$\mathbb{R}^2$ pøípadnì $\mathbb{R}^3$, $\mathbf{n}=(n_x,n_y,n_z)$\\
+      $\mathbf{x}$ & -- & bod prostoru $\mathbb{R}^2$ pøípadnì $\mathbb{R}^3$, $\mathbf{x}=[x,y,z]=[x_1,x_2,x_3]$ \\
+      $\mathbf{(\cdot)^T}$ & -- & transpozice matice, vektoru,\\
+      $\|\cdot\|_V$ & -- & norma vektoru na prostoru $V$\\
+      $\|\cdot\|_2 \; \|\cdot\|_{1,2}$ & -- & norma vektoru na prostoru $L^2(\Omega)$ a $W^{1,2}(\Omega)$\\
+      $a(\cdot, \cdot)$ & -- & bilineární forma $a: X\times X \rightarrow \mathbb{R}$\\
+      &&\\
+
+      $\Omega^m$ & -- & oblast $m$-té zvodnì\\
+      $B_w^m$ & -- & prùnik oblasti $m$-té zvodnì a $w$-tého vrtu\\
+      $\partial{}B_w^m$ & -- & hranice $w$-tého vrtu na $m$-té zvodni\\
+      $h^m\,/\,\tilde{h} ^m$ & -- & tlaková/piezometrická vıška na $m$-té zvodni\\
+      %$R_w$ & -- & polomìr $w$-tého vrtu\\
+      %$K^m$ & -- & hydraulická vodivost $m$-té zvodnì\\
+      %$\sigma_w^m$ & -- & koeficient propustnosti mezi $m$-tou zvodní a vrtem $w$\\
+      $H_w^m$ & -- & stupeò volnosti pro tlak ve $w$-tém vrtu na úrovni $m$-té zvodnì\\
+      %$c_w^m$ & -- & koeficient propustnosti vrtem $w$ mezi zvodní $m$ a $(m-1)$\\
+
+      $\varphi_i^m$ & -- & $i$-tá bázová funkce na $m$-té zvodni\\
+      $\phi_w^m$ & -- & rozšíøená bázová funkce od vrtu $w$ na $m$-té zvodni\\
+      $\alpha$ & -- & stupnì volnosti klasické metody FEM\\
+      $\beta$ & -- & stupnì volnosti rozšíøené metody XFEM\\
+      
+    \end{tabular}
+\end{table*}
+
+\newpage
+%UVOD---------------------------------------------------------------
+\thispagestyle{plain}
+\section{Úvod}
+V~mnoha oblastech lidského poèínání se dnes setkáváme s~potøebou zkoumat nìkteré procesy, hledat a~popsat charakteristické vlastnosti komplikovanıch systémù, nalézt parametry, na kterıch závisí jejich chování, a~umìt toto chování predikovat. Uveïme standardní definici modelování jako vızkumné techniky (pøevzatou z~teorie automatizace\footnote{Dohoda o~chápání pojmu simulace systémù. Automatizace, 1986, roè. 29, è. 12, s. 299–300.}):
+
+\vspace{0.5cm}
+\emph{\uv{Podstatou modelování ve smyslu vızkumné techniky je náhrada zkoumaného systému jeho modelem (pøesnìji: systémem, kterı jej modeluje), jejím cílem je získat pomocí pokusù s~modelem informaci o~pùvodním systému.}}
+\vspace{0.5cm}
+
+Jednou z~takto popsanıch vızkumnıch technik je matematické modelování, které transformuje model do matematického zápisu. Mùe bıt velmi uiteènım nástrojem, obzláš v~situacích, ve kterıch si napøíklad nemùeme dovolit reálnı experiment provést, nebo to ani není moné.
+
+V pøírodì se setkáváme v~zásadì se spojitımi velièinami, nìkdy však musíme zacházet a do mikroskopickıch rozmìrù, abychom potvrdili spojitı charakter. Naopak v~nìkterıch makroskopickıch mìøítkách se setkáváme s~témìø skokovım chováním nebo se v~našem matematickém popisu mohou objevit singularity, které nemají v~pùvodním systému fyzikální opodstatnìní. Právì takové úlohy, ve kterıch se snaíme zachytit lokální nespojitost jinak spojité velièiny, mohou bıt velmi problematické. 
+
+V této práci se zabıváme vıpoètem modelu podzemního proudìní vody v~oblasti s~vrty -- bodovımi zdroji. Pøíkladem mohou bıt úlohy proudìní v~oblastech, na kterıch dochází nebo docházelo k~tìbì, nebo oblasti s~hustou sítí vertikálních hydrogeologickıch vrtù, ve kterıch se setkáme s~problémem aproximace tlaku v~blízkém okolí vrtù. Oblasti bıvají oproti velikosti vrtù natolik rozsáhlé, e se vrty jeví témìø jako bodové zdroje, nebo jejich prùmìr bıvá o~nìkolik øádù menší ne rozmìr oblasti (vrty o~rozmìrech nìkolika centimetrù a~naproti tomu modelovaná oblast v~rozsahu desítek metrù a kilometrù).
+
+Prùbìh pøesného øešení tlaku v~okolí vrtu má logaritmickı charakter a~pøi bodové pøedstavì vrtu se blíí v~tomto bodì øešení v~absolutní hodnotì nekoneènu. Nejèastìji pouívaná metoda koneènıch prvkù nedokáe dostateènì pøesnì \mbox{aproximovat} tlak v~okolí takové singularity (viz èlánek \cite{gracie}, kterı se zabıvá modelem proudìní v~úloze úloištì $\textrm{CO}_2$ a~pouitím rozšíøenıch koneènıch prvkù). Pro zlepšení aproximace je zapotøebí vırazného zjemnìní vıpoèetní sítì v~okolí vrtu, èím dochází ke zvıšení sloitosti vıpoètu a~také problémùm s~konvergencí øešièe systému lineárních rovnic, nebo roste velikost úlohy a~mùe se zhoršovat podmínìnost matice popisující tento systém.
+
+Matematickı model ustáleného saturovaného podzemního proudìní vody popisuje eliptická parciální diferenciální rovnice. Naším úkolem je implementovat a~porovnat nìkolik metod vıpoètu aproximace tlaku pomocí koneènıch prvkù. 
+
+Navazujeme na èlánek R.Gracie a~R. Craiga \cite{gracie}. Øešíme velmi podobnou úlohu (rozdíly v~matematickém modelu uvedeme v~kapitole \ref{sec:mat_model}) a~naším cílem je pouít moderní metodu rozšíøenıch koneènıch prvkù ve vlastní implementaci a~reprodukovat vısledky demonstrované v~uvedeném èlánku. Navíc chceme vyzkoušet modifikaci modelu, ve které si vrty pøedstavujeme jinım zpùsobem ne jako okrajové podmínky. Dále chceme spoèítat model pomocí metody koneènıch prvkù s~adaptivnì zjemòovnou sítí a~pomocí metody hranièních prvkù a~porovnat dosaené vısledky. Provedeme vlastní implementaci všech metod v~jazyce C++ za pomoci knihovny Deal II.
+
+
+Text je rozdìlen do nìkolika hlavních kapitol. Nejprve v~kapitole \ref{sec:mat_model} popíšeme matematickı model, zavedeme všechna potøebná znaèení a~popíšeme rovnice, které budeme øešit. Dále se pak v~kapitole \ref{sec:fem} budeme vìnovat øešení pomocí metody koneènıch prvkù, odvodíme slabou formulaci a~ukáeme, e existuje právì jedno slabé øešení. 
+%BEM model
+Poté v~kapitole \ref{sec:xfem} pøedstavíme metodu rozšíøenıch koneènıch prvkù, definujeme obohacení a~rozebereme detailnì postup vıpoètu touto metodou.
+Kapitola \ref{sec:implementation} je vìnována popisu implementace, seznámení s~knihovnou Deal II a~vysvìtlení nìkterıch algoritmù.
+V kapitole \ref{sec:numerical_tests} demonstrujeme vısledky na nìkolika testovacích úlohách a~ukáeme vıhody a~nevıhody pouitıch metod.
+V závìreèné kapitole \ref{sec:conclusion} shrneme dosaené vısledky a~nastíníme smìr dalšího moného vıvoje. 
+
+Souèástí textu je také pøíloha, ve které jsou nìkteré doplòující obrázky (pøíloha \ref{app:figures}), zdrojové kódy (pøíloha \ref{app:codes}). Také mezi pøílohy byla umístìna teoretická èást k~metodì hranièních prvkù, kterou se nepodaøilo odladit a~dovést do plnì funkèního stavu, aby bylo moné ji pouít pro srovnání s~ostatními metodami (pøíloha \ref{app:bem}).
+\pagebreak
+
+\section{Matematickı model}
+\thispagestyle{plain}
+\label{sec:mat_model}
+Modelovat budeme ustálené saturované proudìní podzemní vody v~oblasti tvoøené vrstvami -- zvodnìmi (spojitá tìlesa vody, kterımi mùe docházet k~transportu hmot, té akvifer z~anglického aquifer). Vzorem nám bude model popisovanı v~\cite{gracie}, dokumentovanı obrázkem \ref{fig:model}. V~našem pøípadì budeme uvaovat zvodnì oddìlené od sebe zcela nepropustnou vrstvou.
+
+Zvodnì mezi sebou tedy komunikují pouze pro\-støed\-nictvím vrtù. Proudìní v~jedné zvodni uvaujeme jako proudìní v~ploše. Tøí\-roz\-mìr\-nı problém je tak zjednodušen na sadu dvou\-roz\-mìr\-nıch problémù na jednotlivıch vrstvách, mezi kterımi dokáeme definovat tok skrz vrty. Na okraji plochy zvodní uvaujeme znalost tlaku (pro Dirichletovu okrajovou podmínku) nebo nepropustnost, tzn. e zde bude moné zavést homogenní Neumannovu okrajovou podmínku.
+
+\begin{figure}[!htb]
+    \vspace{15pt}
+    \begin{center}
+      \includegraphics[width=100mm]{\figpath model.pdf}
+    \end{center}
+    \vspace{-15pt}
+  \caption[Schéma systému zvodní s vrty]{Schéma systému zvodní s~vrty popisovanı v~\cite{gracie}.}
+  \label{fig:model}
+\end{figure}
+
+Oblast je perforována vrty. Do nìkterıch z~nich bude vhánìna kapalina pod danım tlakem, ostatní vrty budou volné, tedy v~jejich ústí bude tlak roven atmosférickému. Pøi formulaci problému nebudeme vrty uvaovat jako bodové zdroje, ale pøiøadíme jim nenulovı polomìr. Tlak na prùøezu vrtu uvaujeme konstantní, tj. ve vrtu øešíme jednorozmìrnou úlohu. V~pøípadì pøítomnosti pouze homogenní Neumannovy okrajové podmínky znalost tlaku na ústí injektovanıch vrtù a~atmosférickı tlak ve volnıch vrtech zafixují øešení (budou mít v~podstatì funkci Dirichletovy okrajové podmínky jednodimenzionální úlohy na vrtu).
+
+Zaveïme nyní znaèení oblastí. Mìjme $M$ zvodní (2D oblastí definované tloušky) indexovanıch $m=1,\ldots, M$ od nejníe poloené a po vrchní zvodeò. Tyto zvodnì protíná $W$ vrtù indexovanıch $w=1,\ldots,W$. Oznaème $\Omega^m$ oblast $m$-té zvodnì s~hranicí $\partial\Omega^m$, dále $B^m_w$ prùnik $m$-té zvodnì s~$w$-tım vrtem a~$\partial B^m_w$ jeho hranici (krunice). Pak budeme potøebovat znaèení pro oblast celé zvodnì bez vrtù, které do zvodnì zasahují, tedy $\Theta^m=\Omega^m-\bigcup \limits_{w=1}^W B^m_w$. 
+
+Proudìní kapaliny v~plnì saturovaném porézním prostøedí popisují dvì rovnice
+%
+\begin{eqnarray}
+\mathbf{u}^m=-\mathbf{T}^m\nabla \tilde{h}^m \qquad \textrm{na } \Theta^m \textrm{ pro } m=1,\dots,M\label{eqn:e01_1} \\ 
+\nabla \cdot \mathbf{u}^m = f^m \qquad \textrm{na } \Theta^m \textrm{ pro } m=1,\dots,M\label{eqn:e01_2}
+\end{eqnarray}
+%
+Rovnice (\ref{eqn:e01_1}) vyjadøuje Darcyho zákon a~(\ref{eqn:e01_2}) je rovnicí kontinuity pro nestlaèitelnou kapalinu. Index $m$ v~obou rovnicích oznaèuje vztah velièin k~$m$-té zvodni. V (\ref{eqn:e01_1}) znaèí $\mathbf{T}^m\, [\textrm{m}^2\textrm{s}^{-1}]$ dvou-dimenzionální tenzor transmisivity, $\mathbf{u}^m\, [\textrm{m}\textrm{s}^{-1}]$ je horizontální tok zvodní, $\tilde{h}^m=\frac{p}{\rho g}+z\, [\textrm{m}]$ je piezometrická vıška. Funkce $f^m\, [\textrm{m}\textrm{s}^{-1}]$ v~(\ref{eqn:e01_2}) vyjadøuje hustotu zdrojù. Pokud zavedeme oznaèení pro tloušku zvodnì $t^m\,[\textrm{m}]$, mùeme psát také $\mathbf{T}^m=\mathbf{K}^mt^m$, kde $\mathbf{K}^m [\textrm{ms}^{-1}]$ je tenzor horizontální hydraulické vodivosti zvodnì, a~$f^m=q^mt^m$, kde $q^m\, [\,\textrm{s}^{-1}]$ je objemová hustota zdrojù. V~izotropním prostøedí pøejde $\mathbf{K}^m$ a~tedy i~$\mathbf{T}^m$ ve skalární funkci, kterou pro zjednodušení budeme brát konstantní, tedy $K^m$ a~$T^m$.
+
+Pokud dosadíme Darcyho zákon (\ref{eqn:e01_1}) do rovnice kontinuity (\ref{eqn:e01_2}), popisuje rozloení tlaku ve zvodních Poissonova rovnice
+\begin{equation} \label{eqn:laplace}
+-T^m\Delta{}h^m=f^m  \qquad \textrm{na } \Theta^m \textrm{ pro } m=1,\dots,M,
+\end{equation}
+%
+kde jsme mohli piezometrickou vıšku na vodorovné zvodni pøi $z=\mathrm{konst}=0$ nahradit funkcí tlakové vıšky $h^m =\frac{p}{\rho g}$ na $m$-té zvodni, protoe rovnice (\ref{eqn:laplace}) je lineární. 
+
+
+Definujme nyní okrajové podmínky na hranici oblasti. Hranici oblasti $\Theta^m$ rozdìlíme na tøi èásti $\Gamma_N^m$, $\Gamma_D^m$ a~$\Gamma_B^m$, pøièem platí pro vnìjší hranici celé zvodnì $\partial\Omega^m = \Gamma_N^m \cup \Gamma_D^m$ a~pro hranici oblasti $\partial\Theta^m = \Gamma_N^m \cup \Gamma_D^m \cup \Gamma_B^m$, kde $\Gamma_B^m=\bigcup \limits_{w=1}^W \partial B^m_w$. Na hranici $\Gamma_N^m$ volíme pro jednoduchost homogenní Neumannovu okrajovou podmínku, tedy nulovı tok ze zvodnì 
+\begin{equation} \label{eqn:neumann}
+\mathbf{u}^m \cdot \mathbf{n}^m= 0 \qquad \textrm{na hranici } \Gamma_N^m,
+\end{equation}
+tam, kde uvaujeme hranici zvodní s~okolím nepropustnou.
+V (\ref{eqn:neumann}) je $\mathbf{n}$ vnìjší normála hranice\footnote{zvodnì modelujeme jako plochy, tudí vektory $\mathbf{n}$ a~$\mathbf{x}$ zde mají pouze dvì sloky}. Tam, kde je známı tlak, volíme Dirichletovu okrajovou podmínku
+\begin{equation} \label{eqn:dirichlet}
+h^m= h^m_D \qquad \textrm{na hranici } \Gamma_D^m, \quad h^m_D(\mathbf{x}) \in C^1(\overline{\Theta^m}), \; h^m_D|_{\Gamma^m_B}=0.
+\end{equation}
+Funkce $h^m_D$ v~(\ref{eqn:dirichlet}) je spojitá na $\overline{\Theta^m}$. Protoe vrty nikdy nebudeme uvaovat na hranici zvodní, mùeme v~(\ref{eqn:dirichlet}) zvolit za $h^m_D$ takové funkce, které smìrem od hranice dovnitø oblasti rychle klesají k~nule a~pak pøedpokládat $h^m_D|_{\Gamma^m_B}=0$.
+
+%O funkci $h^m_D$ budeme navíc pøedpokládat, e $h^m_D|_{\Gamma_T} = 0$. To nás vıraznì neomezí, pokud budou vrty dostateènì vzdálené od hranice zvodnì, co z hlediska tohoto modelu pøedpokládat mùeme.
+%
+\begin{figure}[!htb]
+     \begin{center} \label{fig:well}
+       \def\svgwidth{0.5\textwidth}
+       \input{\figpath well_communcation.pdf_tex}
+     \end{center}
+     \caption[Model proudìní ve vrtu]{Model proudìní ve vrtu.}
+     \label{fig:01}
+   \end{figure}
+
+% \begin{wrapfigure}{r}{0.5\textwidth}
+%     \vspace{-30pt}
+%       \begin{center} \label{fig:well}        
+%         \def\svgwidth{0.45\textwidth}
+%         \input{\figpath well_communcation.pdf_tex}
+%       \end{center}
+%     \vspace{-20pt}
+%       \caption{Model vrtu}
+%     \vspace{25pt}
+% \end{wrapfigure}
+
+Vìnujme se nyní komunikaci mezi vrty a~zvodnìmi. Definujme hustotu toku ze zvodnì do vrtu vırazem 
+\begin{equation} 
+\label{eqn:aq2well_flow}
+\sigma^m_w\left(h^m(\mathbf{x})-H^m_w\right)
+\end{equation}
+kde $\sigma^m_w\, [\textrm{m}\textrm{s}^{-1}]$ je koeficient propustnosti mezi $w$-tım vrtem a~$m$-tou zvodní, $H_w^m$ je tlaková vıška ve vrtu $w$ na úrovni $m$-té zvodnì a~$h^m(\mathbf{x})$ je tlaková vıška na hranici $\partial{}B^m_w$. Podél vrtù budeme øešit jednodimenzionální úlohu danou rovnicemi bilance toku z~vrtù do zvodní
+\begin{eqnarray}
+\label{eqn:well_eqs}
+Q^m_w &=& Q^m_{w,in} - Q^m_{w,out},\quad \textrm{ kde} \\
+Q^m_w &=& -\int_{\partial{}B^m_w}\sigma^m_w \left( h^m(\mathbf{x})-H^m_w \right) \mathrm{d}\mathbf{x} 
+        \quad\textrm{ je tok do zvodnì,}\nonumber\\
+Q^m_{w,in} &=& -c^{m+1}_w \left( H^m_w-H^{m+1}_w \right) 
+        \quad\textrm{ je tok z horní zvodnì,}\nonumber\\
+Q^m_{w,out} &=& -c^m_w \left( H^{m-1}_w-H^{m}_w \right) 
+        \quad\textrm{ je tok do spodní zvodnì,} \nonumber\\
+&&\forall m=1,\dots,M \textrm{ a } \forall w=1,\dots,W. \nonumber
+\end{eqnarray}
+\pagebreak
+
+Koeficienty $c^m_w\, [\textrm{m}^2\textrm{s}^{-1}]$ vyjadøují vodivosti vrtù mezi zvodnìmi (mùeme si pøedstavit, e vrt nebude prázdnı, ale vyplnìn porózním materiálem). Z~\cite{gracie} jsme pouili vztah $c^m_w=k^m_w \pi r_w^2 /t^m$, kde $k^m_w$ je vertikální hydraulická vodivost ve vrtu a~$r_w$ je polomìr vrtu. Poznamenejme také, e èleny $H^{0}_w$ a~$H^{M+1}_w$ v~(\ref{eqn:well_eqs}) mají funkci Dirichletovy okrajové pod\-mín\-ky jednodimenzionální úlohy na vrtu. Pokud je napø. na celé hranici $\partial\Omega^{m}=\Gamma_N^{m}$ všech zvodní,  zajišuje $H^M_w$ jednoznaènost øešení, co pozdìji ukáeme. Pro volné vrty pøedpokládáme atmosférickı tlak, èili $H^{M+1}_w=0$. V~èlánku \cite{gracie} není rovnice (\ref{eqn:well_eqs}) øešena explicitnì, ale je zde zavedena støední hodnota tlaku na hranici vrtu, pro kterou máme ekvivalent ve stupni volnosti $H^m_w$.
+
+Kdy øešíme úlohu na oblasti $\Theta^m$ (bez vrtù), mùeme nahlíet na komunikaci mezi vrty a~zvodnìmi jako na Newtonovu okrajovou podmínku
+%
+\begin{equation} \label{eqn:laplace_newton}
+%-K^m \nabla h^m 
+\mathbf{u}^m \cdot \mathbf{n}^m= \sum \limits _{w=1}^{W} \sigma^m_w\left(h^m(\mathbf{x})-H^m_w\right)
+\qquad \textrm{na hranici } \Gamma^m_B=\bigcup \limits _{w=1}^{W} \partial{}B^m_w,
+\end{equation}
+%
+kde se na pravé stranì objevuje suma hustoty tokù (vıraz v~sumì je shodnı s~(\ref{eqn:aq2well_flow})) pøes hranice jednotlivıch vrtù. Tento vıraz se objeví ve slabé formulaci v~hranièním integrálu. 
+
+\begin{definition}
+Pøedpokládejme, e hranice oblasti $\partial\Theta^m$ je lipschitzovká (viz str. 341 v~\cite{rek1}). Oznaème
+\begin{eqnarray}
+\mathbf{h_0} &=& (h^1_0,\ldots,h^{M}_0, 0,\ldots,0,H^1_1,\ldots,H^M_W,0,\ldots,0) \\
+\mathbf{h_D} &=& (h^1_D,\ldots,h^{M}_D, H^0_1,\ldots,H^0_W,0, \ldots, 0, H^{M+1}_1, \ldots, H^{M+1}_W) 
+\end{eqnarray}
+Pak nazveme øešení
+\begin{equation}
+\mathbf{h} = \mathbf{h_0}+\mathbf{h_D} \in \left( C^2(\Theta)\cap C^1(\overline{\Theta}) \right)^{M} \times \mathbb{R}^{(M+2) \times W} 
+\end{equation}
+které splòuje soustavu (\ref{eqn:laplace}) a~(\ref{eqn:well_eqs}) a~vyhovuje okrajovım podmínkám (\ref{eqn:neumann}) a~(\ref{eqn:dirichlet}), silnım øešením problému.
+\end{definition}
+
+Pro vıpoèet popsaného modelu jsme vybrali nìkolik metod -- klasickou metodu koneènıch prvkù, metodu hranièních prvkù a~metodu rozšíøenıch koneènıch prvkù. Popišme si nyní jejich formulace a~vlastnosti.
+
+\pagebreak
+\section{Metoda koneènıch prvkù}
+\thispagestyle{plain}
+\label{sec:fem}
+
+Øešme nyní vıše popsanou úlohu a~hledejme øešení pomocí metody koneènıch prvkù (z angliètiny FEM -- Finite Element method).
+Na okraji zvodní uvaujeme vıše zavedené okrajové podmínky (\ref{eqn:neumann}) a~(\ref{eqn:dirichlet}). Tok mezi vrty a~zvodnìmi budeme uvaovat jako komunikaci pøes hranici, a~proto ji budeme formulovat jako Newtonovu okrajovou podmínku (\ref{eqn:laplace_newton}). 
+
+\subsection{Odvození slabé formulace}
+Definujme Hilbertovy prostory
+\begin{eqnarray} \label{eqn:h_spaces}
+\mathrm{W}^{1,2}(\Theta) &=&\{h \in \mathrm{L}^2(\Theta,\mathbb{R}); \nabla h \in \mathrm{L}^2(\Theta,\mathbb{R}^2)\} \nonumber\\
+%
+\mathrm{W}^{1,2}_0 (\Theta) &=& \{ h \in \mathrm{W}^{1,2}(\Theta); h|_{\Gamma_D}=0\}
+\end{eqnarray}
+a normu na tìchto prostorech
+\begin{equation} \label{eqn:h_spaces_norm}
+\norm{h}_{1,2,\Theta} = \norm{h}_{\mathrm{W}^{1,2}(\Theta)} = \sqrt{ \norm{h}^2 + \norm{\nabla h}^2 }.
+\end{equation}
+Pokud bude z~kontextu zøejmé, o~jakı prostor se v~(\ref{eqn:h_spaces_norm}), budeme dále vynechávat znaèení prostoru, tedy $\norm{h}_{1,2}$. Stejnì tak budeme znaèit $\norm{h}$=$\norm{h}_2$ normu prostoru $L^2$ tam, kde jsou prostor a~typ normy zøejmé z~kontextu. Pro zjednodušení zápisu zaveïme následující mnoiny indexù 
+\begin{eqnarray}
+\mathcal{M} &=& \{1,\ldots,M\}, \\
+\mathcal{M}_w &=& \{0,\ldots,M+1\}, \\
+\mathcal{W} &=& \{1,\ldots,W\}.
+\end{eqnarray}
+Hledejme øešení ve tvaru $\mathbf{h}=\mathbf{h_0}+\mathbf{h_D}$, takové e
+\begin{eqnarray} 
+\mathbf{h_0} &=& (h^1_0,\ldots,h^M_0, 0,\ldots,0, H^1_1,\ldots,H^M_W,0, \ldots, 0) \label{eqn:h0} \\
+\mathbf{h_D} &=& (h^1_D,\ldots,h^M_D, H^0_1,\ldots, H^0_W, 0,\ldots,0, H^{M+1}_1,\ldots,H^{M+1}_W) \label{eqn:hD}
+\end{eqnarray}
+kde jednotlivé funkce $h^m_0 \in \mathrm{W}^{1,2}_0 (\Theta^m)$, $h^m_D \in \mathrm{W}^{1,2}(\Theta^m)$ pro všechna $m\in\mathcal{M}$ a~konstan\-ty $H^m_w \in \mathbb{R}$ pro všechna $m\in\mathcal{M}_w$ a~všechna $w\in\mathcal{W}$. 
+Zaveïme dále v~(\ref{eqn:fem_spaces}) prostory $V$ a~$V_D$ spolu s~normou 
+\begin{eqnarray} \label{eqn:fem_spaces}
+V &=& \mathrm{W}^{1,2}_0 (\Theta)^M \times \mathbb{R}^{(M+2)\times W} \\
+V_D &=& \mathrm{W}^{1,2} (\Theta)^M \times \mathbb{R}^{(M+2)\times W} \\
+\norm{\mathbf{h}}_V &=& \sqrt{\sum \limits_{m\in\mathcal{M}}\norm{h^m}^2_{1,2} + \sum \limits_{m\in\mathcal{M}_w} \sum \limits_{w\in\mathcal{W}} |\bar{H}^m_w|^2}, 
+\end{eqnarray}
+take potom mùeme psát $\mathbf{h_0} \in V$ a~$\mathbf{h_D} \in V_D$.
+
+% \begin{eqnarray} \label{eqn:fem_test_spaces}
+% h^m_D &\in& \mathrm{W}^{1,2}(\Theta)^m=\{u \in \mathrm{L}^2(\Theta)^m; \nabla u \in \mathrm{L}^2(\Theta)^m\} \nonumber\\
+% %
+% h^m_0,v^m &\in& \mathrm{W}^{1,2}_0 (\Theta)^m = \{ u \in \mathrm{W}^{1,2}(\Theta)^m; u|_{\Gamma_D}\} = 0 \nonumber\\
+% %
+% H^m_w, \bar{v}^m_w &\in& \mathbb{R}^{m,w}, \: \bar{v}^0_w,\bar{v}^{M+1}_w = 0
+% \end{eqnarray}
+Zvolme testovací funkce
+\begin{eqnarray}
+\mathbf{v} &=& (v^1,\ldots,v^M, \bar{v}^0_1,\ldots,\bar{v}^0_W,\bar{v}^1_1,\ldots,\bar{v}^{M+1}_W) \in V
+\end{eqnarray}
+tak, e konstanty $\bar{v}^0_w = \bar{v}^{M+1}_w = 0$ poloíme rovné nule pro všechna $w\in \mathcal{W}$.
+
+Pøistupme nyní k~vlastnímu odvození slabé formulace. Upravme nejprve rovnici (\ref{eqn:laplace}), popisující proudìní v~$m$-té zvodni, vynásobme ji testovací funkcí $v^m$ a~integrujme ji pøes $\Theta^m$. Dostaneme
+%
+\begin{equation} \label{eqn:weak_1}
+\int_{\Theta^m}\!\!\!-T^m \Delta h^m v^m \: \mathrm{d}\mathbf{x} = \int_{\Theta^m}\!\!\!f^m v^m \: \mathrm{d}\mathbf{x}.\\
+\end{equation}
+%
+Levou stranu rovnice (\ref{eqn:weak_1}) následnì upravíme pomocí Greenovy vìty (viz vìta 8.7 v~\cite{rek1}) do tvaru
+\begin{equation} \label{eqn:weak_2}
+\int_{\Theta^m}\!T^m \nabla h^m \cdot \nabla v^m \: \mathrm{d}\mathbf{x}
+  - \int_{\partial\Omega^m}\!T^m \nabla h^m \cdot \mathbf{n} \, v^m \; \mathrm{d}\mathbf{x} = \!\! \int_{\Theta^m}\!\!\!f^m v^m \: \mathrm{d}\mathbf{x}.
+\end{equation} 
+Do hranièního integrálu v~(\ref{eqn:weak_2}) dosadíme okrajové podmínky. Èlen na hranici $\Gamma_D$ je nulovı, protoe je zde testovací funkce nulová, èlen na hranici $\Gamma_N$ je nulovı, protoe Neumannova podmínka je nulová. Vısledkem této úpravy je rovnice
+\begin{equation} \label{eqn:weak_3}
+\int_{\Theta^m}\!\!T^m \nabla h^m \cdot \nabla v^m \: \mathrm{d}\mathbf{x} 
+  + \!\sum \limits_{w\in\mathcal{W}} \!\int_{\partial{}B^m_w}\!\!\sigma^m_w\left(h^m-H^m_w\right) v^m \: \mathrm{d}\mathbf{x} =\!\! \int_{\Theta^m}\!\!\!f^m v^m \: \mathrm{d}\mathbf{x}
+\end{equation}	
+
+Tak jako jsme zavedli $\mathbf{h}=\mathbf{h_0}+\mathbf{h_D}$, platí i~na jedné zvodni $h^m=h^m_0+h^m_D$, co nyní dosadíme do (\ref{eqn:weak_3}). Protoe navíc $h^m_D|_{\Gamma_B}=0$, viz (\ref{eqn:dirichlet}), dostáváme 
+\begin{multline} \label{eqn:weak_laplace}
+\int_{\Theta^m}\!T^m \nabla h^m_0 \cdot \nabla v^m \: \mathrm{d}\mathbf{x} 
+  + \sum \limits_{w\in\mathcal{W}}\int_{\partial{}B^m_w}\!\sigma^m_w\left(h^m_0-H^m_w\right) v^m \: \mathrm{d}\mathbf{x} = \\ 
+= \int_{\Theta^m}\!\!\!f^m v^m \: \mathrm{d}\mathbf{x} - \int_{\Theta^m}\!T^m \nabla h^m_D \cdot \nabla v^m \: \mathrm{d}\mathbf{x}
+\end{multline}
+
+Zbıvá nám upravit soustavu rovnic na vrtech sloenou z~èlenù v~(\ref{eqn:well_eqs}). Vynásobíme rovnice testovacími funkcemi $\bar{v}^m_w$ (jsou konstanty, proto mohou bıt zahrnuty v~integrálu) a~zároveò dosadíme za $h^m$, jako jsme to udìlali v~(\ref{eqn:weak_laplace}), èím dostaneme
+\begin{multline} \label{eqn:well_eqs_test}
+\int_{\partial{}B_w^m}\sigma_w^m \left(h^m_0 - H_w^m\right)\bar{v}^m_w \, \mathrm{d}\mathbf{x} = \\
+= c_w^{m+1}\left( H^m_w-H_w^{m+1}\right)\bar{v}^m_w - c^m_w\left( H^{m-1}_w-H^m_w \right)\bar{v}^m_w.
+\end{multline}
+
+\begin{definition} \label{def:weak}
+Pokud $\mathbf{h} \in V_D$ splòuje rovnice (\ref{eqn:weak_laplace}) a~(\ref{eqn:well_eqs_test}) pro všechny funkce $\mathbf{v} \in V$, pak nazveme $\mathbf{h}$ slabım øešením.
+\end{definition}
+
+Poznamenejme, e v~definici \ref{def:weak} závisí $\mathbf{h_0}$ na volbì $\mathbf{h_D}$. Lze ovšem ukázat, e $\mathbf{h}$~u je na $\mathbf{h_D}$ nezávislé.
+
+\vspace{10pt}
+Nyní se budeme zabıvat øešitelností úlohy. 
+% Pro další postup pøedepišme normu $\norm{y}_V$ a~oznaème 
+% %
+% \begin{eqnarray*}
+% y&=&(v^m, \bar{v}^m_w), \: z=(h^m_0, H^m_w) \in V = \mathrm{W}^{1,2}_0 (\Theta)^m \times \mathbb{R}^{m\times w} \\
+% \norm{y}_V &=& \sqrt{\norm{v^m}^2_{1,2} + |\bar{v}^m_w|^2}
+% \end{eqnarray*}
+% %
+Odeètìme rovnici (\ref{eqn:well_eqs_test}) od (\ref{eqn:weak_laplace}) a~zároveò vysèítejme soustavy pøes indexy $m,w$. Získáme tím jedinou rovnici (\ref{eqn:form_1}), kterou budeme moci vyjádøit pomocí bilineární formy $a(\cdot,\cdot): V\times V \rightarrow \mathbb{R}$ a~funkcionálu $F(\cdot): V \rightarrow \mathbb{R}$.
+\begin{equation} \label{eqn:form_1}
+a(\mathbf{h_0},\mathbf{v}) = F(\mathbf{v}),
+\end{equation}
+kde
+\begin{eqnarray} 
+a(\mathbf{h_0},\mathbf{v}) &=& \sum_{m\in\mathcal{M}} \int_{\Theta^m}\!T^m \nabla h^m_0 \cdot \nabla v^m \: \mathrm{d}\mathbf{x} + \sum_{\mathclap{\substack{m\in\mathcal{M}\\ w\in\mathcal{W}}}}\; \int_{\partial{}B^m_w}\!\!\sigma^m_w\left(h^m_0-H^m_w\right) (v^m - \bar{v}^m_w) \: \mathrm{d}\mathbf{x}\, + \nonumber\\
+&& + \;\sum_{\mathclap{\substack{m\in\mathcal{M}_w\\ w\in\mathcal{W}}}}\; \left[c_w^{m+1}\left( H^m_w-H_w^{m+1}\right)\bar{v}^m_w - c^m_w\left( H^{m-1}_w-H^m_w \right)\bar{v}^m_w \right] \label{eqn:form_2} \\
+F(\mathbf{v}) &=& \sum_{m\in\mathcal{M}} \Big[ \int_{\Theta^m}\!\!\!f^m v^m \: \mathrm{d}\mathbf{x} - \int_{\Theta^m}\!T^m \nabla h^m_D \cdot \nabla v^m \: \mathrm{d}\mathbf{x} \Big] \label{eqn:form_3}
+\end{eqnarray}
+
+Zdali existuje øešení rovnice (\ref{eqn:form_1}) a~jestli je takové jediné, to nám øíká Laxova-Milgramova vìta \ref{thm:lax_milgram} (vìta 33.1 v~\cite{rek1}).
+\begin{theorem} \label{thm:lax_milgram}
+(Laxova-Milgramova)
+Nech je $V$ Hilbertùv prostor se skalárním souèinem $(h,v)$ a~nech $a(h,v)$ je bilineární forma, definovaná pro $h,v \in V$ a~taková, e existují konstanty $C_1 > 0$ a~$\alpha > 0$ nezávislé na $h$ a~$v$ tak, e pro kadé $h,v \in V$ platí
+\begin{eqnarray}
+\abs{ a(h,v)} \leq C_1 \norm{h}_V \norm{v}_V &\quad& \textrm{podmínka omezenosti,} \label{eqn:lax_milgram_omez} \\
+a(v,v) \geq \alpha \norm{v}^2_V &\quad& \textrm{podmínka V-elipticity.} \label{eqn:lax_milgram_elip}
+\end{eqnarray}
+Pak lze kadı lineární funkcionál $F$, omezenı na $V$ (tedy i~spojitı na $V$), vyjádøit ve tvaru 
+\begin{equation} \label{eqn:lax_form}
+F(v) = a(z,h), \quad v \in V,
+\end{equation}
+kde $z$ je prvek prostoru $V$, jednoznaènì urèenı funkcionálem $F$. Pøitom je 
+\begin{equation} \label{eqn:lax_norm}
+\norm{z} \leq \frac{\norm{F}}{\alpha}.
+\end{equation}
+\end{theorem}
+
+Pøipomeòme, e funkcionál ve vìtì \ref{thm:lax_milgram} je omezenı, existuje-li takové èíslo $C_2$, e pro všechny prvky $v\in V$ platí
+\begin{equation} \label{eqn:functional_constrain}
+|F(v)| \leq C_2\norm{v},
+\end{equation} 
+a norma $\norm{F}$ je rovna nejmenšímu èíslu $C_2$, pro které platí (\ref{eqn:functional_constrain}), viz definice 8.19 v~\cite{rek1}.
+
+Abychom tedy ukázali, e existuje jediné øešení rovnice (\ref{eqn:form_1}), musíme dle vìty \ref{thm:lax_milgram} ovìøit, e jsou splnìny nerovnice
+\begin{eqnarray}
+\abs{ a(\mathbf{h_0},\mathbf{v})} &\leq& C_1 \norm{\mathbf{h_0}}_V \norm{\mathbf{v}}_V \label{eqn:lax_omez} \\
+a(\mathbf{v,v}) &\geq& \alpha \norm{\mathbf{v}}^2_V \label{eqn:lax_elip} \\
+|F(\mathbf{v})| &\leq& C_2\norm{\mathbf{v}}_V. \label{eqn:lax_func}
+\end{eqnarray}
+K tomu potøebujeme nìkolik nerovností, které nám pomohou v~dílèích krocích. Nerovnost (\ref{eqn:triangle_ineq}) se nazıvá trojúhelníková, nerovnost (\ref{eqn:holder}) je Hölderova, obì najdeme ve vìtì 3.1 v~\cite{rek1}.
+\begin{eqnarray}
+|a+b| \leq |a|+|b|  \label{eqn:triangle_ineq} \\
+|(u,v)| \leq \norm{u} \norm{v} \label{eqn:holder}
+\end{eqnarray}
+Dále uijeme nìkteré dùleité vìty funkcionální analızy.
+\begin{theorem} \label{thm:trace} 
+(O stopách)
+Nech $\Omega$ je oblast s~lipschitzovskou hranicí. Pak existuje, a~to právì jeden, omezenı lineární operátor $T_r$, kterı zobrazuje prostor $W^{1,2}(\Omega)$ do prostoru $L^2(\partial\Omega)$ tak, e $u(x) \in C^{\infty}(\overline{\Omega})$ je $T_ru=u|_{\partial\Omega}$
+\end{theorem}
+Z vìty o~stopách \ref{thm:trace}, citována z~\cite{rek1} -- vìta 30.1, a~omezenosti operátoru $T_r$ dále plyne, e existuje konstanta $C_{TR}>0$ taková, e
+\begin{equation} \label{eqn:trace}
+\norm{T_ru}_{L^2(\partial\Omega)} \leq C_{TR} \norm{u}_{W^{1,2(\Omega)}}.
+\end{equation}
+
+\begin{theorem} \label{thm:friedrichs} 
+(Zobecnìná Friedrichsova nerovnost)
+Nech $\Omega$ je oblast s~lipschitzovskou hranicí $\Gamma$, $\Gamma_1$ její èást mající kladnou Lebesgueovu míru, $m\Gamma_1 > 0$. Pak existuje konstanta $C_F > 0$, závislá jen na dané oblasti a~na $\Gamma_1$, taková, e pro kadou funkci $u \in W^{1,2}(\Omega)$ platí
+\begin{equation} \label{eqn:friedrichs}
+C_F \norm{u}^2_{W^{1,2}(\Omega)} \leq \norm{\nabla u}^2_{L^2(\Omega)} + \norm{T_ru}^2_{\Gamma_1}
+\end{equation}
+\end{theorem}
+
+Vìtu \ref{thm:friedrichs} nalezneme v~\cite{rek1} -- vìta 30.3. Pokud ztotoníme v~našem pøípadì na $m$-té zvodni $\Gamma_1=\Gamma^m_D$, kde víme, e $h_0^m|_{\Gamma^m_D}=0$, pak dostaneme nerovnost (\ref{eqn:friedrichs}) ve tvaru
+\begin{equation} \label{eqn:friedrichs0}
+C_F \norm{h_0^m}_{1,2,\Theta^m} \leq \norm{\nabla h^m_0}_{2,\Theta^m}
+\end{equation}
+
+% Oznaème levou stranu rovnice (\ref{eqn:lax1}) jako bilineární formu $a(z,y): V\times V \rightarrow \mathbb{R}$. Abychom dokázali existenci a~jednoznaènost øešení, potøebujeme dle Laxovy-Milgramovy vìty (vìta 33.1 v~\cite{rek1}) ukázat, e $a(z,y)$ je omezená a~\mbox{V-eliptická}:
+% \begin{eqnarray}
+% \abs{ a\left( z,y \right)} \leq C_1 \norm{z}_V \norm{y}_V &\quad& \textrm{podmínka omezenosti,} \label{eqn:lax_omez} \\
+% a\left( y,y \right) \geq \alpha \norm{u}^2_V &\quad& \textrm{podmínka V-elipticity,} \label{eqn:lax_elip}
+% \end{eqnarray}
+% a~zároveò, e funkcionál $F(y): V \rightarrow \mathbb{R}$ na pravé stranì rovnice je lineární omezenı.
+% \begin{equation}
+% |F(y)| \leq  C_2 \|y\|_V
+% \label{eqn:lax_func}
+% \end{equation}
+
+\pagebreak
+\textbf{Ovìøení omezenosti formy $a(\mathbf{h_0,v})$ (\ref{eqn:lax_omez})}
+
+Zaènìme ovìøením omeznosti bilineární formy. Pøedpokládejme, e fyzikální konstanty jsou v~reálné úloze takto omezené: $T^m>0$ pro všechna $m\in\mathcal{M}$, $\sigma^m_w \geq 0$ a~$c^m_w \geq 0$ pro všechna $m\in\mathcal{M}_w$ a~$w\in\mathcal{W}$. Zároveò tyto konstanty vzhledem k~fyzikální podstatì úlohy mùeme omezit i~shora, proto zaveïme $T,\sigma$ a~$c$ takové, e
+\begin{eqnarray}
+T^m &\leq& T  \qquad \forall m\in\mathcal{M}, \\
+\sigma^m_w &\leq& \sigma \qquad \forall m\in\mathcal{M}_w \textrm{ a } \forall w\in\mathcal{W}, \\ 
+c^m_w &\leq& c \qquad \forall m\in\mathcal{M}_w \textrm{ a } \forall w\in\mathcal{W}.
+\end{eqnarray}
+
+Aplikujme nyní trojúhelníkovou nerovnost (\ref{eqn:triangle_ineq}) na pravou stranu (\ref{eqn:lax_omez}) a~pouijme vıše zavedené konstanty. Dostaneme
+\begin{eqnarray} \label{eqn:omez_a1}
+|a(\mathbf{h_0},\mathbf{v})| &\leq& T \left| \sum_{m\in\mathcal{M}} \int_{\Theta^m}\! \nabla h^m_0 \cdot \nabla v^m \: \mathrm{d}\mathbf{x} \right| + \nonumber\\ 
+&& +\, \sigma \left|\; \sum_{\mathclap{\substack{m\in\mathcal{M}\\ w\in\mathcal{W}}}} \; \int_{\partial{}B^m_w}\! \left(h^m_0-H^m_w\right) (v^m - \bar{v}^m_w) \: \mathrm{d}\mathbf{x}\right| + \nonumber\\
+&& + \,c \left|\;\; \sum_{\mathclap{\substack{m\in\mathcal{M}_w\\ w\in\mathcal{W}}}} \left[\left( H^m_w-H_w^{m+1}\right)\bar{v}^m_w - \left( H^{m-1}_w-H^m_w \right)\bar{v}^m_w \right] \right|.\qquad
+\end{eqnarray}
+Vidíme, e je nyní moné omezit zvláš kadı z èlenù na pravé stranì (\ref{eqn:omez_a1}).
+Na první ze èlenù pouijeme Hölderovu nerovnost (\ref{eqn:holder}) a~získáme
+\begin{multline} \label{eqn:omez_a2}
+T \left| \,\sum_{m\in\mathcal{M}} \int_{\Theta^m}\! \nabla h^m_0 \cdot \nabla v^m \: \mathrm{d}\mathbf{x} \right| \leq T\sum \limits_{m\in\mathcal{M}} \int_{\Theta^m}\! |\nabla h^m_0| |\nabla v^m| \: \mathrm{d}\mathbf{x} \leq \\
+\leq  T \sum \limits_{m\in\mathcal{M}} \norm{\nabla h^m_0}_2 \norm{\nabla v^m}_2 
+\leq T \sum \limits_{m\in\mathcal{M}} \norm{h^m_0}_{1,2} \norm{v^m}_{1,2}
+\end{multline}
+Ve druhém èlenu (\ref{eqn:omez_a1}) roznásobíme souèin v~integrálu, pouijeme opìt trojúhelníkovou (\ref{eqn:triangle_ineq}) a~Hölderovu nerovnost (\ref{eqn:holder}) a~navíc vìtu o~stopách \ref{thm:trace}, èím získáme
+\begin{multline} \label{eqn:omez_a3}
+\sigma \sum_{\mathclap{\substack{m\in\mathcal{M}\\ w\in\mathcal{W}}}}\; \int_{\partial{}B^m_w}\! \Big( |h^m_0||v^m| + |h^m_0||\bar{v}^m_w| + |H^m_w||v^m| + |H^m_w||\bar{v}^m|\Big) \: \mathrm{d}\mathbf{x} \leq\\
+\leq \sigma \sum_{\mathclap{\substack{m\in\mathcal{M}\\ w\in\mathcal{W}}}} \Big( C^2_{TR}\norm{h^m_0}_{1,2} \norm{v^m}_{1,2} + C_{TR}|\partial{}B^m_w|\norm{h^m_0}_{1,2} |\bar{v}^m_w| + \\
++ C_{TR}|\partial{}B^m_w||H^m_w| \norm{v^m}_{1,2} + |\partial{}B^m_w||H^m_w||\bar{v}^m| \Big).
+\end{multline} 
+Tøetí èlen (\ref{eqn:omez_a1}) je pouze sumou souèinù konstantních funkcí, take je moné jej omezit jejich absolutními hodnotami. Pak dostaneme
+\begin{equation} \label{eqn:omez_a4}
+c \sum_{\mathclap{\substack{m\in\mathcal{M}_w\\ w\in\mathcal{W}}}} |H^m_w||\bar{v}^m_w|
+\end{equation} 
+
+Kdy nyní slouèíme úpravy (\ref{eqn:omez_a2}), (\ref{eqn:omez_a3}) a~(\ref{eqn:omez_a4}), a~dosadíme zpìt do (\ref{eqn:omez_a1}) získáme
+\begin{multline} \label{eqn:omez_a5}
+|a(\mathbf{h_0,v})| \leq C_1 \bigg( \sum \limits_{m\in\mathcal{M}} \norm{h^m_0}_{1,2} \norm{v^m}_{1,2}  + \\
++ \sum_{\mathclap{\substack{m\in\mathcal{M}\\ w\in\mathcal{W}}}} \Big( \norm{h^m_0}_{1,2} |\bar{v}^m_w| + |H^m_w| \norm{v^m}_{1,2} \Big) + \sum_{\mathclap{\substack{m\in\mathcal{M}_w\\ w\in\mathcal{W}}}} |H^m_w||\bar{v}^m| \bigg),
+\end{multline} 
+kde konstanta $C_1>0$ závisí pouze na konstantách $T, \sigma, c, W, C_{TR}, |\partial{}B^m_w|$ (není nutné ji pøesnì vyèíslovat). Jednotlivé èleny v~závorce v~(\ref{eqn:omez_a5}) jsou obsaeny v~souèinu norem, viz (\ref{eqn:fem_spaces}), co lze ukázat jejich jednoduchım roznásobením. Pokud tedy levou stranu (\ref{eqn:omez_a5}) rozšíøíme o~zbıvající èleny v~normì (všechny jsou nezáporné), dostaneme po úpravách vyhovující tvar nerovnice
+\begin{equation} \label{eqn:omez_a6}
+|a(\mathbf{h_0,v})| \leq C_1 \norm{\mathbf{h_0}}_V \norm{\mathbf{v}}_V
+\end{equation} 
+Konstanta $C_1$ v~(\ref{eqn:omez_a6}) zøejmì není nejmenší, dùleité však je, e taková existuje. Tím jsme ukázali, e platí nerovnice (\ref{eqn:lax_omez}).
+
+% Uvedeme èasto pouité úpravy, které dále nebudeme rozepisovat. Veškeré nerovnosti najdeme podrobnì popsané opìt v~\cite{rek1}.
+% 
+% Pouití Hölderovy nerovnosti:
+% \begin{multline*}
+% \int\! |\nabla u| |\nabla v| \: \mathrm{d}\mathbf{x} \leq \sqrt{\int\! |\nabla u|^2 \: \mathrm{d}\mathbf{x}} \: \sqrt{\int\! |\nabla v|^2 \: \mathrm{d}\mathbf{x}} =\norm{\nabla u}_2 \norm{\nabla v}_2 \leq \\
+% \leq \sqrt{\int\! |\nabla u|^2 + |u|^2 \: \mathrm{d}\mathbf{x}} \: \sqrt{\int\! |\nabla v|^2 + |v|^2 \: \mathrm{d}\mathbf{x}} = \norm{u}_{1,2} \norm{v}_{1,2}
+% \end{multline*}
+% 
+% Pouití vìty o~stopách (a~rozšíøení hranièní normy na celou oblast):
+% \begin{multline*}
+% \int_{\Gamma}\! |u||v| \: \mathrm{d}\mathbf{x} \leq \norm{u}_{2,\Gamma} \norm{v}_{2,\Gamma}  
+% \leq \norm{u}_{2,\partial{}\Theta} \norm{v}_{2,\partial{}\Theta} \leq \\
+% \leq C_{TR} \norm{u}_{2,\Theta} \norm{v}_{2,\Theta} \leq C_{TR} \norm{u}_{1,2,\Theta} \norm{v}_{1,2,\Theta} \quad \textrm{kde } \Gamma \subset \partial \Theta
+% \end{multline*}
+% 
+% Pomocí trojúhelníkové nerovnosti $|a \pm b| \leq |a| + |b|$ mùeme bilineární formu vyšetøovat po jednotlivıch èlenech. 
+% \begin{multline} \label{eqn:lax_omez_a}
+% \sum \limits^M_{m=1} \int_{\Theta^m}\! |\nabla h^m_0| |\nabla v^m| \: \mathrm{d}\mathbf{x} 
+% =  \sum \limits^M_{m=1} \norm{\nabla h^m_0}_2 \norm{\nabla v^m}_2  \leq  \\
+% \leq \sum \limits^M_{m=1} \norm{h^m_0}_{1,2} \norm{v^m}_{1,2}
+% \end{multline}
+% Argument hranièního integrálu roznásobíme a~kadou èást postupnì omezíme. Konstanta $C_{TR}$ pochází z~pøevodu integrace pøes hranici na integraci pøes celou oblast dle vìty o~stopách.
+% \begin{multline} \label{eqn:lax_omez_b}
+% \sum_{\mathclap{\substack{m=1\\ w=1}}}^{M,W} \int_{\partial{}B^m_w}\! \Big( |h^m_0||v^m| + |h^m_0||\bar{v}^m_w| + |H^m_w||v^m| + |H^m_w||\bar{v}^m|\Big) \: \mathrm{d}\mathbf{x} \leq\\
+% \leq \sum_{\mathclap{\substack{m=1\\ w=1}}}^{M,W} \Big( C^2_{TR}\norm{h^m_0}_{1,2} \norm{v^m}_{1,2} + C_{TR}|\partial{}B^m_w|\norm{h^m_0}_{1,2} \norm{\bar{v}^m_w}_{1,2} + \\
+% + C_{TR}|\partial{}B^m_w|\norm{H^m_w}_{1,2} \norm{v^m}_{1,2} + |\partial{}B^m_w||H^m_w||\bar{v}^m| \Big)
+% \end{multline} 
+% Konstantní funkce omezíme jejich absolutní hodnotou.
+% \begin{equation} \label{eqn:lax_omez_c}
+% \sum_{\mathclap{\substack{m=0\\ w=0}}}^{M+1,W+1} |H^m_w||\bar{v}^m_w|
+% \end{equation} 
+% Kdy slouèíme pøechozí úpravy (\ref{eqn:lax_omez_a}), (\ref{eqn:lax_omez_b}) a~(\ref{eqn:lax_omez_c}), získáváme vıraz
+% \begin{multline*}
+% |a(y,y)| \leq \tilde{C_1} \bigg( 2 \sum \limits^M_{m=1} \norm{h^m_0}_{1,2} \norm{v^m}_{1,2}  + \sum_{\mathclap{\substack{m=1\\ w=1}}}^{M,W} \Big( \norm{h^m_0}_{1,2} \norm{\bar{v}^m_w}_{1,2} + \\
+% + \norm{H^m_w}_{1,2} \norm{v^m}_{1,2} + 2|H^m_w||\bar{v}^m| \Big)  \bigg)
+% \end{multline*} 
+% kde $\tilde{C}_1 = \max (T,\sigma C_{TR}^2,\sigma C_{TR}|\partial{}B^m_w|,\sigma |\partial{}B^m_w|, c)$. Jednotlivé èleny v~závorce jsou obsaeny v~souèinu norem, co lze ukázat jejich jednoduchım roznásobením. Pokud rozšíøíme vıraz o~zbıvající èleny v~normì a~pouijeme nerovnost $a+b \leq 2\sqrt{a^2+b^2}$ (vycházející z~Youngovy nerovnosti), dostaneme po úpravách 
+% \begin{equation}
+% |a(y,y)| \leq C_1 \norm{(h^m_0,H^m_w)}_{1,2} \norm{(v^m, \bar{v}^m_w)}_{1,2} \quad \textrm{kde } C_1 = 4\tilde{C}_1.
+% \end{equation} 
+% Tím je ukázáno, e platí nerovnice (\ref{eqn:lax_omez}).
+
+\vspace{10pt}
+\textbf{Ovìøení elipticity formy $a(\mathbf{v,v})$ (\ref{eqn:lax_elip})}
+
+Nyní budeme vyšetøovat elipticitu bilineární formy $a(\mathbf{v,v})$. Do (\ref{eqn:form_2}) dosadíme za $\mathbf{h_0}$ funkci $\mathbf{v}$. Tøetí èlen (\ref{eqn:form_2}) mùeme potom pøeskládat a~dostaneme tvar 
+\begin{multline} \label{eqn:lax2}
+a(\mathbf{v,v}) = \sum_{m\in\mathcal{M}} \int_{\Theta^m}\!T^m |\nabla v^m|^2 \: \mathrm{d}\mathbf{x} + \,\sum_{\mathclap{\substack{m\in\mathcal{M}\\ w\in\mathcal{W}}}}\; \int_{\partial{}B^m_w}\!\sigma^m_w(v^m - \bar{v}^m_w)^2 \: \mathrm{d}\mathbf{x}\, -\\
+- c^1_w\bar{v}^1_w(\bar{v}^0_w - \bar{v}^1_w) + \ldots + c^m_w(\bar{v}^{m-1}_w - \bar{v}^m_w)^2 + \ldots + c^{M+1}_w \bar{v}^M_w(\bar{v}^M_w - \bar{v}^{M+1}_w).
+\end{multline}
+
+Je zøejmé, e všechny èleny jsou nezáporné. Pokud hranice alespoò jedné zvodnì s~Dirichletovou okrajovou podmínkou je nenulové míry, potom je dùkaz nerovnosti (\ref{eqn:lax_elip}) pøímoèarı za pouití Friedrichsovy nerovnosti (\ref{eqn:friedrichs0}).
+%
+\begin{equation}  \label{eqn:elip_a1}
+\int_{\Theta^m}\!T^m |\nabla v^m|^2 \: \mathrm{d}\mathbf{x} = T^m\|\nabla v^m\|^2_2 \geq C_F\|v^m\|^2_{1,2}
+\end{equation}
+%
+Z (\ref{eqn:elip_a1}) víme, e alespoò na jedné zvodni existuje $C_F>0$, co nám staèí, abychom vìdìli, e minimmálnì $\alpha \geq C_F$.
+
+V~pøípadì, e na hranici všech zvodní je zadaná pouze Neumannova okrajová podmínka, provedeme dùkaz analogickı dùkazu Friedrichsovy nerovnosti sporem (viz kapitola 2.1.1 v~\cite{parc}).
+
+Øeknìme, e (\ref{eqn:lax_elip}) neplatí. Pak $\forall n \in \mathbb{N} \:\: \exists \, \mathbf{v}^n \in V$ takové, e $\|\mathbf{v}^n\|_V > n\cdot a(\mathbf{v}^n, \mathbf{v}^n)$. Bez újmy na obecnosti zvolme $\|\mathbf{v}^n\|_V = 1$. Prostor $V$ sloenı z~Hilbertovıch prostorù na $\Theta^m$ je také Hilbertùv, a~proto je také reflexivní. Z~toho vyplıvá, e posloupnost $\mathbf{v}^n$ je omezená a~lze k~ní najít podposloupnost slabì konvergentní
+%
+\begin{equation*}
+\mathbf{v}^{n_k} \rightharpoonup \mathbf{v} \quad \textrm{ve } V.
+\end{equation*}
+%
+Z~vìty o~kompaktním vnoøení $V \hookrightarrow \hookrightarrow L^2$ plyne silná konvergence 
+%
+\begin{equation*}
+\mathbf{v}^{n_k} \rightarrow \mathbf{v} \quad \textrm{ve } L^2.
+\end{equation*}
+%
+Protoe všechny èleny bilineární formy $a(\mathbf{v},\mathbf{v})$ jsou nezáporné, omezíme ji zdola $a(\mathbf{v},\mathbf{v}) \geq T \| \nabla \mathbf{v}\|^2_2$. Potom dostaneme
+%
+\begin{equation*}
+T \| \nabla \mathbf{v}^{n_k}\|^2_2 \leq a(\mathbf{v}^{n_k},\mathbf{v}^{n_k}) < \frac{1}{n_k} \|\mathbf{v}^n\|_V = \frac{1}{n_k}. 
+\end{equation*}
+%
+Za pøedpokladu slabé zdola polospojitosti normy $\|\nabla \mathbf{v}\|_2\leq\liminf \limits_{k \to \infty} \|\mathbf{v}^{n_k}\|_2$,  
+%
+\begin{equation*}
+\nabla \mathbf{v}^{n_k} \rightarrow \nabla \mathbf{v} = 0 \quad \textrm{v } L^2 \implies \mathbf{v}^{n_k} \rightarrow \mathbf{v} \quad \textrm{ve } V,\;\; \mathbf{v}=\textrm{konst.}  
+\end{equation*}
+%
+Tlak ve zvodni je tedy konstantní, to znamená, e tok zvodní musí bıt nulovı. Tok pøes hranici vrtu bude nulovı pouze pokud $\sigma^m_w=0$, pak ale nebude ádná komunikace mezi vrtem a~zvodní, nebo pokud $v^m = \bar{v}^m_w$. Potom ale musí bıt i~tok vrty nulovı, proto si musí bıt rovny všechny konstanty $\bar{v}^i_w = \bar{v}^j_w, \; \forall \, i,j\in\mathcal{M}_w$. Protoe pøedpokládáme $\bar{v}^0_w = \bar{v}^{M+1}_w = 0$, potom
+%
+\begin{equation*}
+\mathbf{v} = konst. = 0 \quad \implies \textrm{spor s } \|\mathbf{v}\|_V=1.
+\end{equation*}
+%
+Tím je proveden dùkaz elipticity (\ref{eqn:lax_elip}).
+
+\vspace{10pt}
+\textbf{Ovìøení omezenosti funkcionálu $F(\mathbf{v})$ (\ref{eqn:lax_func})}
+
+Zbıvá ovìøit omezenost funkcionálu $F(\mathbf{v})$. Pouijeme stejné úpravy jako pøi ovìøování omezenosti bilineární formy (\ref{eqn:lax_omez}), tedy trojúhelníkovou nerovnost (\ref{eqn:triangle_ineq}) a~Hölderovu nerovnost (\ref{eqn:holder}), a~dostaneme
+
+\begin{multline}
+|F(\mathbf{v})| = \left| \sum_{m\in\mathcal{M}} \Big[ \int_{\Theta^m}\!\!\!f^m v^m \: \mathrm{d}\mathbf{x} - \int_{\Theta^m}\!T^m \nabla h^m_D \cdot \nabla v^m \: \mathrm{d}\mathbf{x} \Big] \right| \leq \\
+\leq \sum_{m\in\mathcal{M}} \norm{f^m}_2 \norm{v^m}_{1,2} + T \sum_{m\in\mathcal{M}} \norm{h^m_D}_{1,2} \norm{v^m}_{1,2} \leq \\
+\leq \sum_{m\in\mathcal{M}} \Big( \norm{f^m}_2 + T\norm{h^m_D}_{1,2}\Big) \norm{v^m}_{1,2} \leq C_2 \norm{\mathbf{v}}_V, 
+\end{multline} 
+kde konstanta $C_2$ závisí na velikostech $\norm{f^m}_2, T, \norm{h^m_D}_{1,2}$.
+Tím je ukázána platnost nerovnice (\ref{eqn:lax_func}) a~zároveò proveden poslední èlánek dùkazu existenece a~jednoznaènosti øešení.
+
+\begin{theorem}
+Nech je bilineární forma $a(\mathbf{h_0,v})$, definovaná v~(\ref{eqn:form_2}), omezena s~konstantou $C_1$, tedy je splnìna nerovnice (\ref{eqn:lax_omez}). Nech je dále $a(\mathbf{h_0,v})$ $V$-eliptická s~konstantou $\alpha$, tedy platí nerovnice (\ref{eqn:lax_elip}), a~lineární funkcionál $F(\mathbf{v})$, definovanı v~(\ref{eqn:form_3}), je omezenı s~konstantou $C_2$. Potom jsou splnìny všechny pøedpoklady Laxovy-Milgramovy vìty \ref{thm:lax_milgram} a~existuje jediné øešení rovnice (\ref{eqn:form_2}).
+\end{theorem}
+
+
+\subsection{Diskretizace}
+\label{sec:fem_disc}
+% Mìjme nyní dánu bázi prostoru $\mathrm{W}^{1,2}_0(\Theta)$ funkcemi $\left\{ \varphi_1, \ldots,\varphi_N,\ldots\right\}$. Pak mùeme øešení zapsat ve tvaru
+% \begin{equation*}
+% h^m_0=\sum \limits^{\infty}_{j=1}\alpha^m_j \, \varphi^m_j.
+% \end{equation*}
+Zvolme n-dimenzionální podprostor $W^{1,2}_{h,0} \subset W^{1,2}_0$ a~jeho koneènì-prvkovou bázi $\left\{ \varphi_1, \ldots,\varphi_N\right\}$ a~zaveïme na $m$-té zvodni aproximaci
+\begin{equation} \label{eqn:discret}
+h^m_0=\sum \limits^{N}_{j=1}\alpha^m_j \, \varphi^m_j.
+\end{equation}
+%
+Aproximovanı bázovı prostor $W^{1,2}_{h,0}$ ztotoníme s~testovacím. Pro testovací funkce $\bar{v}^m_w$ volíme bázové vektory $\mathbf{e}^{mw}=(0,\ldots,1,\ldots,0)$ prostoru $R^{M \times W}$, tedy v~rovnici (\ref{eqn:well_eqs_test}) pro $m$-tou zvodeò a~$w$-tı vrt je $\bar{v}^m_w=1$ a~všechny ostatní jsou rovny nule. Dosazením aproximovaného øešení a~testovacích funkcí do odvozenıch rovnic (\ref{eqn:well_eqs_test}) a~(\ref{eqn:weak_laplace})
+získáme $(M\cdot{}W)$ rovnic pro hranice vrtù
+\begin{multline} \label{eqn:e08}
+\int_{\partial{}B_w^m}\sigma_w^m \left(\sum \limits_{j=1}^N \alpha_j^m\varphi_j^m - H_w^m\right)\bar{v}^m_w \, \mathrm{d}\mathbf{x} = \\ 
+= c_w^{m+1}\left( H^m_w-H_w^{m+1}\right)\bar{v}^m_w - c^m_w\left( H^{m-1}_w-H^m_w \right)\bar{v}^m_w
+\end{multline}
+%
+a pro $M$ zvodní $(M\cdot{}N)$ rovnic
+%
+\begin{multline} \label{eqn:e09}
+\sum \limits_{j=1}^N \alpha_j^m \int_{\Theta^m} T^m \nabla \varphi_j^m \cdot \nabla \varphi_i^m \mathrm{d}\mathbf{x} + \sum \limits_{j=1}^N \alpha_j^m \sum \limits_{w\in\mathcal{W}} \int_{\partial{}B_w^m} \sigma_w^m \varphi_j^m \varphi_i^m \mathrm{d}\mathbf{x} -\\
+-  \sum \limits_{w\in\mathcal{W}} H^m_w \int_{\partial{}B_w^m} \sigma^m_w\varphi^m_i \mathrm{d}\mathbf{x}
+= \int_{\Theta^m}\!\!\!f^m \varphi_i^m \: \mathrm{d}\mathbf{x} - \int_{\Theta^m}\!T^m \nabla h^m_D \cdot \nabla \varphi_i^m \: \mathrm{d}\mathbf{x}.
+\end{multline}
+%
+Poèet rovnic v soustavì (\ref{eqn:e08}) a~(\ref{eqn:e09}) dává dohromady $(M\cdot{}N+M\cdot{}W)$, co odpovídá poètu stupòù volnosti $\{\alpha_1^1\ldots\alpha_N^1,\alpha_1^2\ldots\alpha_N^M, H^1_1\ldots H^1_W,H^2_1\ldots H^M_W\}$.
+
+\subsection{Maticovı zápis}
+\label{sec:fem_single}
+Doposud jsme popisovali komplexní model proudìní podzemní vody zvodnìmi a~jeho øešení klasickou metodou koneènıch prvkù. V~implementaci pro zjednodušení omezíme model na jednu zvodeò -- chceme porovnávat chování metod v~okolí vrtu a~nezáleí nám tolik na komplexnosti implementovaného modelu. Pøepišme rovnice (\ref{eqn:e09}) a~(\ref{eqn:e08}) pro tento pøípad, tzn. $m=1$ nebudeme psát, $c_w^2H_w^2$ má vıznam Dirichletovy okrajové podmínky na vrtech, do podloí nic neodtéká a~tudí poloíme $c_w=0$. Oznaèíme indexy $i,j= 1,\ldots,N$ bázové funkce a~stupnì volnosti na zvodni, $H_w$ jsou stupnì volnosti pro tlaky ve vrtech. Rovnici (\ref{eqn:e08}) navíc násobíme $-1$, abychom zajistili symetrii soustavy, kterou zapíšeme
+%
+\vspace{10pt}
+\begin{equation} \label{eqn:fem_matrix_1}
+\left( \begin{array}{cc}
+\mathbf{A} & \mathbf{C^T} \\
+\mathbf{C} & \mathbf{D}  \end{array} \right) 
+%
+\left( \begin{array}{c}
+\mathbf{a} \\
+\mathbf{p}  \end{array} \right)
+=
+\left( \begin{array}{c}
+\mathbf{q} \\
+\mathbf{d}  \end{array} \right),
+\end{equation}  
+\vspace{10pt}
+%
+kde jsou jednotlivé prvky rovny
+%
+% \begin{multline} \label{eqn:e10}
+% \alpha_j\left(\int_{\Theta}\left(K \nabla \varphi_j \cdot \nabla \varphi_i\right) \,      \mathrm{d}\Theta + \sum \limits_w^W \int_{B_w} \left(\sigma_w \varphi_j \varphi_i\right) \, \mathrm{d}B_w \right)\\
+% - \sum \limits_w^W H_w \int_{B_w} \left( \sigma_w\varphi_i\right)\mathrm{d}B_{w} = 0
+% \end{multline} 
+% \begin{equation} \label{eqn:e11}
+% -\alpha_j\int_{B_w} \left(\sigma_w\varphi_j \right) \, \mathrm{d}B_w + H_w \left[ \int_{B_w}\sigma_w \, \mathrm{d}B_w + c_w^{1}\right] = 
+% c_w^{1}H_w^{1}
+% \end{equation} 
+\begin{eqnarray} \label{eqn:fem_matrix_members}
+A_{ij} &=& T \int_{\Theta} \nabla \varphi_j \cdot \nabla \varphi_i \: \mathrm{d}\mathbf{x} + \sum\limits_{w\in\mathcal{W}} \sigma_w \int_{\partial{}B_w} \varphi_j \varphi_i \: \mathrm{d}\mathbf{x}, \nonumber\\
+C_{wj} &=& - \sigma_w \int_{\partial{}B_w} \varphi_j \: \mathrm{d}\mathbf{x},  \nonumber\\
+D_{ww} &=& \int_{\partial{}B_w}\sigma_w \, \mathrm{d}B_w + c_w^{2}, \nonumber\\
+q_i &=& \int_{\Theta} f \varphi_i \: \mathrm{d}\mathbf{x} - \int_{\Theta}\!T \nabla h_D \cdot \nabla \varphi_i \: \mathrm{d}\mathbf{x}, \nonumber\\
+d_w &=& c_w^2 H_w^2. 
+\end{eqnarray} 
+%
+Matice mají rozmìry $\mathbf{A}^{N\times N}$, $\mathbf{C}^{W\times N}$ a~$\mathbf{D}^{W\times W}$ a~vektory $\mathbf{q}^N$ a~$\mathbf{d}^W$. Poznamenejme, e tyto matice jsou øídké, $\mathbf{A}$ je navíc symetrická a~$\mathbf{D}$ je diagonální. Stupnì volnosti jsme slouèili do vektorù $\mathbf{a}=\left(\alpha_1,\ldots, \alpha_N\right)$ a~$\mathbf{p}=\left(H_1,\ldots,H_W\right)$. 
+
+Pokud bychom chtìli model rozšíøit na více zvodní, bude soustava blokovì diagonální. Pøepišme rovnici (\ref{eqn:e08}) tak, abychom vidìli lépe prvky matice. 
+\begin{multline} \label{eqn:e10}
+-c^{m+1}_w H^{m+1}_w -\sum \limits_{j=1}^N \alpha_j \int_{\partial{}B_w^m} \sigma_w^m \varphi_j^m \, \mathrm{d}\mathbf{x} + \\
++ H^m_w\left( \int_{\partial{}B_w^m} \sigma_w^m \mathrm{d}\mathbf{x}  + c^{m+1}_w + c^m_w\right) -c^m_w H^{m-1}_w =0
+\end{multline}
+Soustava bude navíc doplnìna èleny z rovnice (\ref{eqn:e10}), odkud tedy pøibudou bloky $\mathbf{E^m} = \textrm{diag}(-c^m_1,\ldots,-c^m_W)$, které reprezentují komunikaci uvnitø vrtù (blok $\mathbf{E^m}$ dává do vztahu tlaky ve vrtech mezi zvodnìmi $m$ a~$m-1$).  K~prvkùm matice $\mathbf{C^m}$ pøièteme konstanty propustností ve vrtu, èili $C^m_{wj} = - \sum \limits_{w\in\mathcal{W}} \Big[ \sigma^m_w \int_{\partial{}B^m_w} \varphi^m_j \: \mathrm{d}\mathbf{x} + c^{m+1}_w + c^m_w \Big]$, a~matice systému bude mít tvar
+%
+\begin{equation} \label{eqn:fem_matrix_2}
+\begin{pmatrix}
+\mathbf{A^M}   & \mathbf{(C^M)^T} &                   &                     & & & \ldots \\
+\mathbf{C^M}   & \mathbf{D^M}     &                   & \mathbf{E^M}        & & & \ldots \\
+               &                  & \mathbf{A^{M-1}} & \mathbf{(C^{M-1})^T} & & & \ldots \\
+               & \mathbf{E^M}     & \mathbf{C^{M-1}}  & \mathbf{D^{M-1}}    & & \mathbf{E^{M-1}} & \ldots \\
+   \vdots      &      \vdots      & \vdots            & \vdots              & & & \ddots
+\end{pmatrix}
+\begin{pmatrix}
+\mathbf{a^M} \\ 
+\mathbf{p^M} \\
+\mathbf{a^{M-1}} \\
+\mathbf{p^{M-1}} \\
+\vdots
+\end{pmatrix} =
+\begin{pmatrix}
+\mathbf{q^M}\\
+\mathbf{d}\\
+\mathbf{q^{M-1}}\\
+0\\
+\vdots
+\end{pmatrix}.
+\end{equation}  
+
+\vspace{10pt}
+Pokud nejsou pøítomny další zdroje, je vektor pravé strany pøi homogenní Neu\-man\-no\-vì okrajové podmínce roven $(0, \mathbf{d}, 0, 0, \ldots, 0)$. To znamená, e je nulovı a na øádky, ve kterıch se objevuje tlak v~ústí vrtù. Nakonec vektor hledanıch stupòù volnosti ve zvodních a~vrtech je roven $(\mathbf{a^M}, \mathbf{p^M}, \mathbf{a^{M-1}} \mathbf{p^{M-1}}, \ldots, \mathbf{a^1}, \mathbf{p^1})$.
+
+\pagebreak
+
+\section{Metoda rozšíøenıch koneènıch prvkù}
+\thispagestyle{plain}
+\label{sec:xfem}
+Názvy metod XFEM (Extended FEM), GFEM (Generalized FEM) a~PUM (Partition of Unity Method, popsal Babuška a~Melenk \cite{pum}) se v~dnešní dobì pouívají témìø jako synonyma. Dohromady je spojuje myšlenka rozšíøení prostoru pro hledání øešení parciální diferenciální rovnice, kde je rozšíøení -- obohacení -- realizováno pomocí rozkladu jednotky (partition of unity). Pøehledné srovnání tìchto metod shrnuli Fries a~Belytschko v~\cite{g_x_overview}. Ve struènosti, metody rozkladu jednotky pøinesly monost obohacení prostoru øešení a~to velice obecnì pro síové i~bezsíové metody. To umoòuje vyuít pøi øešení parciální diferenciální rovnice apriorní znalost o~øešení nebo o~jeho charakteru a~zahrnout ji do modelu pøi tvorbì prostoru bázovıch a~testovacích funkcí. Tuto znalost mùeme bıt schopni získat vypoètením øešení lokálního problému. Poèáteèní motivací metody GFEM bylo spojení PUM a~FEM s~dùrazem na zachování vlastností FEM. Obì metody zatím uvaovaly globální obohacení a~a XFEM s~pouitím znalostí pøedchozích metod pøináší obohacení pouze lokální oblasti. Dnes se metody vzájemnì prolínají, a~proto se jejich názvy èasto povaují za rovnocenné.
+
+Typickımi pøíklady, kde se XFEM metoda pouívá, jsou úlohy na vıpoèet deformace a~rozloení napìtí v~mechanice. Problematická místa jsou ta, kde vlivem namáhání roste napìtí a~jeho gradient, pøípadnì dochází i~k~trhlinám a~napìtí se skokovì mìní. Zároveò se mùe velikost a~poloha trhlin mìnit, co v~pøípadì FEM (narozdíl od XFEM) nutnì znamená mìnit vıpoèetní sí. Takové nespojitosti lze dobøe aproximovat pomocí obohacení skokovımi funkcemi jako jsou $\mathrm{sgn}(x)$ nebo Heavisidova funkce. Dalšími pøíklady úloh mohou bıt mísení nestlaèitelnıch kapalin, kde se na jejich rozhraní skokovì mìní viskozita a~dùsledkem je nespojitost v~polích tlaku a~rychlosti; model tenké membrány, kde se nespojitì mìní rychlostní pole. Vıhodou XFEM oproti klasické koneènì-prvkové metodì jsou také niší nároky na tvorbu sítì, protoe vrcholy a~hrany elementù nemusí lícovat s~místy nespojitostí a~není potøeba zjemòovat sí v~tìchto problematickıch místech.
+
+Pøi konstrukci našeho XFEM modelu budeme vycházet z~èlánku \cite{gracie} R.~Gracie a~R.~Craiga, kde je popsán vícezvodòovı model proudìní a~jeho øešení pomocí metody rozšíøenıch koneènıch prvkù.
+%Uday Banerjee IMA, Univ. Minnesota 2010
+V øešeném modelu je problémem singularita v~bodì zdroje -- v~místì vrtu -- a~velké gradienty tlaku v~jejím okolí. Analytické øešení jednoho zdroje v~nekoneèné ploše je logaritmicky závislé na vzdálenosti od zdroje, proto se øešení v~bodì zdroje blíí nekoneènu. Prostor testovacích funkcí obohatíme logaritmickımi funkcemi s~omezenım definièním oborem (bez  bodu singularity) a~lokální aproximace zavedeme pomocí metody rozkladu jednotky. Podrobnì tyto funkce popíšeme v~pøíští podkapitole.
+
+
+
+
+\subsection{Obohacující funkce}
+\label{sec:xfem_function}
+Pro vystihnutí logaritmické singularity v~místech vrtù rozšíøíme prostor bázovıch (a~testovacích) funkcí o~funkci pøirozeného logaritmu.
+\begin{equation}
+\label{eqn:xshape_func}
+\phi_w(\mathbf{x}) = 
+  \begin{cases}
+  \log(r_w(\mathbf{x})), & r_w > R_w\\
+  \log(R_w), & r_w \le R_w\\
+  \end{cases}
+\end{equation}
+%
+kde vzdálenost $r_w$ bodu $\mathbf{x}$ od støedu vrtu $\mathbf{x_w}$ urèíme pomocí Euklidovy normy 
+\begin{equation}
+r_w(\mathbf{x}) = \|\mathbf{x} - \mathbf{x_w}\|=\sqrt{(x-x_w)^2+(y-y_w)^2}.
+\end{equation}
+%
+%
+\begin{figure}[!htb]
+      %\vspace{10pt}
+      \begin{center}        
+        \def\svgwidth{0.65\textwidth}
+        \input{\figpath enrich_func.pdf_tex}
+      \end{center}
+      \vspace{-10pt}
+      \caption[Obohacující funkce $\phi(\mathbf{x})$]{Obohacující funkce $\phi(\mathbf{x})$.}
+      \label{fig:enrich_func}
+\end{figure}
+Uvnitø oblasti vrtu je obohacující funkce omezena na konstantní hodnotu, jinak bychom obsáhli i~singulární bod ($\,\lim \limits_{r\to\infty} \log(r) = -\infty$ ve støedu vrtu). Gradient funkce $\phi$ vypoèteme pomocí pravidel derivování sloené funkce
+%
+%derivace logaritmu po slokach
+%\begin{equation*}
+%  \frac{\partial}{\partial x}\log(r_w(\mathbf{x})) = \frac{1}{r_w(\mathbf{x})}\frac{\partial}{\partial x}\|\mathbf{x} - \mathbf{x_w}\| = \frac{1}{r_w(\mathbf{x})}\frac{x-x_w}{r_w(\mathbf{x})} = \frac{x-x_w}{r_w^2(\mathbf{x})}
+%\end{equation*}
+%
+\begin{eqnarray}
+\label{eqn:xgrad_func}
+% po slokách
+%  \left(\frac{\partial\phi}{\partial x},\frac{\partial\phi}{\partial y}\right) = \left(\frac{x-x_w}{x^2+y^2},\frac{y-y_w}{x^2+y^2}\right) = \left(\frac{x-x_w}{r^2},\frac{y-y_w}{r^2}\right) & r_w > R_w\\
+\nabla \phi_w(\mathbf{x}) = 
+\nabla \log(r_w(\mathbf{x})) = \frac{1}{r_w(\mathbf{x})} \nabla \|\mathbf{x} - \mathbf{x_w}\| = \frac{\mathbf{x} - \mathbf{x_w}}{r_w^2(\mathbf{x})} \quad \textrm{ pro } r_w>R_w. \nonumber\\
+\end{eqnarray}
+%
+Funkce $\phi_w$ je konstantní pro $r_w \le R_w$, tudí gradient bude v~tìchto bodech roven $\nabla \phi_w(\mathbf{x}) = 0$.
+
+\subsection{Diskretizace}
+\label{sec:xfem_discretization}
+Vyjdeme z døíve odvozené slabé formulace (\ref{eqn:well_eqs_test}) a~(\ref{eqn:weak_laplace}), nepouijeme však dále diskrétní aproximaci (\ref{eqn:discret}), ale øešení budeme hledat v~jiném tvaru.
+Diskretizaci lineráními prvky provedeme shodnì jako u~klasické FEM v~kapitole \ref{sec:fem_disc}, tj. rozdìlením sítì na elementy a~pøechodem ke koneènì-prvkové bázi funkcí $\left\{ \varphi_1, \ldots,\varphi_N\right\}$ prostoru $\mathrm{W}_{h,0}^{1,2}(\Omega^m)$. 
+
+Pøi diskretizaci je nutné urèit, které elementy budou obohacené. Zvolíme urèité okolí vrtu o~polomìru $r_{enr}$. Všechny uzly sítì, které spadají do tohoto okolí budou obohacené. Obohacenı element je kadı takovı, na kterém je alespoò jeden obohacenı uzel. Parametr $r_{enr}$ je potøeba volit vhodnì tak, aby obohacená oblast dobøe postihla místa s~velkımi gradienty, ale zároveò také, aby pøi vìtším $r_{enr}$ zbyteènì nenarostl poèet obohacenıch stupòù volnosti.
+
+Popišme nejprve obecnì princip diskretizace v~metodì XFEM. Oznaème mnoinu indexù všech uzlù sítì $\mathcal{N}$ a mnoinu indexù obohacenıch uzlù $\mathcal{N}_e.$ Øešení hledáme ve tvaru
+\begin{equation}
+\label{eqn:standard_xfem}
+h(\mathbf{x})=\underbrace{\sum \limits_{j\in\mathcal{N}}\alpha_j \, \varphi_j(\mathbf{x})}_\textrm{FEM} + \underbrace{ \sum \limits_{k\in\mathcal{N}_e} \beta_k \, \phi(\mathbf{x}) \, \varphi_k(\mathbf{x})}_\textrm{enrichment},
+\end{equation}
+kde $\alpha_j$ jsou stupnì volnosti koneènıch prvkù všech uzlù a $\beta_k$ jsou pøidané stupnì volnosti obohacenıch uzlù. Fries popisuje ve svém èlánku \cite{mxfem} problémy na tzv. rozmıvacích (blending) elementech, tedy na elementech, na kterıch jsou obohacené pouze nìkteré uzly. V~matici se potom objeví nechtìné èleny, které se projeví zhoršením podmínìnosti matice vısledného systému a~sníením rychlosti konvergence. Zároveò Fries nabízí øešení v~podobì modifikové XFEM, ve které se do èlenu obohacení zavede funkce rampy 
+\begin{equation}
+\label{eqn:ramp_function}
+g(\mathbf{x}) = \sum \limits_{u\in\mathcal{N}_e} \varphi_u(\mathbf{x}) = \sum \limits_{u\in\mathcal{N}} g_u\, \varphi_u(\mathbf{x}),
+\end{equation}
+co je souèet bázovıch funkcí $\varphi_u$ pøíslušnıch obohacenım uzlùm. Toté lze zapsat také jako souèet pøes všechny bázové funkce s~pouitím vah $g_u=1$ pro obohacenı uzel a~nulovımi jinde, viz druhá rovnost v~(\ref{eqn:ramp_function}). 
+Funkce rampy slouí jako tzv. rozmıvací funkce, která vytváøí hladší pøechod mezi klasickou a~obohacenou èástí øešení. Tvar øešení modifikované metody XFEM vidíme v~(\ref{eqn:modified_xfem}).
+\begin{equation}
+\label{eqn:modified_xfem}
+h(\mathbf{x})=\sum \limits_{j\in\mathcal{N}}\alpha_j \, \varphi_j(\mathbf{x}) +  \sum \limits_{k\in\mathcal{N}_e} g(\mathbf{x}) \beta_k \, \phi(\mathbf{x}) \varphi_k(\mathbf{x}).
+\end{equation}
+Je zøejmé, e na neobohacené oblasti øešení aproximují pouze klasické koneèné prvky, na zcela obohacené oblasti je $g=1$ a~formulace je shodná s~(\ref{eqn:standard_xfem}). Na rozmıvacích elementech funkce $g$  narùstá od nuly do jedné, èím plynule zesiluje èást obohacení. Modifikovanou metodu pouívá také ji citovanı èlánek od R.~Gracie.
+
+Vrame se k~našemu modelu. Kadı vrt pøispívá vlastní obohacovací funkcí, proto se objeví v~øešení suma pøes vrty $w\in\mathcal{W}$, kde $\mathcal{W} = \{1,\dots,W\}$. Zaveïme navíc indexovou mnoinu $\mathcal{N}_w$,  která obsahuje indexy všech obohacenıch uzlù (pøidanıch stupòù volnosti) od $w$-tého vrtu. Takové øešení hledáme opìt pro kadou zvodeò
+\begin{equation}
+\label{eqn:xfem_head}
+h^m(\mathbf{x})=\underbrace{\sum \limits_{j\in\mathcal{N}}\alpha^m_j \, \varphi^m_j(\mathbf{x})}_\textrm{FEM} + \underbrace{\sum \limits_{w\in\mathcal{W}} \sum \limits_{k\in\mathcal{N}_w} g_w^m(\mathbf{x}) \beta^m_{w,k} \, \phi_w^m(\mathbf{x}) \varphi^m_k(\mathbf{x})}_\textrm{enrichment}.
+\end{equation}
+Funkci $\phi^m_w$ mùeme obecnì volit rùznou v~jednotlivıch zvodních, ale nemáme k~tomu ádnı dùvod, proto nemusíme psát index zvodnì $m$. Funkce $g^m_w, \varphi^m_j$ mohou bıt také obecnì rozdílné v~rùznıch zvodních, závisí toti na vysíování zvodní. Pro zjednodušení však také mùeme pøedpokládat, e sítì jsou pøo všechny zvodnì shodné, polomìr obohacení zvolíme jednotnı v~rámci vrtu a~pak nemusíme dále v~této kapitole psát index $m$.
+
+Zaveïme nyní testovací funkce
+\begin{equation} \label{eqn:xfem_test_func}
+\begin{array}{ll}
+  \varphi_i &\qquad \textrm{ pro } i\in \mathcal{N}\\
+  z_{w,k} = g_w \phi_w \, \varphi_k &\qquad \textrm{ pro } k\in\mathcal{N}_w, \,w\in\mathcal{W}.
+\end{array}
+\end{equation}
+S takto zavedenım øešením v~(\ref{eqn:xfem_head}), testovacími funkcemi (\ref{eqn:xfem_test_func}) a indexovımi mnoinami mùeme systém zapsat pomocí matic, jak nyní ukáeme.
+
+% 
+% Naším úkolem je nalézt stupnì volnosti $\alpha_j$~a~$\beta_{w,k}$. Seøaïme je do vektoru 
+% \begin{equation}
+%   \mathbf{y} = (\alpha_1,\ldots, \alpha_N, \beta_{1,1}, \ldots, \beta_{1,N_1},\beta_{2,1},\ldots,\beta_{W,N_W} ),
+% \end{equation}
+% do kterého budeme pøistupovat pomocí indexové mnoiny $\{1,\ldots,N+\sum \limits_{w=1}^W N_w\}$,
+% % \begin{equation} \label{eqn:xfem_set}
+% % \{1,\ldots,N+\sum \limits_{w=1}^W N_w\}
+% % \end{equation}
+% kterou dále rozdìlíme na disjunktní mnoiny
+% \begin{eqnarray} \label{eqn:xfem_sets}
+%   \mathcal{N} &=& \{1,\ldots,N\}, \nonumber\\
+%   \mathcal{N}_1 &=& \{N+1,\ldots,N+N_1\}, \nonumber\\
+%    &\vdots& \nonumber\\
+%   \mathcal{N}_W &=& \left\{N+\sum \limits_{w=1}^{W-1} N_w+1,\ldots,N+\sum \limits_{w=1}^W N_w\right\}.
+% \end{eqnarray}.
+% 
+% Zaveïme nyní testovací funkce
+% \begin{equation} \label{eqn:xfem_test_func}
+% v_i=
+%   \begin{cases}
+%     \varphi_i \qquad \textrm{ pro } i\in \mathcal{N}\\
+%     g_w \phi_w \, \varphi_k \qquad \textrm{ pro } i\in\mathcal{N}_w, \,w=1,\ldots,W. \\
+%   \end{cases}
+% \end{equation}
+% Index $k$ v~(\ref{eqn:xfem_test_func}) lze dopoèítat vztahem $k=i-N-\sum \limits_{z=1}^{w} N_z$. S takto zavedenım øešením v~(\ref{eqn:xfem_head}), testovacími funkcemi (\ref{eqn:xfem_test_func}) a~indexovımi mnoinami (\ref{eqn:xfem_test_func}) mùeme systém zapsat pomocí matic, jak nyní ukáeme.
+
+%  Testovací funkce má obdobnı tvar
+% %
+% \begin{equation} 
+% \label{eqn:xfem_test_func}
+% v^m(\mathbf{x}) = \sum \limits^{N}_{j=1} \, \varphi_j + \sum \limits^{W}_{w=1} \sum \limits^{N_w}_{k=1} g_w(\mathbf{x}) \phi_w(\mathbf{x}) \, \varphi_k(\mathbf{x})
+% \end{equation}
+% %
+% Gradient obohacené funkce získáme vyuitím principu derivování souèinu funkcí, jak ukáeme na testovací funkci (bez indexu zvodnì):
+% \begin{equation} \label{eqn:xfem_test_grad}
+% \nabla v =  \sum \limits^{N}_{j=1} \, \nabla\varphi_j
+% \sum \limits^{W}_{w=1} \sum \limits^{N_w}_{k=1} \sum \limits^{N}_{u=1}  g_{w,u} 
+% \left( \nabla\varphi_u \varphi_k \phi_w
+% + \varphi_u \nabla\varphi_k \phi_w 
+% + \varphi_u \varphi_k \nabla\phi_w \right)
+% \end{equation}
+
+
+\subsection{Maticovı zápis}
+\label{sec:xfem_single}
+Zaènìme obdobnì jako u~modelu øešeného pomocí FEM úlohou na jedné zvodni v~kapitole \ref{sec:fem_single}. Øešenou soustavu mùeme opìt zapsat pomocí matic, ovšem nyní bude struktura komplikovanìjší o~prvky, do kterıch pøispívá obohacení. Pro zjednodušení pøedpokládejme, e obohacení nezasahuje hranici oblasti $\Gamma_D$ s~Dirichletovou okrajovou podmínkou (je tvoøena tedy pouze lineárními koneènımi prvky a~druhı øádek pravé strany rovnice (\ref{eqn:xfem_matrix_1}) pak bude nulovı) a~také zdroje $f$ v~oblasti jsou mimo oblast obohacení. Tím jsme urèili, e prvky $q_i$ a~$d_w$ budou shodné s~prvky v~(\ref{eqn:fem_matrix_members}).
+%
+\vspace{10pt}
+\begin{equation} \label{eqn:xfem_matrix_1}
+% \begin{pmatrix}
+% \begin{matrix}
+% \mathbf{A} & \mathbf{R^T} \\
+% \mathbf{R} & \mathbf{S}   
+% \end{matrix} & \mathbf{C^T} \\
+% \mathbf{C} &\mathbf{D}  
+% \end{pmatrix}
+\begin{pmatrix}
+\mathbf{A} & \mathbf{R^T} & \mathbf{C^T_a} \\
+\mathbf{R} & \mathbf{S}   & \mathbf{C^T_b} \\
+\mathbf{C_a} & \mathbf{C_b} & \mathbf{D}  
+\end{pmatrix}
+%
+\begin{pmatrix}
+\mathbf{a} \\
+\mathbf{b} \\
+\mathbf{p}  
+\end{pmatrix}
+=
+\begin{pmatrix}
+\mathbf{q} \\
+0 \\
+\mathbf{d}  
+\end{pmatrix}
+\end{equation}  
+\vspace{10pt}
+%
+% Oznaèíme-li pøíspìvky obohacení
+% \begin{eqnarray} \label{eqn:xfem_vector}
+% e_{w,k,u} &\!=\!& \sum \limits^{W}_{w=1} \sum \limits^{N_w}_{k=1} \sum \limits^{N}_{u=1}  g_{w,u} \varphi^m_u \varphi^m_k \phi_w^m \\
+% \nabla e_{w,k,u} &\!=\!& \sum \limits^{W}_{w=1} \sum \limits^{N_w}_{k=1} \sum \limits^{N}_{u=1}  g_{w,u} ( \nabla\varphi_u \varphi_k \phi_w + \varphi_u \nabla\varphi_k \phi_w + \varphi_u \varphi_k \nabla\phi_w ) \quad \quad \;
+% \end{eqnarray} 
+Jednotlivé prvky matice v~(\ref{eqn:xfem_matrix_1}) jsou rovny
+%
+\begin{eqnarray} \label{eqn:xfem_matrix_2}
+A_{ij} &=& T \int_{\Theta} \nabla \varphi_j \cdot \nabla \varphi_i \: \mathrm{d}\mathbf{x} + \sum\limits_w^W \sigma_w\! \int_{\partial B_w} \varphi_j \varphi_i \: \mathrm{d}\mathbf{x}  \qquad \forall i,j\in\mathcal{N} \nonumber\\
+R_{(w,k),j} &=& T \int_{\Theta} \nabla \varphi_j \cdot \nabla z_{w,k} \: \mathrm{d}\mathbf{x} + \nonumber\\ && + \sum \limits_{s\in\mathcal{W}}\sigma_s\! \int_{\partial B_s} \varphi_j \, z_{w,k} \: \mathrm{d}\mathbf{x} \qquad \forall w\in\mathcal{W}, \forall k\in\mathcal{N}_w, \forall j\in\mathcal{N} \nonumber\\
+S_{(w_i,k_i),(w_j,k_j)} &=& T \int_{\Theta} \nabla z_{w_j,k_j} \cdot \nabla z_{w_i,k_i} + \nonumber\\ && + \sum \limits_{s\in\mathcal{W}} \sigma_s\! \int_{\partial B_s} z_{w_j,k_j} \, z_{w_i,k_i} \: \mathrm{d}\mathbf{x} \qquad \forall w_i,w_j\in\mathcal{W}, \forall k_i,k_j\in\mathcal{N}_w, \nonumber\\ 
+C^a_{wj} &=& - \sigma_w\! \int_{\partial B_w} \varphi_j \: \mathrm{d}\mathbf{x}  \qquad \forall w\in\mathcal{W}, \forall j\in\mathcal{N}, \nonumber\\
+C^b_{w,(w_j,k_j)} &=& - \sigma_w\! \int_{\partial B_w} z_{w_j,k_j} \: \mathrm{d}\mathbf{x} \qquad \forall w,w_j\in\mathcal{W}, k_j\in\mathcal{N}_w, \nonumber \\
+D_{ww} &=& \left[ \int_{\partial B_w}\!\sigma_w \, \mathrm{d}\mathbf{x} + c_w^{2}\right] \qquad \forall w\in\mathcal{W}, \nonumber\\
+q_i &=& \int_{\Theta} f \varphi_i \: \mathrm{d}\mathbf{x} - \int_{\Theta}\!T \nabla h_D \cdot \nabla \varphi_i \: \mathrm{d}\mathbf{x} \qquad \forall i\in\mathcal{N}, \nonumber\\
+d_w &=& c_w^2 H_w^2 \qquad w\in\mathcal{W}. 
+\end{eqnarray} 
+%
+Dvojice indexù $(w,k)$ v~(\ref{eqn:xfem_matrix_1}) jednoznaènì urèuje øádek (a sloupec) matic -- odpovídá stupni volnosti $\beta_{w,k}$ ve vektoru $\mathbf{b}$ a zároveò testovací funkci $z_{w,k}$. Pokud oznaèíme celkovı poèet obohacenıch stupòù volnosti $N_e=\sum \limits_{w\in\mathcal{W}}N_w$, mùeme zapsat rozmìry matic $\mathbf{A}^{N\times N}$, $\mathbf{S}^{N_e\times N_e}$,$\mathbf{R}^{N\times N_e}$,  $\mathbf{C_a}^{N\times W}$, $\mathbf{C_b}^{N_e\times W}$, $\mathbf{D}^{W\times W}$. Poznamenejme, e všechny matice jsou øídké, $\mathbf{A}$ a~$\mathbf{S}$ jsou navíc symetrické a~$\mathbf{D}$ je diagonální. Stupnì volnosti lineárních prvkù jsou ve vektoru $\mathbf{a}=\left(\alpha_1,\ldots, \alpha_N\right)$, stupnì volnosti obohacení $\mathbf{b}=\left(\beta_{1,1},\ldots,\beta_{w,k},\ldots, \beta_{W,N_W}\right)$ a~stupnì volnosti na vrtech $\mathbf{p}=\left(H_1,\ldots,H_W\right)$.
+
+Pokud bychom chtìli opìt model rozšíøit na více zvodní tak jako v~\ref{sec:fem_single}, bude soustava také blokovì diagonální a~doplnìna o~ty samé bloky $\mathbf{E^m} = \textrm{diag}(-c^m_1,\ldots,-c^m_W)$. K~prvkùm matice $\mathbf{C^m_a},\mathbf{C^m_b}$ budou pøièteny navíc konstanty propustností ve vrtu $(c^{m+1}_w + c^m_w)$ a~matice systému bude mít tvar
+%
+\begin{equation} \label{eqn:xfem_matrix_3}
+\begin{pmatrix}
+\mathbf{A^M} & \mathbf{(R^M)^T} & \mathbf{(C_a^M)^T} &       &        & & \ldots \\
+\mathbf{R^M} & \mathbf{S^M}     & \mathbf{(C_b^M)^T} &       &        & & \ldots \\
+\mathbf{C_a^M} & \mathbf{C_b^M} & \mathbf{D^M}       &       &        & \mathbf{E^M}  & \ldots   \\
+       &        &              & \mathbf{A^{M-1}} & \mathbf{(R^{M-1})^T} & \mathbf{(C_a^{M-1})^T} & \ldots \\
+       &        &              & \mathbf{R^{M-1}} & \mathbf{S^{M-1}} & \mathbf{(C_b^M)^T}  &      \ldots \\
+       &        & \mathbf{E^M} & \mathbf{C_a^{M-1}} & \mathbf{C_b^{M-1}} & \mathbf{D^{M-1}}    & \ldots   \\
+\vdots & \vdots &      \vdots  & \vdots                            & \vdots               & \ddots
+\end{pmatrix}
+\end{equation}  
+
+\vspace{10pt}
+Vektor pravé strany bude podobnı jako ve FEM metodì, pouze v~pøípadì pøítomnosti jinıch zdrojù nebo Dirichletovy okrajové podmínky pøibudou obohacující pøíspìvky. V~implementaci budeme uvaovat obohacení pouze uvnitø oblasti, tzn. okrajová podmínka bude øešena pouze lineráními prvky. Vektor hledanıch stupòù volnosti je roven $(\mathbf{a^M}, \mathbf{b^M}, \mathbf{p^M}, \mathbf{a^{M-1}}, \mathbf{b^{M-1}} \mathbf{p^{M-1}}, \ldots, \mathbf{a^1}, \mathbf{b^1}, \mathbf{p^1})$.
+
+
+\subsection{Adaptivní integrace na obohacenıch elementech}
+\label{sec:adaptive_integration}
+Na obohacenıch elementech je potøeba pøesnì integrovat, a~to zejména v~oko\-lí vrtù v~místech velkıch gradientù. Dalším dùvodem je nespojitost derivace obohacující funkce na obvodu vrtu. Zvolili jsme zpùsob navrenı v~èlánku~\cite{gracie}. Pokud na obohaceném elementu neleí vrt, je volena 4-bodová Gaussova kvadratura. Pokud zde vrt leí, je oblast elementu dìlena na malé podoblasti (v~našem pøípadì ètverce, nebo dìlíme ètvercovı referenèní element). Kritérium pro rozdìlení ètverce je prùnik s~hranicí vrtu. Oblastem mimo vrt a~tìm, které po posledním dìlení (zvoleno 12 úrovní) leí na hranici vrtu, je pøidìlena 3-bodová Gaussova kvadratura a~oblastem uvnitø vrtu 1-bodová Gaussova kvadratura (obohacená funkce zde vrací konstantu, proto zde staèí jedna hodnota). Dìlení dokumentuje obr. \ref{fig:adapt_ref}, na kterém vidíme sí ètvercù na elementu vzhledem k~vyznaèenému vrtu. Na podobrázku \ref{fig:adapt_ref_b} si potom mùeme všimnout detailu hranice vrtu, kde vidíme i~kvadraturní body rozmístìné tak, jak jsme popsali vıše.
+
+\begin{figure}[!htb]
+  \vspace{0pt}
+  \centering    
+  \subfloat[rozdìlenı element s vrtem]{\label{fig:adapt_ref_a} 
+    \includegraphics[width=70mm]{\figpath adaptive_ref.pdf} }
+  \hspace{0pt}
+  \subfloat[detail hranice vrtu]{\label{fig:adapt_ref_b} 
+    \includegraphics[width=72mm]{\figpath adaptive_ref_detail.pdf} }
+  \caption[Adaptivní zjemnìní elementu]{Adaptivní zjemnìní elementu v~okolí vrtu v~metodì XFEM (èervenì dìlení, modøe hranice vrtu, køíky kvadraturní body).}
+  \label{fig:adapt_ref}
+\end{figure}
+
+Kritérium dìlení je moné zmìnit, staèí implementovat pouze jinou rozhodovací funkci pro oznaèování ètvercù k~rozdìlení. Napøíklad by bylo zajímavé zaloit dìlení na základì mìøení rozdílu vypoètené hodnoty integrálu mezi jednotlivımi kroky zjemnìní a~porovnat, zdali takto lépe vystihneme hranici vrtu a~zpøesníme integraci. 
+
+Byla navrena samostatná tøída \verb0AdaptiveIntegration0, ve které je øešeno zjemòovaní dle popsaného kritéria, mapování na zjemnìné ètverce a~také samotnı vıpoèet lokální matice obohaceného elementu.
+
+
+Mapování se projeví pøi integraci ve formì jakobiánu, ale také pøeškálováním gradientù. Mìjme obecnou mapovací funkci ve tvaru
+%
+\begin{equation}
+\label{eqn:mapping}
+\mathbf{x} = \mathrm{M}(\hat{\mathbf{x}}) = \mathbf{Z}\hat{\mathbf{x}} + \mathbf{t}
+\end{equation}
+kde $\mathbf{t}$ je vektor translace a~$\mathbf{Z}$ je maticí obecného zobrazení. Jakobiho matice tohoto mapování a~její determinant (jakobián) jsou ve dvou dimenzích urèeny vztahy
+%
+\begin{equation}
+\label{eqn:jakobi}
+\mathbf{J}(\mathrm{M}(\hat{\mathbf{x}})) = 
+\left( \begin{array}{cc}
+            \frac{\partial x_1}{\partial \hat{x_1}} & \frac{\partial x_1}{\partial \hat{x_2}}\\
+            \frac{\partial x_2}{\partial \hat{x_1}} & \frac{\partial x_2}{\partial \hat{x_2}}  
+       \end{array} \right)\!\!,
+\quad \mathrm{det}\, \mathbf{J}(\mathrm{M}(\hat{\mathbf{x}})) = \mathrm{det}\,\mathbf{Z}.
+\end{equation}
+Pokud poèítáme gradient $\nabla\!_x f(\mathbf{x})$ na mapované oblasti (typicky pøesun z~reálnıch souøadnic $\mathbf{x}$ na souøadnice referenèního elementu $\hat{\mathbf{x}}$), musíme pøeškálovat gradient na referenèním elementu zobrazovací maticí. To uvidíme nejlépe ve vyjádøení po slokách
+%
+\begin{equation*}
+\left(\nabla\!_x f(\mathbf{x})\right)_i = \frac{\partial f(\mathbf{x})}{\partial x_i} = \sum \limits_{k=1}^2 \frac{\partial \hat{f}(\hat{\mathbf{x}})}{\partial\hat{x}_k} \frac{\partial\hat{x}_i}{\partial x_k},
+\qquad \mathrm{kde}\; \frac{\partial\hat{x}_i}{\partial x_k} = Z_{ik}^{-1},
+\end{equation*}
+%
+take mùeme psát 
+\begin{equation}
+\label{eqn:map_grad}
+\nabla\!_x f(\mathbf{x}) = \mathbf{Z^{-1}}\nabla\!_{\hat{x}} \hat{f}(\hat{\mathbf{x}}).
+\end{equation}
+
+Mapování mezi referenèním (ètvercovım) elementem a~zjemnìnım ètvercem je jednoduchım pøípadem vıše uvedeného mapování 
+%
+\begin{eqnarray}
+\label{eqn:map_square}
+\hat{\mathbf{x}} = M_s(\mathbf{x}^*),\; \mathbf{Z_s} = 
+\left( \begin{array}{cc}
+            d & 0\\
+            0 & d  
+       \end{array} \right)\!\!,\; \mathbf{Z_s^{-1}} = 
+\left( \begin{array}{cc}
+            \frac{1}{d} & 0\\
+            0 & \frac{1}{d}  
+       \end{array} \right)\!\!,\; \mathrm{det}\,\mathbf{Z_s}=d\,^2,
+\end{eqnarray}
+kde $d$ je délka strany ètverce a~jakobián je tedy roven ploše daného ètverce $d\,^2$. Vektor translace $\mathbf{t}$ je za pøedpokladu zachování orientace ètverce roven vzdálenosti levého dolního vrcholu od poèátku. 
+%
+\begin{figure}[!htb]
+      \centering
+        \includegraphics[width=145mm]{\figpath mapping.pdf}
+      \caption[Mapování elementu]{Mapování mezi reálnım, referenèním elementem a~jednotkovım ètvercem.}
+      \label{fig:mapping}
+\end{figure}
+
+Mapování mezi reálnım a~referenèním elementem oznaème $M_e(\hat{\mathbf{x}})$. Hodnoty obohacujících funkcí vyhodnocujeme v~reál\-nıch souøadnicích a~lineární bázové funkce vyhodnocujeme na referenèním elementu. Souøadnice kvadraturních bodù získáme pøemapováním z~ètverce na referenèní element a~pøípadnì dále na reálnı element, tudí do vztahù (\ref{eqn:xfem_head}) a~(\ref{eqn:xfem_test_func}) dosazujeme 
+%
+\begin{eqnarray*}
+\varphi(\mathbf{x}) & = & \hat{\varphi}(\hat{\mathbf{x}}) = \varphi(M_s(\mathbf{x}^*)),  \\
+\phi(\mathbf{x}) & = & \phi(M_e(M_s(\mathbf{x}^*))), \\ 
+\nabla\!_x \varphi(\mathbf{x}) & = & \mathbf{Z_e^{-1}} \nabla\!_{\hat{x}} \hat{\varphi}(M_s(\mathbf{x}^*))
+\end{eqnarray*}
+%
+Pokud ještì oznaèíme váhy kvadraturních bodù $W_q$, dostaneme v~rovnici (\ref{eqn:xfem_weak}) plošné intergrály ve tvaru
+%
+\begin{equation}
+\int_{\Omega^m} \left( \ldots \right)
+\mathrm{det}\,\mathbf{J}(M_e(\hat{\mathbf{x}}))\: \mathrm{det}\,\mathbf{J}(M_s(\mathbf{x}^*))\, W_q \, \mathrm{d}\mathbf{x}^* = 0 
+\label{eqn:xfem_weak_jxw}
+\end{equation}
+
+Poznamenejme, e pro mapování gradientu v~tomto pøípadì nemùeme pouít objekt knihovní tøídy \verb'FEValues', protoe ten má pøedpoèítáné pouze hodnoty v~kvadraturních bodech pro standardní element. K~tomuto problému se vrátíme v~kapitole o~implementaci \ref{sec:impl_xfem_assemble}.
+
+\subsection{Vrty jako zdroje}
+\label{sec:xfem_sources}
+Pokusili jsme se také model pøeformulovat a~zvolit jinı pøístup popisu komunikace mezi vrty.
+Na vrty mùeme pohlíet jako na zdroje v~oblasti $\Omega^m$, které vyjádøíme jako tok plochou zvodnì v~místech vrtù. Potom se na pravé stranì rovnice (\ref{eqn:laplace}) objeví nenulovı èlen
+%
+\begin{equation} \label{eqn:laplace_source}
+-T^m\Delta{}h^m= - \sum \limits _{w=1}^{W} \eta^m_w\left(h^m(\mathbf{x})-H^m_w\right) \qquad \textrm{na } \Omega^m \textrm{ pro } m=1,\dots,M,
+\end{equation}
+kde $\eta \; [\,\textrm{s}^{-1}]$ je koeficient propustnosti mezi vrtem a~zvodní (vyjadøuje tok 1 $\textrm{m}^3\textrm{s}^{-1}$ plochou 1 $\textrm{m}^2$ pøi tlakovém spádu 1 $\textrm{m}$). Všimnìme si, e nyní neodebíráme plochy $B^m_w$ z~oblasti zvodnì, ale rovnici øešíme na celé $\Omega^m$.
+
+
+\subsubsection{Odvození slabé formulace}
+Pøi odvození postupujeme shodnì jako v~odvození v~kapitole~\ref{sec:fem}. Vrty si však nyní pøedstavujeme jako plošné zdroje, nikoli zadané jako okrajové podmínky, a~øešíme rovnici (\ref{eqn:laplace_source}) na celé oblasti $\Omega^m$. Prostor funkcí øešení $\mathbf{h,h_0,h_D}$ a~testovacích funkcí $\mathbf{v}$ vezmeme shodnı, tedy $\mathbf{h_0,v}\in V$ a~$\mathbf{h_D}\in V_D$, definovali jsme v~(\ref{eqn:fem_spaces}). Vynásobme tedy (\ref{eqn:laplace_source}) testovací funkcí, integrujme pøes oblast $\Omega^m$ a~dosaïme za $\mathbf{h}$, abychom dostali
+%
+\begin{multline} \label{eqn:xfem_weak_sources_1}
+\int_{\Omega^m}T^m \nabla h_0^m \cdot \nabla v^m \, \mathrm{d}\mathbf{x} = - \sum \limits_w^W \int_{B_w^m}\eta_w^m \left( h^m_0 - H^m_w \right) v^m \mathrm{d}\mathbf{x} + \\
++ \int_{\Omega^m}\!f^m v^m \: \mathrm{d}\mathbf{x} - \int_{\Omega^m}\!T^m \nabla h^m_D \cdot \nabla v^m \: \mathrm{d}\mathbf{x}
+\end{multline}
+%
+Zavedeme pomocnou testovací funkci
+\begin{equation}
+\label{eqn:mi_test_func}
+\mu_w^m(\mathbf{x}) =
+  \begin{cases}
+    1, & r_w \le R_w \\
+    0, & r_w > R_w, \\
+  \end{cases}
+\end{equation}
+která bude nenulová pouze v~oblasti vrtu a~díky které mùeme sumu integrálù pøes vrty v~(\ref{eqn:xfem_weak_sources_1}) pøepsat pod integrál pøes celou oblast. Tím dostaneme slabou formulaci ve tvaru (\ref{eqn:xfem_weak}).
+%
+\begin{multline}
+\int_{\Omega^m} \left( T^m \nabla h_0^m \cdot \nabla v^m + \sum \limits_w^W \mu_w^m\eta_w^m \left( h_0^m - H^m_w \right) v^m \right) \mathrm{d}\mathbf{x} = \\
+= \int_{\Omega^m} \left( f^m v^m - T^m \nabla h^m_D \cdot \nabla v^m  \right) \: \mathrm{d}\mathbf{x}
+\label{eqn:xfem_weak}
+\end{multline}
+
+V rovnici na vrtu (\ref{eqn:well_eqs_test}) nahradíme køivkovı integrál vyjadøující tok do zvodnì plošnım a~dostaneme s~$\sigma_w^m\,[s^{-1}]$ rovnici
+
+\begin{multline} \label{eqn:xfem_well_eqs_test}
+\int_{B_w^m}\eta_w^m \left(h^m_0 - H_w^m\right)\bar{v}^m_w \, \mathrm{d}\mathbf{x} = \\
+= c_w^{m+1}\left( H^m_w-H_w^{m+1}\right)\bar{v}^m_w - c^m_w\left( H^{m-1}_w-H^m_w \right)\bar{v}^m_w
+\end{multline}
+
+\subsubsection{Vıhody modelu se zdroji}
+Vzhledem k~tomu, e ji poèítáme plošnı integrál na adaptivnì zjemnìném obohaceném elementu pro èlen s~gradienty bázovıch funkcí, staèí navíc napoèítat funkèní hodnoty a~pøièíst vıraz do lokální matice. Toho nemùeme vyuít v~pøípadì vıpoètu hranièního integrálu, nebo potom poèítáme funkèní hodnoty v~jinıch bodech na hranici vrtu. Zjednodušíme tím tedy asemblaci obohacenıch elementù s~vrty. Zároveò nemusíme pøi vyhledávání obohacenıch elementù pøiøazovat body na hranici vrtu pøíslušnım elementùm -- pokud vrt zasahuje do více elementù.
+
+Je otázkou, zdali je tento zpùsob i~rychlejší. To záleí na poètu zvolenıch bodù na hranici a~na poètu úrovní, pøesnìji na poètu bodù adaptivní integrace, kterı bude pravdìpodobnì  ve více pøípadech vyšší.
+
+Další otázkou je potom pøi reálné úloze volba parametru $\eta$, kterı èíselnì ani jednotkou neodpovídá parametru $\sigma$. Z~testù pak vyšlo najevo, e se úlohy v~podstatì shodují pro $\eta > 10^4$, pro která ji bereme tlak na hranici a~uvnitø vrtu za shodnı.
+
+\pagebreak
+\section{Implementace}
+\thispagestyle{plain}
+\label{sec:implementation}
+Cílem této kapitoly je pøedstavit implementaèní èást diplomové práce. Pro základní práci s~koneènımi prvky, stavbu sítì, operace s~maticemi a~vektory, øešení soustav a~vıstupy modelù byla pouita knihovna Deal II \cite{deal} ve verzi 7.2.0 (dále v~textu myslíme knihovnou právì tuto). Její rozmanité nástroje zjednodušily rutinní záleitosti a~po nastudování knihovních funkcí bylo moné zabıvat se plnì vıvojem vıše popsanıch modelù. Elementy sítì knihovny vycházejí z~jednotkového ètverce, není moné zde pouít trojúhelníky èi ménì tradièní prvky, co pro úèely této práce nebylo ádnım omezením. Poznamenejme, e knihovna zatím nijak nepodporuje XFEM. Nespornım kladem knihovny je také její perfektnì zpracovaná dokumentace systémem Doxygen. 
+
+Implementaci provedeme v~C++, pro tvorbu a~zobrazování sítì pouijeme volnì dostupnı software GMSH \cite{gmsh}, pro vizualizace a~postprocesing vypoètenıch modelù software Paraview (3.98), té volnì dostupnı (http://www.paraview.org/).
+
+\subsection{Základní struktura tøíd}
+Pro implementaci modelù a~jejich algoritmù jsme navrhli systém nìkolika tøíd. Popišme nyní jejich skladbu, vztahy a~struènì také jejich metody. Obrázek \ref{fig:main_structure} znázoròuje základní strukturu tøíd. Pro detailní pøehled tøíd a~jejich metod je nutné nahlédnout do zdrojovıch kódù nebo do automaticky generované dokumentace systémem Doxygen.
+
+\begin{figure}[!htb]
+    \vspace{10pt}
+      \begin{center} 
+        \includegraphics[width=140mm]{\figpath main_structure.pdf}
+      \end{center}
+    \vspace{-10pt}
+      \caption[Struktura tøíd]{Struktura tøíd (prázdné šipky znaèní vztah potomek-pøedek).}
+      \label{fig:main_structure}
+    \end{figure}
+%
+Pro kadı model budeme implementovat vlastní tøídu, ale nìkteré funkènosti mùeme zobecnit pro všechny. Proto vytvoøíme abstraktní tøídu \verb'ModelBase', která v~podobì virtuálních metod definuje základní strukturu tøíd modelù a~zároveò implementuje jednoduché metody pro základní nastavení parametrù modelu. Dohromady máme tøi základní modely ve tøídách \verb'Model', \verb'Bem_model' a~\verb'XModel', které odpovídají po øadì pouitım metodám FEM, BEM a~XFEM. Vstupem do modelù jsou geometrie, data na vrtech a~fyzikální parametry modelu. Tøídy \verb'Model_simple' a~\verb'XModel_simple' jsou urèeny speciálnì pro úlohu s~jednou zvodní a~jedním vrtem a~implementují navíc pouze konkrétní Dirichletovu okrajovou podmínku.
+
+Pro vrty je vytvoøena vlastní tøída \verb'Well', která obsahuje základní rozhraní pro data na vrtu -- propustnosti, polomìr a~støed vrtu a~tlak v~ústí vrtu. Zároveò umoòuje napoèítat body na hranici vrtu, potøebné pøi asemblaci hranièního integrálu. Pro XFEM metodu navíc vrací metodami \verb'xshape_value' a~\verb'xshape_grad' hodnoty obohacujících funkcí a~jejich gradientù.
+
+Další tøídou je \verb'DataCellBase', která k~jednotlivım elementùm doplòuje potøebná data. Pouíváme ji k~propojení dat na vrtech se sítí -- obsahuje informace, které vrty zasahují do daného elementu, která èást hranice vrtu elementem prochází a~v~pøípadì XFEM metody indexy novıch stupòù volnosti. Pro metodu FEM a~XFEM jsou odvozeni specifiètí potomci této tøídy -- \verb'DataCell' a~\verb'XDataCell', blíe je popíšeme dále.
+
+Tøída \verb'AdaptiveIntegration' implementuje adaptivní integraci na elementu, popsanou v~kapitole \ref{sec:adaptive_integration}. 
+
+Vıpoèet modelu probíhá v~nìkolika krocích, které odpovídají virtuálním metodám ve tøídì \verb'ModelBase' 
+%
+\begin{itemize}
+  \item \verb'make_grid'
+  \item \verb'refine_grid'
+  \item \verb'setup_system'
+  \item \verb'assemble_system'
+  \item \verb'assemble_dirichlet'
+  \item \verb'solve'.
+  %\item \verb'output_results'
+  %\item \verb'output_distributed_solution'
+\end{itemize}
+%
+Posloupnost tìchto metod je volána pøi spuštìní vıpoètu modelu v~metodì \verb'run'. 
+
+Nejprve vytvoøíme vıpoèetní sí. Mùeme ji naèíst ze souboru, vytvoøit pomocí globálního rovnomìrného zjemòování (v~pøípadì FEM a~XFEM), pracujeme se základními dvìma tvary oblasti, a~to obdélníkem a~kruhem. Poznamenejme, e pokud máme sí s~volnımi uzly, není uloení a~naètení takové sítì jednoduchım úkolem. Problém spoèívá v~tom, e soubory GMSH neobsahují sousednosti elementù. V~knihovnì Deal II mùeme pouít speciální tøídu \verb'PersistantTriangulation', díky které mùeme uloit poèáteèní hrubou sí a~k tomu navíc soubor s~pøíznaky zjemnìní/zhrubování elementù po jednotlivıch úrovních. Pøi naèítání sítì pak musíme naèíst i~soubor s~pøíznaky a~poté dokáeme sí zrekonstruovat do zvolené úrovnì zjemnìní. 
+
+Pro nìkteré testovací úlohy bude potøebné umonit spouštìní v~cyklu, napøíklad pro sledování chování pøi zmìnì parametru. Proto jedním z~argumentù nìkterıch metod je èíslo cyklu. Zároveò mùeme v~kadém cyklu provést zjemnìní sítì metodou \verb'refine_grid', èeho vyuíváme pøedevším v~modelu FEM s~adaptivní sítí.
+
+V~metodì \verb'setup_system' distribuujeme stupnì volnosti a~nastavujeme rozmìry systémové matice, vektorù pravé strany a~øešení. Vytváøíme pøitom objekt tøídy \verb'SparsityPattern', kterı je vzorem zaplnìní øídké systémové matice (obsahuje jednièky pouze v~místech nenulovıch prvkù). 
+
+V~metodì \verb'assemble_system' provádíme vlastní vıpoèty integrálù a~dalších èástí rovnic a~vše dosazujeme do pøíslušnıch prvkù matice a~pravé strany. Pokud máme definovanou na èásti hranice oblasti Dirichletovu krajovou podmínku, voláme ještì pøed ukonèením metody asemblace navíc metodu \verb'assemble_dirichlet'.
+
+Poté, co je celı systém sestaven, tak jej mùeme v~metodì \verb'solve' vyøešit pomocí vybrané numerické metody -- v~našem pøípadì sdruenıch gradientù (CG) nebo zobec\-nì\-né metody minimálních reziduí (GMRES). Mùeme také pouít také nìkterı z~nabízenıch pøedpodmiòovaèù pro zvıšení stability a~rychlosti konvergence vıpoètu.
+
+V~poslední øadì potøebujeme vypoètené øešení nìjakım zpùsobem vystoupit. Knihovna disponuje nìkolika metodami, které zpracovávají vı\-stup. Je moné øešení zapsat do nìkolika formátù vèetnì formátu GMSH a~VTK, pro jeho vizualizaci a~postprocesing pouíváme software Paraview. V~metodì \verb'output_results' ukládáme øešení na vıpoèetní síti do souboru ve zvoleném formátu. Pokud chceme vystoupit øešení na jiné síti ne vıpoèetní, pøedáme pøímo objekt triangulace nebo soubor sítì metodì \verb'ouput_distributed_solution'.
+
+\begin{lstlisting}[caption = Ukázka pouití modelu,
+                   label = code:main_model]
+double well_radius = 0.02,
+       perm2fer = 1e5,
+       perm2tard = 1e10,
+       pressure_at_top = 2;
+Point<2> well_center(0,0),
+         down_left(-10,-10),
+         down_right(10,10);
+
+Well *well = new Well(well_radius, well_center,
+                      perm2fer, perm2tard);
+well->set_pressure(pressure_at_top);
+well->evaluate_q_points(100);
+  
+XModel xmodel(well, "My_XFEM_Model", 1);  
+xmodel.set_area(down_left, up_right);
+xmodel.set_output_dir("output");
+xmodel.set_transmisivity(1e-4,0);
+xmodel.set_refinement(2);  
+xmodel.set_adaptivity(true);
+xmodel.set_enrichment_radius(2.0);
+
+for (unsigned int cycle=0; cycle < 5; ++cycle)
+{ xmodel.run(cycle);     
+  xmodel.output_results(cycle); }
+\end{lstlisting}
+
+Uvedenı \kod{code:main_model} ukazuje, jak tøídu modelu s~metodou XFEM pouijeme k~vıpoètu problému s~jednou zvodní a~jedním vrtem. Nejprve definujeme vlastnosti vrtu, geometrii pomocí protilehlıch vrcholù obdélníku (\kodr{code:main_model}{1-8}). Poté vytváøíme objekt vrtu, pøedepisujeme tlak na vrtu a~poèítáme body na hranici vrtu. Dále vytváøíme a~nastavujeme objekt modelu, parametry jsou zøejmé z~názvù metod, a~nakonec model pustíme v~5 cyklech (\kodr{code:main_model}{22-24}). Protoe jsme povolili adaptivitu (ø. 19), tak se v~kadém cyklu volá metoda \verb'refine_grid' a~provede se globální zjemnìní sítì.
+
+Nakonec uveïme nìkolik tøíd knihovny, které budeme hlavnì pouívat v~implementaci a~té zmiòovat dále v~textu. Pro práci se sítí budeme pouívat tøídy \verb'Triangulation' a~\verb'PersistantTriangulation', tøída \verb'FE_Q' bude reprezentovat vybranı koneènı prvek (volíme lineární), tøída \verb'DofHandler' se bude starat o~indexaci a~distribuci stupòù volnosti, tøída \verb'QGauss' bude obsahovat kvadraturní body a~jejich váhy v~referenèním elementu a~nakonec tøída \verb'FEValues' bude všechny zmínìné objekty spojovat a~bude schopna vracet hodnoty~a gradienty bázovıch funkcí, mapování mezi elementem a~jeho referenèním protìjškem a~další. Všechny tøídy jsou šablonami s~parametrem dimenze, kterı volíme roven dvìma, nebo síujeme 2D oblast zvodnì.
+
+\subsection{FEM model s adaptivnì zjemòovanou sítí}
+V~následujících odstavcích popíšeme implementaci virtuálních metod pro model pouívající metodu lineárních koneènıch prvkù na adaptivnì zjemòované síti.
+
+\subsubsection{Tvorba sítì}
+K vytvoøení vıpoèetní sítì jsme zavedli pøepínaè \verb'grid_create_type', kterı nabıvá hodnoty \verb'load' pro naètení sítì ze souboru, hodnoty \verb'load_circle' pro naètení kruhové sítì známé velikosti ze souboru, \verb'circle' pro vytvoøení kruhové sítì a~\verb'rect' pro obdélníkovou sí. Problém naèítání sítì s~volnımi uzly jsme ji popsali døíve. Pro práci se sítí plnì vyuíváme moností knihovny, podrobné informace lze najít v~dokumentaci tøíd \verb'Triangulation' a~\verb'PersistantTriangulation'.
+
+\subsubsection{Vyhledání elementù s vrty}
+Pøi sestavování systémové matice budeme potøebovat vypoèítat hranièní integrály pøes hranici vrtu (krunici). V~obecném pøípadì mùe hranice vrtu procházet nìkolika elementy a~tím pádem se v~rùznıch èástech integrace objeví rùzné bázové funkce. Musíme vyøešit geometrickou úlohu prùniku krunice a~elementu, kterı zde pøedstavuje ètyøúhelník. 
+
+Vzhledem k~tomu, e po hranici vrtu budeme nakonec integrovat, je nasnadì aproximovat krunici pomocí mnohoúhelníku. Poèet jeho vrcholù musí bıt dostateènı, aby vrcholy zasáhly do všech elementù, kterımi krunice skuteènì prochází. Informaci, jakı vrt prochází danım elementem a~jaké jsou na nìm body hranice, uloíme do objektu tøídy \verb'DataCell'. Poté vyuijeme monost sítì knihovny pøiøadit libovolnı ukazatel k~elementu sítì, a~to právì ukazatel na zmínìnı objekt.
+
+Vyhledávání elementù provádí metoda \verb'find_well_cell'. Nejprve najde element, ve kterém leí støed daného vrtu, a~poté volá rekurzivní metodu \verb'add_data_to_cell'. Ta testuje kadı okolní element, vytváøí datové objekty a~pøiøazuje jejich ukazatele elementùm. Vyuijeme opìt monost sítì -- pøidání pøíznaku k~elementu -- a~oznaèíme tak elementy, které jsme ji prošli. Testem vzdálenosti uzlù od støedu vrtu pak zajistíme, e po nalezení elementu se støedem vrtu prochází pouze elementy uvnitø a~na hranici vrtu, nikoli celou sí. 
+
+Vısledkem je potom vektor objektù \verb'DataCell', ve kterém máme informace do jakıch elementù vrty zasahují a~k jakım stupòùm volnosti pøispívají.
+
+\subsubsection{Sestavení matice systému}
+V metodì \verb'setup' vytváøíme tzv. vzor øídké matice soustavy rovnic pomocí objektu \verb'BlockSparsityPattern', èím definujeme zaplnìní systémové matice, která je pomocí tohoto objektu inicializována. Zároveò inicializujeme i~vektor øešení a~pravé strany. O~rozmístìní stupòù volnosti se postará objekt tøídy \verb'DofHandler', o~rozmístìní pøíspìvkù z~rovnic na vrtech se musíme postarat zvláš. Také se v~této metodì øeší distribuce volnıch uzlù, co popíšeme v~následující podkapitole.
+
+
+\subsubsection{Adaptivita}
+\label{sec:impl_adapt}
+Pro lokální zjemòování sítì vyuíváme opìt prostøedky poskytnuté knihovnou. Pro zobecnìnou Poissonovu rovnici je zde navrena tøída \verb'KellyEstimator' odhadující chybu øešení na základì vıpoètu rozdílù gradientù na hranicích elementù. Vıstupem metody této tøídy je vektor chyb na jednotlivıch elementech, kterı mùeme pøedat spolu s~triangulací tøídì \verb'GridRefinement'. Ta na základì nastavenıch parametrù -- procento zjemnìnıch a~zhrubovanıch elementù  -- provede lokální zmìny sítì na urèenıch elementech. Pøíklad zjemnìné sítì na úloze s~jedním vrtem vidíme na obrázku \ref{fig:adapt_refine}. Podrobnı popis najdeme v~dokumentaci knihovny u~uvedenıch tøíd.
+
+
+Pøi lokálním zjemòování sítì vznikají tzv. volné uzly (hanging nodes) -- uzly, které leí ve støedu stìn vedlejších nezjemòìnıch elementù, viz obr. \ref{fig:hanging_nodes}. Abychom zajistili spojitost øešení i~v~tìchto uzlech, musíme splnit omezující podmínky pro stupnì volnosti. Pro volné uzly na obrázku jsou to tyto $x_{01} = \frac{1}{2}\left(x_0 + x_1\right)$ a~$x_{02} = \frac{1}{2}\left(x_0 + x_2\right)$. 
+%
+Dokumentace øíká, e omezující podmínky jsou obecnì lineární a~mohou bıt pøípadnì nehomogenní ve tvaru $x_{i1}=\sum^M_{j=2}a_{ij}x_{ij} + b_i$. Knihovna nabízí øešení tohoto problému ve tøídì \verb'ConstraintMatrix', která na základì znalosti triangulace vytvoøí omezující podmínky pro stupnì volnosti v~okolí volnıch uzlù. Sestavení globální matice a~vektoru pravé strany provedeme stejnım zpùsobem, pouze po jejím naplnìní je potøeba odstranit nadbyteèné stupnì volnosti ve volnıch uzlech metodou \verb'condense' a~po vıpoètu je zpìt dopoèítat pomocí metody \verb'distribute'.
+
+\begin{figure}[!htb]
+    \vspace{0pt}
+      \begin{center} 
+        \includegraphics[width=110mm]{\figpath adapt_refine.pdf}
+      \end{center}
+    \vspace{-15pt}
+      \caption[Lokálnì zjemòovaná sí]{Lokálnì zjemòovaná sí v~osmi úrovních.}
+      \label{fig:adapt_refine}
+    \end{figure}
+
+Systém rovnic v~našem modelu je rozšíøenı o~rovnice na vrtech a~tudí i~na nì je potøeba aplikovat uvedené podmínky pro volné stupnì volnosti. Metody tøídy \verb'ConstraintMatrix' mùeme pouít na celı systém, a~proto v~našem pøípadì nepøináší volné uzly ádnı další problém. 
+
+\begin{figure}[!htb]
+  \vspace{10pt}
+      \begin{center}    
+        \def\svgwidth{0.7\textwidth}
+        \input{\figpath hanging_nodes.pdf_tex}
+      \end{center}
+    \vspace{-20pt}
+      \caption[Volné uzly]{Volné uzly v~lokálnì zjemòené síti.}
+    \vspace{0pt}
+    \label{fig:hanging_nodes}
+    \end{figure}
+
+Lokální zjemòování a~tvorba volnıch uzlù ovšem naruší vyhledávání elementù s~vrty v~metodì \verb'find_well_cells'. Sousední elementy se mohou lišit úrovní zjemnìní, a~proto musíme pøi iterování pøes sousedy postupovat obezøetnìji. Problém iterování pøes sousední elementy v~síti s~volnımi uzly je èásteènì øešen v~pøíkladu \verb'Step30' tutoriálu knihovny Deal II. Podstatou je porovnávání úrovnì zjemnìní sousedních elementù a~testování, zdali je hranice elementu dále dìlená nebo není.  
+
+
+%\pagebreak
+\subsection{XFEM model}
+Model øešenı metodou XFEM je implementován ve tøídì \verb'XModel'. Mimo základní podìdìné funkce nabízí také nastavení parametru $r_{enr}$, urèujícího velikost obohacené oblasti a~popsaného v~kapitole \ref{sec:xfem_discretization}. 
+
+Zaèínáme opìt tvorbou sítì tak, jak jsme popsali v~modelu s~FEM. Ponechali jsme všechny monosti naètení a~vytvoøení sítì vèetnì sítí s~volnımi uzly. Jeliko ale zatím neumíme øešit metodu XFEM na takové síti, pøedpokládáme, e oblast obohacení pokrıvá pouze elementy shodné úrovnì zjemnìní a~volné uzly se vyskytují jedinì mimo tuto oblast. Problém volnıch uzlù a~XFEM popisuje Fries se spoluautory v~èlánku Hanging Nodes and XFEM~\cite{xfem_hang}. Pro další rozvoj bude nepochybnì uiteèné tento problém také umìt vyøešit.
+
+Dále popíšeme realizaci obohacování a~sestavení systémové matice.
+
+\subsubsection{Realizace obohacení}
+Obdobnì jako u~FEM modelu funkce \verb'find_well_cells' realizovala vyhledání elementù pøímo komunikujících s~vrty, u~tohoto modelu funkce \verb'find_enriched_cells' vyhledává elementy k~obohacení.  Pro kadı vrt nalezne element, na nìm leí støed vrtu, a~poté rekurzivní funkcí \verb'enrich_cell' hledá pøes sousední elementy všechny takové, které splòují podmínku obohacení -- uzly leící ve vzdálenosti do $r_{enr}$. 
+
+Stejnì tak jako u~pøedchozího modelu, potøebujeme rozmístit body zdiskretizované hranice vrtu mezi elementy, kterımi hranice vrtu prochází. Pokud pouijeme model s~vrty branımi jako plošné zdroje, problém diskretizace hranice vrtu odpadá.
+
+Obohacenım elementùm pøiøadíme ukazatel na objekt \verb'XDataCell', obdobnì jako v~modelu s~FEM. Tento objekt navíc obsahuje rozmístìní a~indexy stupòù volnosti pocházejících z~obohacení. 
+
+\subsubsection{Sestavení matice systému}
+\label{sec:impl_xfem_assemble}
+Inicializace v~metodì \verb'setup' probíhá obdobnì, jako v~pøedchozím modelu, bloková struktura systémové matice je ovšem komplikovanìjší, jak jsme ukázali v~rovnici (\ref{eqn:xfem_matrix_1}) nebo (\ref{eqn:xfem_matrix_3}). 
+
+Sestavení matice v~metodì \verb'assemble' je témìø stejné jako u~FEM. V~cyklu pøes elementy však navíc testujeme, zdali je tento element obohacenı. Pokud ne, poèítá se stejnì jako v~metodì FEM lokální matice s~pøíspìvkem pouze od gradientù funkcí. V~opaèném pøípadì se vytváøí objekt tøídy \verb'AdaptiveIntegration', která implementuje integraci na obohaceném elementu a~generuje vypoètenou lokální matici. 
+
+Pokud elementem navíc prochází hranice vrtu, provede se adaptivní zjemnìní referenèního elementu na mnoinu ètvercù, popsané tøídou \verb'Square'. Mapování bodù mezi ètverci a~referenèním elementem zaøizuje tøída \verb'MyMaping'. Poté se volá metoda vlastního vıpoètu integrálù, její zdrojovı kód najdeme v~pøíloze \ref{code:integrate} a~kterou si nyní popíšeme. 
+
+Nejprve probíhá zjišování stupòù volnosti a~inicializace promìnnıch. Vıpoèet, kterı jsme popsali detailnì v~kapitole \ref{sec:adaptive_integration}, zaèíná cyklem pøes všechny zjemnìné ètverce (ø. 72). Øešíme zde zmínìnı problém s~mapováním gradientù (nemáme k~dispozici matici zobrazení). Abychom vyuili knihovní funkce, konstruujeme umìle pro kadı ze zjemnìnıch ètvercù doèasnı objekt kvadratury s~kvadraturními body pøíslušného ètverce. Pomocí nìho zkonstruujeme doèasnı objekt tøídy \verb'FEValues' (ø. 81), kterı v~kvadraturních bodech vypoèítá jak hodnoty bázovıch funkcí, tak jejich gradientù.
+
+Následuje cyklus pøes kvadraturní body a~v~kadém z~nich se vypoèítá pøíspìvek do lokální matice. Na øádku 89 je vıpoèet jakobiánù a~vah zobrazení bodù tak, jak jsme je urèili v~(\ref{eqn:xfem_weak_jxw}). Na øádcích 104-156 poèítáme vektor hodnot bázovıch funkcí \verb'shape_val_vec' a~jejich gradientù \verb'shape_grad_vec' -- nejprve pro lineární funkce $\varphi_j$ a~poté pro obohacenou èást (viz \ref{eqn:xfem_test_func}). Posledním prvkem vektoru je -1, kterou definujeme bázovou funkcí tlaku ve vrtu (mínus je zahrnuto ze zápornıch èlenù $\mathbf{C^a}$ a~$\mathbf{C^b}$, viz (\ref{eqn:xfem_matrix_2})).
+
+Varianty, ve kterıch vrty bereme buï jako okrajové podmínky, nebo jako plošné zdroje, vybíráme v~kódu pomocí direktivní definice \verb'BC_NEWTON', nebo \verb'SOURCES'. Vidíme napøíklad na ø.~97-99, kde poèítáme hodnoty bázové funkce.
+
+Dále plníme lokální matici pøíspìvky s~gradienty na øádcích 161-168, viz prvky matic $\mathbf{A,R,S}$ (\ref{eqn:xfem_matrix_2}). Pak zbıvá dopoèítat èleny z~rovnic na vrtech.
+Pro variantu se zdroji (\verb'SOURCES') pouijeme napoèítanı vektor funkèních hodnot v~aktualním kvadraturním bodì a~pokud tento bod leí ve vrtu, rovnou pøièítáme èleny do lokální matici. Pak konèíme cyklus pøes kvadraturní body a~pøes zjemnìné ètverce a~mùeme vrátit kompletní lokální matici.
+
+Pøi variantì s~vrty branımi jako okrajové podmínky (\verb'BC_NEWTON') se musí hranièní integrály poèítat zvláš v~iteraci pøes body na hranici vrtu. Jakobián je roven délce krunice -- hranice vrtu, body jsou po ní rozmístìny ekvidistantnì a~jejich váhy odpovídají pøevrácené hodnotì celkového poètu bodù $n_{points}$. Souèin jakobiánu a~vah, poèítanı na ø.~209, je tedy pro všechny body konstantní a~je roven
+\begin{equation}
+\mathrm{JxW}=\frac{2\pi r_w}{n_{points}}
+\end{equation} 
+Velice podobnì jako pro kvadraturní body elementu se spoèítají bázové funkce pro body na hranici vrtu a~nakonec se pøiète pøíspìvek hranièních integrálù do lokální matice. Tím jsme se dostali na konec popisované metody.
+
+Abychom ovìøili správné rozdìlení elementu pøi adaptivní integraci, vytvoøili jsme ve tøídì \verb'AdaptiveIntegration' navíc vıstupní metodu \verb'gnuplot_refinement', která umí vygenerovat skript pro utilitu GNUPLOT a~následnì zobrazit adaptivní rozdìlení elementu spolu s~kvadraturními body, viz napøíklad obr. \ref{fig:adapt_ref} v~pøedchozím textu.
+
+\subsection{Model s jednou zvodní a jedním vrtem}
+Pro jednoduché modely s~jednou zvodní, jedním vrtem a~Dirichletovou okrajovou podmínkou na hranici oblasti jsme vytvoøili tøídy \verb'XModel_simple' a~\verb'Model_simple', potomky vıše popsanıch tøíd modelù. Obsahují navíc konstruktor s~jedním vrtem v~argumentu a~implementaci virtuální metody \verb'assemble_dirichlet'. Vzhledem k~tomu, e v~úlohách neuvaujeme obohacení na hranièních uzlech oblasti, dovolili jsme si vyhnout se problému definice okrajové podmínky na obohaceném uzlu. Díky tomu je mono vyuít standardní metody knihovny pro distribuci okrajové podmínky jak pro model klasické FEM metody, tak i~pro XFEM.
+
+Vytvoøili jsme pomocnou tøídu \verb'Comparing', v~ní jsme implementovali porovnávací metody \verb'L2_norm_diff'. Knihovna Deal II má k~dispozici funkci porovnávající spoèítané øešení a~analytickou funkci, co mùeme vyuít. Vstupem jsou objekt \verb'DofHandler', vektor øešení na pøíslušné síti, analytická funkce, vıstupní vektor diference, zvolená kvadratura a~typ normy, ve které chceme rozdíl poèítat. 
+
+Pro úlohy, ve kterıch budeme srovnávat dvì rùzná diskrétní øešení, jsme vytvoøili vlastní podobnı vıpoèet. Potøebujeme dvì øešení spoèítaná na shodné síti a~tuto sí. Poèítáme potom pøes všechny elementy aproximaci $L^2$ normy rozdílu rùznıch øešení $u$~a~$v$, èili $\norm{u-v}_{L^2(\Omega)}\sqrt{\int \left( u-v\right)^2}$.
+
+\pagebreak
+\section{Numerické testy}
+\thispagestyle{plain}
+\label{sec:numerical_tests}
+V této kapitole uvedeme vısledky vıpoètù a~porovnání vybranıch modelovıch úloh, jejich matematické formulace a~zpùsoby implementace jsme doposud popsali.
+Abychom mohli posoudit vlivy parametrù a~chování modelù, je potøeba volit úlohy nekomplikované, pøedevším na jednoduchıch geometrií. Proto se omezíme na úlohy s~jednou zvodní na obdélníkové, nebo kruhové oblasti.
+
+Na úloze s~jedním vrtem na kruhové zvodni ukáeme srovnání s~analytickım øešením, ukáeme vliv velikosti obohacené oblasti v~metodì XFEM a~ovìøíme nìkteré fyzikální pøedpoklady. V~ostatních úlohách nebudeme mít k~dispozici analytické øešení, proto zde jako referenèní budeme uvaovat model vypoètenı metodou FEM na velmi zjemnìné síti. 
+
+Budeme srovnávat i~èas vıpoètu modelu. Do mìøení zahrneme ovšem pouze metody \verb'setup', \verb'assemble' a~\verb'solve' bez tvorby sítì a~vıstupu øešení. Vısledky vystupujeme na jemnıch sítích (jinıch ne vıpoèetních), abychom mohli modely dobøe porovnat. Pro model poèítanı pomocí FEM mùeme distribuovat vektor øešení na vıstupní sí pomocí optimalizovanıch tøíd knihovny a~dokonce dokáeme velice snadno interpolovat øešení na jemnìjší sí (za pøedpokladu, e sítì vzešly ze stejné hrubé sítì). Vzhledem k~tomu, e pro metodu XFEM nemáme takové nástroje k~dispozici a~pøi vıstupu øešení je navíc potøeba dopoèítat a~slouèit neobohacenou i~obohacenou èást, trvá vıstup daleko déle. Nebylo však naším cílem tento netriviální technickı problém øešit a~optimalizovat.
+
+Nìkteré vıstupy uvádíme v~obrazové formì v~rámci pøílohy, všechny zbylé nekomentované, nebo pouze zmínìné lze najít na pøiloeném disku v~adresáøi \verb'output'. Veškeré vısledky jsou reprodukovatelné zvolením poadovanıch úloh ve zdrojovém kódu souboru \verb'main.cc', zkompilováním a~spuštìním hlavního programu.
+
+
+\subsection{Úloha s jedním vrtem na kruhové oblasti}
+\label{sec:test_circle}
+Pro úlohu na kruhové oblasti o~polomìru $R$, s~jedinım vrtem v~jejím støedu, mùeme urèit analytické øešení ve tvaru $u(r) = a\log(r)+b$, kde $r$~je vzdálenost od støedu vrtu. Konstanty $a,b$ mùeme odvodit ze známıch hodnot na okraji $u(R) = 0$ a~v~místì vrtu $u(r_w) = P_w$ a~po úpravách dostaneme pøedpis funkce $u(r)$ ve tvaru
+%
+\begin{eqnarray}
+\label{eqn:analytical}
+u(r) = a \log(\frac{r}{R}), \quad \textrm{kde } a=\frac{P_w}{\log\frac{r_w}{R}}
+\end{eqnarray}
+%
+Potom jsme schopni porovnávat chybu vypoètenıch modelù proti analytickému øešení. 
+Mìjme tedy konkrétní úlohu na kruhové oblasti s~polomìrem $R=10\textrm{ m}$ a~vrtem ve støedu $[0,0]$, o~polomìru $r_w=0.02 \textrm{ m}$ a~s tlakovou vıškou $2.0\textrm{ m}$. Zvolíme koeficient propustnosti $\sigma=10^5 \textrm{ ms}^{-1}$ a~transmisivitu zvodnì $T=10^{-4} \textrm{ m}^2\textrm{s}^{-1}$.
+Na okraji volíme nulovou Dirichletovu podmínku -- pøipomínáme, e v~modelu XFEM pøedpokládáme takovou sí, ve které všechny hranièní elementy jsou neobohacené, a~tudí okrajová podmínka je realizována pouze klasickımi koneènımi prvky na hranici.
+\begin{figure}[!htb]
+  \vspace{0pt}
+      \begin{center}    
+        \includegraphics[width=0.80\textwidth]{\figpath circle_solution.pdf}
+      \end{center}
+  \vspace{-15pt}
+  \caption[Prùbìh tlaku v~kruhové zvodni s~jedním vrtem]{Prùbìh tlaku v~kruhové zvodni s~jedním vrtem. Bílımi èarami znázornìna vıpoèetní sí. Škála tlaku vyznaèena barevnì dle stupnice.}
+  \vspace{0pt}
+  \label{fig:circle_solution}
+\end{figure}
+
+Technickım problémem v~tomto pøípadì je konstrukce kruhové sítì pomocí kni\-hovny. Krunice je aproximována lineárnì, tudí pro rùzná zjemnìní bychom mohli dostat sítì s~rùznımi hranicemi. Proto jsme nejprve vytvoøili sí se zjemnìnou pevnou hranicí, která byla vıchozí pro všechny modely (viz obr. \ref{fig:circle_solution}). Protoe v~implementaci XFEM neuvaujeme v~síti volné uzly, zjemòujeme rovnomìrnì pouze oblast obohacení, na neobohacené èásti mohou bıt volné uzly, které se pak øeší shodnì jako u~modelu FEM. Adaptivní zjemòování v~modelu FEM funguje bez problému, jak jsme popsali v~pøedchozích kapitolách.
+
+
+V~tabulce \ref{tab:circle_conv} jsou vısledky -- chyba, poèítáná jako $L^2$ norma rozdílu pøesného øešení a~aproximovaného, poèet stupòù volnosti a~èasová nároènost. XFEM úlohu jsme spoèítali v~5 iteracích, nebo jsme tím dosáhli menší chyby, ne se poté podaøilo pomocí FEM. 
+
+\input{\figpath table_circle.tex}
+\vspace{-20pt}
+Je vidìt, e pøi srovnatelném poètu stupòù volnosti je metoda XFEM vıpoèetnì nároènìjší, jak ukazují èasy vıpoètu. Avšak pro dosaení stejné úrovnì chyby potøebuje metoda FEM s~lineárními prvky mnohonásobnì více elementù v~okolí vrtu, èím neúmìrnì narùstá pamìová i~èasová nároènost.
+
+Graf v~obrázku \ref{fig:convergence} ukazuje konvergenci metod k~pøesnému øešení. Velikost nej\-men\-šího elementu odpovídá elementu v~blízkosti vrtu. Blííme se vısledkùm uvedenım v~èlánku \cite{gracie}, kde uvádí øád konvergence XFEM metody $O(h^{1.8})$, kterı se blíí optimálnímu øádu konvergence lineárních koneènıch prvkù $O(h^{2})$. Upozornìme, e v~èlánku øešili úlohu na ètvercové oblasti s~pravidelnou sítí (tedy ménì komplikovanou), a~analytické øešení aproximovali koneènım souètem Besselovıch funkcí.
+
+Øád konvergence FEM metody $O(h^{0.4})$, uvádìnı té v~èlánku~\cite{gracie}, není dle oèekávání optimální. Dále uvádí, e konvergence FEM se vylepšuje, pokud je støed vrtu umístìn v~uzlu sítì. To je v~naší úloze splnìno a~v našem testu jsme dosáhli vyššího øádu konvergence $O(h^{0.8})$. Navíc jsme s~pouitím adaptivního zjemòování mohli elementy zmenšit a pod úroveò rozmìru vrtu a~ušetøili místo v~pamìti a~vıpoèetní èas.
+\pagebreak
+
+\begin{figure}[!htb]
+  \vspace{0pt}
+      \begin{center}    
+        \includegraphics[width=\textwidth]{\figpath convergence_graph.pdf}
+      \end{center}
+  \vspace{-10pt}
+  \caption[Konvergence metod FEM a XFEM]{Graf konvergence metod FEM (modrá) a~XFEM (èervená). Body jsme proloili mocninnou funkcí, pøièem první dvì nejvìtší chyby øešení pomocí FEM jsme vynechali. Mùeme odhadnout øád konvergence metody FEM $O(h^{0.8})$ a~metody XFEM $O(h^{1.7})$.}
+  \vspace{-5pt}
+  \label{fig:convergence}
+\end{figure}
+
+Poznamenejme, e toto srovnání trochu znevıhodòuje metodu FEM, protoe elementy sítì nedokáí dobøe vystihnout hranici vrtu. Pokud bychom mìli monost navrhnout lepší sí, ve které by hranice elementù lépe zachycovaly hranici vrtu, pravdìpodobnì bychom dosáhli rychlejší konvergence s~ménì hustımi sítìmi. Zjemòování sítì a na úroveò velikosti vrtù je ale pøesnì ten problém, kterému se chceme pøi øešení reálné úlohy vyhnout. Jedna z~nejpodstatnìjších vıhod metody XFEM je absence obdobnıch poadavkù na vysíování oblasti.
+Pokud bychom øešili úlohu s~desítkami vrtù a~poadovali obdobnou pøenost, nebude úloha metodou FEM reálnì øešitelná.
+
+Nelze vylouèit, e nìjakou èást chyby nevnášíme do øešení chybou v~implementaci. Mùeme však vylouèit nìkterá podezøení v~místech, kde mùe mít rozhodující vliv pøesnost numerickıch vıpoètù. Poèet diskretizaèních bodù pro hranici vrtu je dostateènı -- vyzkoušeno 500 a~1000 bez rozdílu v~øešení, a~i pøi 50 bodech zùstávají chyby øádovì shodné. Stìjnì tak poèet úrovní zjemnìní pro adaptivní integraci obohaceného elementu se jeví jako dostateènı.
+
+\pagebreak
+
+Na obrázku \ref{fig:circle_error} vidíme absolutní chybu aproximovanıch øešení v~øezu osou x.  FEM metoda s~lineárními koneènımi prvky se doupouští tím vìtší chyby, èím vìtší gradient se snaí postihnout. V metodì XFEM je mimo oblast obohacení chyba zpùsobená pouze aproximací lineárními koneènımi prvky, v~oblasti obohacení je nejvìtší na rozmıvacích elementech a~smìrem k~hranici vrtu se mírnì zmìnšuje. 
+
+\begin{figure}[!htb]
+  \vspace{0pt}
+      \begin{center}    
+        \includegraphics[width=\textwidth]{\figpath circle_error_compare.pdf}
+      \end{center}
+  \vspace{0pt}
+  \caption[Prùbìh chyby øešení XFEM]{Prùbìh chyby øešení FEM (èerná) a~XFEM (èervená) v~øezu osou x. Obohacenou oblast XFEM metody vidíme v~intervalu $<8,12>$.}
+  \vspace{0pt}
+  \label{fig:circle_error}
+\end{figure}
+
+V kapitole \ref{sec:xfem_sources} jsme popsali formulaci s~vrty jako plošnımi zdroji a~zmínili jsme její vıhody promítnuté do implementace. Zùstala nám k~vyøešení otázka, zdali se jednodušší implementace (vzhledem k~tomu, e odpadá vıpoèet køivkového integrálu) projeví i~v~èasové úspoøe pøi vıpoètu. Mezi èasy namìøenımi na této testovací úloze jsme nepozorovali vıznamnı rozdíl, ten se projevil v~urèité míøe a pøi úlohách s~více vrty a~na jemnìjších sítích. Aproximace øešení byla stejnì kvalitní jako u~modelu s~vrty branımi jako okrajové podmínky a~chyba se lišila oproti vısledkùm v~tabulce \ref{tab:circle_conv} pouze v~rámci posledních desetinnıch míst.
+
+
+\subsection{Úloha s jedním vrtem na ètvercové oblasti}
+\label{sec:test_square}
+V této úloze ovìøíme pøedpokládané fyzikální chování pøi zmìnì parametrù -- koefi\-cientu $\sigma$ a~transmisivity $T$. Ètvercovou oblast volíme proto, abychom mìli jednodušší sí a~rychlejší vıpoèet. Zároveò ji nemáme v~úmyslu porovnávat øešení \mbox{s~analytickım}, které by bylo pro ètvercovou oblast komplikovanìjší.
+
+Mìjme ètvercovou zvodeò s~rozmìry 20$\times$20~m. Vrt umístíme do støedu $[0,0]$. Sí pro XFEM metodu je 5-krát globálnì zjemnìná, èili je rozdìlena na $1024$ elementù.
+
+
+\vspace{10pt}
+\textbf{Koeficient propustnosti $\sigma$}
+
+Pøi zvìtšujícím se parametru $\sigma$ bychom mìli pozorovat bliší hodnoty tlaku na hranici vrtu a~tlaku ve vrtu. Vısledky shrnuje tabulka \ref{tab:permeability}, ve které uvádíme maximální tlak v~oblasti (v této úloze s~jedním vrtem odpovídá tlaku ve vrtu). Vidíme, e modely poèítané metodami FEM a~XFEM s~vrty branımi jako okrajové podmínky si odpovídají. 
+
+V tabulce jsme pro XFEM model s~vrty jako zdroji pouili $\eta=\sigma$. Protoe tato konstanta má fyzikálnì jinı vıznam, jsou i~hodnoty odlišné (nemáme k~dispozici jinı model pro porovnání).
+
+\vfil
+\input{\figpath table_permeability.tex}
+\vfil
+
+Hodnoty pøesahující zadanı tlak ve vrtu v~metodì FEM zpùsobuje špatná aproximace tlaku na okraji vrtu, kde lineární funkce musí vyrovnat skokovou zmìnu gradientu, jak dokumentuje obrázek \ref{fig:well_error_a}. U~metody XFEM mùe nastat chyba, pokud vrt zasahuje do více elementù a~zároveò lineární èást není konstantní. Takovou chybu aproximace ukazuje obrázek \ref{fig:well_error_b}, ve kterém se uzel sítì nachází uprostøed vrtu a~lokální lineární èást aproximace vytváøí onu špièku. Nepozorovali jsme rozdíl mezi obohacením pøi variantì s~vrty branımi jako plošné zdroje.
+\pagebreak
+
+\begin{figure}[!htb]
+  \vspace{-20pt}
+  \centering    
+  \subfloat[FEM]{\label{fig:well_error_a} 
+    \includegraphics[width=71mm]{\figpath well_error.pdf} }
+  \hspace{0pt}
+  \subfloat[XFEM]{\label{fig:well_error_b} 
+    \includegraphics[width=71mm]{\figpath well_error_xfem.pdf} } \
+  \caption[Chyby aproximace v~okolí vrtu]{Chyby aproximace v~okolí vrtu (pro $\sigma=1.0$). V pøípadì metody XFEM je problém shodnı pro obì øešené varianty -- vrty realizované jako okrajové podmínky, nebo plošné zdroje.}
+  \label{fig:well_error}
+\end{figure}
+
+Co se tıèe hodnoty transmisivity, tak pokud nedefinujeme v oblasti ádné další zdroje $f$, mùeme rovnici (\ref{eqn:laplace}) transmisivitou vydìlit a model je na její volbì zcela nezávislı. To se nám potvrdilo v jednom z testù, ve kterém jsme mìnili transmisivitu øádovì od $10^{-12} \textrm{ m}^2\textrm{s}^{-1}$ do $10^{2} \textrm{ m}^2\textrm{s}^{-1}$. Jinak se ovšem chová model øešenı metodou XFEM, ve kterém uvaujeme vrty jako plošné zdroje. Potom vydìlením rovnice (\ref{eqn:laplace_source}) transmisivitou, dostáváme v rovnici pomìr konstant $\eta/T$. Pokud je tento pomìr dostateènì velkı (cca $>10^5$), je ji silnì vynucována rovnost tlakù ve vrtu $h$ a~$H$ a~model se chová  stejnì jako model XFEM se silnou Newtonovou okrajovou podmínkou. Transmisivita tedy zeslabuje vynucení rovnosti tlaku ve vrtu s okolním tlakem ve zvodni. 
+
+\subsection{Polomìr obohacení}
+\label{sec:test_renr}
+Vezmìme shodnou úlohu, jako pøi testování konvergence v~\ref{sec:test_circle} a~vìnujme se otázce, jak volit velikost obohacené oblasti. Vıpoèty budeme provádìt pouze s~XFEM, ve které vrty uvaujeme jako okrajové podmínky, sí oblasti 6-krát globálnì zjemníme. Na obrázku \ref{fig:decomposed} demonstrujeme 
+\begin{figure}[!htb]
+    \vspace{0pt}
+      \begin{center} 
+        \includegraphics[width=\textwidth]{\figpath decomposed_solution_circle_2,0.pdf}
+      \end{center}
+    \vspace{0pt}
+    \caption[Dekomponované øešení XFEM]{Dekomponované øešení XFEM. Neobohacená èást (èerná), obohacená èást (èervená) a~jejich souèet (modrá).}
+    \label{fig:decomposed}
+\end{figure}
+øešení v~øezu rovinou vrtu. Vyznaèili jsme zvláš neobohacenou (èerná), obohacenou (èervená) èást øešení a~jejich souèet (modrá). Polomìr oblasti obohacení jsme volili 2.0. Je patrné, e lineární prvky aproximují øešení v~oblasti s~menším gradientem tlaku, na rozmıvacích elementech jsou postupnì omezovány a~chybìjící èást je kompenzována obohacujícími funkcemi. 
+
+\pagebreak
+
+Stejnì tak jako pøi zjemòování sítì, roste s~vìtším polomìrem obohacení poèet pøidanıch stupòù volnosti a~tedy i~nároènost vıpoètu. Oèekáváme, e pøi zvìtšování poètu obohacenıch elementù budeme zpøesòovat øešení. Volíme postupnì polomìr obohacení od 0.2 do 2.0. Vısledky shrnuje tabulka \ref{tab:enrich_radius}, ve které vidíme vıvoj relativní chyby øešení, vzhledem k~volbì $r_{enr}$. 
+
+\input{\figpath table_enrichment_circle.tex}
+
+Relativní chyba dle oèekávání klesá, ovšem pouze do polomìru oblasti obohacení $r_{enr}=1.5$. Dùvod zøejmì souvisí s chybou, kterou jsme popsali a ukázali na obr. \ref{fig:decomposed_error}.
+
+
+Pro další porovnání uvádíme v~pøíloze \ref{app:figures} na obrázcích \ref{fig:appA_decomposed_a}-\ref{fig:appA_decomposed_d} øešení na ètvercové síti s~polomìry obohacení 0.5, 1.5, 2.0, 3.0, 4.0. Relativní chyby øešení jsou v~tomto pøípadì vztaeny k~øešení metodou FEM a~jsou uvedeny v~tabulce \ref{tab:enrich_radius}, takté v~pøíloze.
+
+Dokumentujme ještì obrázkem \ref{fig:decomposed_error} rozdíl pøesného øešení a~øešení získaného metodou XFEM. Vidíme, e chyba je nejvìtší (v absolutní hodnotì) v~blízkém okolí vrtu a~na pøechodu z obohacené oblasti do neobohacené. Bohuel se nám zatím nepodaøilo porozumnìt, proè chyba od hranice obohacené oblasti smìrem k~vrtu více neklesá a~proè aproximované øešení tímto zpùsobem kmitá okolo pøesného øešení. Poznamenejme, e \uv{vlnky} v~grafu (obr. \ref{fig:decomposed_error}) pokraèují smìrem k~okraji oblasti, ovšem zde ji nebyla vıstupní sí natolik zjemnìná, aby je dokázala viditelnì postihnout.
+
+\begin{figure}[!htb]
+    \vspace{0pt}
+      \begin{center} 
+        \includegraphics[width=\textwidth]{\figpath decomposed_solution_circle_2,0_error.pdf}
+      \end{center}
+    \vspace{0pt}
+    \caption[Chyba øešení XFEM]{Rozdíl pøesného øešení a~øešení XFEM.}
+    \label{fig:decomposed_error}
+\end{figure}
+
+Potøeba vhodného nastavení polomìru obohacení je zøejmá, ovšem není vùbec jednoduché navrhnout jeho automatickou volbu. Pro potøeby modelovıch úloh jsme hodnotu $r_{enr}$ zatím omezili zdola nejprve polomìrem vrtu a~poté nejvìtší vzdáleností mezi støedem vrtu a~vrcholem elementu, na kterém vrt leí. Tím dosáhneme toho, e alespoò jeden element je zcela obohacenı. Dokumentuje to první volba polomìru obohacení v~testu, která je pøíliš malá a~polomìr je tedy pøenastaven na 0.26
+
+\begin{figure}[!htb]
+    \vspace{0pt}
+      \begin{center} 
+        \includegraphics[width=140mm]{\figpath decomposed_solution_wrong.pdf}
+      \end{center}
+    \vspace{0pt}
+    \caption[Špatné obohacení]{Dekomponované øešení XFEM, špatné obohacení -- malı polomìr $r_{enr}$}
+    \label{fig:decomposed_wrong}
+\end{figure}
+
+Upozornìme nyní na jeden problém, na kterı jsme bìhem testu narazili. Pokud nebyla zavedena podmínka popsaná v~minulém odstavci, dostali jsme zcela nesprávné deformované øešení, jak dokumentuje obrázek \ref{fig:decomposed_wrong}. Problémem je Newtonova okrajová podmínka, která pøi vìtším podílu pøestupového koeficientu a~transmisivity $\frac{\sigma}{T}$ (dle provedenıch pokusù øádovì $10^9$), vyaduje tím striktnìjší shodu tlaku na hranici vrtu s~tlakem ve vrtu. Abychom tohoto dosáhli, potøebujeme, aby lineární èást øešení byla v~místì vrtu v~ideálním pøípadì konstantní (dobøe vidìt na \ref{fig:decomposed}). Toto nelze zajistit na pouze èásteènì obohaceném elementu, nebo zde vynucení konstantnosti a~rovnosti tlaku ve vrtu jdou proti sobì.
+
+
+
+\subsection{Úloha s dvìma vrty}
+\label{sec:test_two_wells}
+Budeme poèítat úlohu na obdélníkové oblasti s~protilehlımi vrcholy $[-10,-5]$,$[10,5]$, kde vrty s~tlakovımi vıškami 2.0~m a~-2.0~m umístíme do bodù $[-5,0]$ a~$[5,0]$. Na okraji uvaujeme pouze homogenní Neumannovu okrajovou podmínku. Parametry jsme zvolili $T=10^{-4}\textrm{ m}^2\textrm{s}^{-1}$ a~$\sigma=10^5\textrm{ ms}^{-1}$. Nyní mùeme porovnávat pouze aproximovaná øešení, proto vypoèítáme úlohu metodou FEM na co nejjemnìjší síti a~s~tímto øešením budeme poté XFEM øešení porovnávat. Prùbìh øešení XFEM vidíme na obrázku \ref{fig:two_well_solution}.
+
+\begin{figure}[!htb]
+    \vspace{0pt}
+      \begin{center} 
+        \includegraphics[width=\textwidth]{\figpath two_well_solution.pdf}
+      \end{center}
+    \vspace{-10pt}
+    \caption[Øešení modelu se dvìma vrty pomocí XFEM]{Øešení modelu se dvìma vrty pomocí XFEM.}
+    \label{fig:two_well_solution}
+\end{figure}
+
+V tabulce \ref{tab:two_wells} jsou shrnuty vısledky vıpoètu metodou XFEM pro tøi rùzné úrovnì zjemnìní -- 64, 256, 1024 elementù. Pro srovnání, vıpoèet modelu pomocí FEM na referenèní zjemnìné síti s~30440 elementy trval 125 s. Pamìová a~èasová nároènost je v~pøípadì metody XFEM vıraznì menší. Chyby obou variant metody XFEM jsou témìø shodné, pro nejjemnìjší sí trvá vıpoèet o~více ne 1 sekundu ménì.
+
+\input{\figpath table_two_refinement.tex}
+
+
+
+
+\subsection{Úloha s více vrty}
+
+Na úloze s~pìti vrty ukáeme pøedevším to, jak pøi klasické metodì koneènıch prvkù zesloiujeme vıpoèetní sí adaptivním zjemòováním. Kadı z~vrtù vyaduje malé elementy ve svém okolí, proto celkovı poèet elementù rychle narùstá (viz obr. \ref{fig:five_wells_mesh_a} a~\ref{fig:five_wells_mesh_b}). Naproti tomu pro metodu XFEM jsme sí pouze 5-krát globálnì zjemnili (dostaneme 1024 elementù).
+
+\vfil
+\input{\figpath table_five.tex}
+
+Vrty jsou umístìny na souøadnicích $[-5,-5]$, $[0,0]$, $[-5,5]$, $[5,5]$ a~$[5,-5]$, s~tlakovımi vıškami
+po øadì 0, 0, 4, 2 a 5 m. Transmisivitu jsme nastavili $T = 10^{-4}\textrm{ m}^2\textrm{s}^{-1}$ a~koeficient propustnosti $\sigma = 10^5\textrm{ ms}^{-1}$. 
+Na obr. \ref{fig:five_wells_warp} vidíme vypoèítané øešení pomocí XFEM metody ve formì 3D zobrazení tlakové vıšky ve zvodni (rozsah hodnot -- barev -- odpovídá i~obr.\ref{fig:five_wells_mesh_b}).
+
+\begin{figure}[!htb]
+  \vspace{0pt}
+  \centering    
+  \subfloat[FEM sí -- po 9 cyklech, 28453 elementù ]{\label{fig:five_wells_mesh_a} 
+    \includegraphics[width=72mm]{\figpath five_wells_mesh1.pdf} }
+  \hspace{0pt}
+  \subfloat[XFEM sí -- 1024 elementù]{\label{fig:five_wells_mesh_b} 
+    \includegraphics[width=71mm]{\figpath five_wells_mesh2.pdf} } \\
+  \caption[Porovnání sítí metod FEM a~XFEM]{Porovnání sítí metody FEM a~XFEM (vrty jako okrajové podmínky).}
+  \label{fig:five_wells_mesh}
+\end{figure}
+
+\vfil
+
+Mùeme srovnat v~tabulce \ref{tab:five_wells} èasy vıpoètù jednotlivımi metodami a~relativní rozdíl øešení metody XFEM a~metody FEM. Vidíme, e èasy metody XFEM jsou pøiblinì 10-krát kratší. Vısledky obou variant metody XFEM jsou témìø totoné, pouze varianta s~vrty branımi jako plošné zdroje je o~necelou sekundu rychlejší. Rozdíl mezi øešením metodou FEM a XFEM (obìma variantami) je pod 1\%.
+
+\vfil
+\begin{figure}[!htb]
+    \vspace{0pt}
+      \begin{center} 
+        \includegraphics[width=\textwidth]{\figpath five_wells.pdf}
+      \end{center}
+    \vspace{-10pt}
+    \caption[Øešení modelu s~pìti vrty pomocí XFEM]{Øešení modelu s~pìti vrty pomocí XFEM (vrty jako okrajové podmínky).}
+    \label{fig:five_wells_warp}
+\end{figure}
+\vfil
+
+\pagebreak
+
+\newpage
+
+\pagebreak
+
+\newpage
+
+\section{Závìr}
+\thispagestyle{plain}
+\label{sec:conclusion}
+Navázali jsme na èlánek \cite{gracie} a~nejprve popsali obdobnı model pro ustálené saturované proudìní podzemní vody ve zvodòovém systém s~vrty. 
+
+V druhé èásti práce jsme rozebrali pouité metody k~vıpoètu úlohy ustáleného saturovaného proudìní podzemní vody v~systému zvodní s~vrty. Pro metodu koneènıch prvkù jsme dokázali existenci a~jednoznaènost øešení pomocí Laxovy-Milgramovy vìty.
+
+Implementovali jsme metodu lineárních koneènıch prvkù v~jazyce C++ pomocí knihovny Deal II. Vyuili jsme moností knihovny a~vylepšili jsme vıpoèet o~adaptivní zjemòování sítì na základì mìøení chyby gradientù na rozhraní elementù. 
+
+V další èásti jsme se seznámili s~principem metody XFEM a~její modifikací s~funkcí rampy na rozmıvacích elementech. Popsali jsme pomocí XFEM shodnı model a~navíc jsme navrhli variantu, ve které vrty nechápeme jako okrajové podmínky, ale jako plošné zdroje, a~ukázali její vıhody. Obì varianty metody se podaøilo implementovat opìt pomocí knihovny Deal II.
+
+Metodì hranièních prvkù (popsaná v pøíloze \ref{app:bem}), která je v~principu odlišná od pøedchozích dvou metod, jsme mohli vìnovat pouze omezené mnoství èasu. Pokusili jsme se o~implementaci opìt s~pomocí knihovny Deal II, která obsahuje nìkteré vhodné tøídy i~pro tuto metodu. Vıpoèet však dává špatné (nesmyslné) vısledky a~chybu se zatím v kódu nepodaøilo odhalit. Je moné, e bychom pomocí této metody na malıch úlohách (napø. numerickı test \ref{sec:test_two_wells}), ve kterıch ale nemáme k dispozici analytické øešení, dostali pøesnìjší aproximaci øešení ne pomocí FEM. Tím bychom získali další referenèní data pro porovnání s~metodou XFEM, co bylo dùvodem, proè jsme se metodou hranièních prvkù zabıvali.
+
+Nakonec jsme vypoèítali nìkolik jednoduchıch úloh, na kterıch jsme mohli porovnávat metody mezi sebou. V~úloze na kruhové oblasti, ve které jsme mìli k~dispozici analytické øešení, se ukazuje velmi dobrá aproximace pomocí XFEM a~rychlá konvergence. Naopak metoda s~lineárními koneènımi prvky konverguje suboptimálnì, pøedevším proto, e ani na adaptivní síti nedokáe dobøe zachytit hranici vrtu.
+
+Pøedpokladem pro rychlé øešení reálné úlohy je co nejjednodušší sí, nejlépe nezávislá na rozmístìní zdrojù -- vrtù. V metodì FEM je kvalita aproximace øešení úzce spojena s~kvalitou sítì, tím máme na mysli pøedevším dostateènì dobré zachycení hranice vrtu pro okrajovou podmínku, kterou na této hranici v~modelu pøedepisujeme. Naopak pøi pouití metody XFEM postaèí rovnomìrnì zjemnìná a~podstatnì hrubší sí pro vıpoèet aproximace øešení pøi stejné nebo spíše menší chybì. 
+
+V úlohách s~více vrty jsme porovnávali i~èasovou nároènost vıpoètu. Nasazení metody XFEM se ukazuje v~tomto smìru velmi vıhodné, nebo pøi pouití menší a~jednodušší sítì vzniká po diskretizaci také menší systém lineárních rovnic, kterı vyøešíme v~kratším èase. Pamìová a~èasová nároènost metody XFEM je dána samozøejmì poètem elementù sítì, ale také volbou oblasti obohacení. Èím více elementù obohatíme, tím více pøidáme stupòù volnosti.
+Volba v~urèitém smyslu optimálního polomìru obohacené oblasti v~øešeném modelu je jedním z úkolù, kterımi je moné dále se zabıvat.
+ 
+V kapitole \ref{sec:adaptive_integration} jsme popsali princip adaptivní integrace na obohaceném elementu, kterım prochází vrt. Zpùsob dìlení elementu a~rozdìlovací kritérium jsme implementovali dle návrhu v~\cite{gracie}, ale je moné je snadno nahradit. Bylo by zajímavé vyzkoušet i~jiné pøístupy a~porovnat, jestli nejsme schopni jimi dosáhnout lepších vısledkù. Jednou z moností je napøíklad mìøení rozdílu velikosti integrálu na jednotlivıch ètvercích mezi dvìma úrovnìmi zjemnìní a~na základì tohoto rozdílu poté volit další dìlení.
+
+Pøi implementaci jsme se setkali s~problémem volnıch uzlù v~síti. Øešení pro metodu FEM jsme popsali v~kapitole \ref{sec:impl_adapt}, kde jsme zmínili i~nástroje knihovny Deal II, které nám v~tomto smìru pomohly. V modelu øešeném metodou XFEM jsme pøedpokládali, e volné uzly mohou bıt síti pouze mimo obohacenou oblast. Øešení problematiky volnıch uzlù na obohacenıch elementech je popsáno napøíklad v~èlánku \cite{xfem_hang}, podle kterého by bylo zøejmì moné pøizpùsobit implementaci i~námi øešeného modelu.
+
+Pro další postup bude nutné urychlit vıstupní procedury. Zmínili jsme, e pro porovnávání modelù vystupujeme data na jemnıch sítích, vytvoøenıch vìtšinou adaptivním zjemòováním sítì v~metodì FEM. Ve vıstupní funkci XFEM metody bude zapotøebí optimalizovat mapování bodù mezi vıstupní a~vıpoèetní sítí a~také vlastní vıpoèet øešení v~tìchto bodech.
+
+V práci jsme se vypoøádali s~celou øadou teoretickıch i~implementaèních problémù. Pouití principu XFEM a~obohacení prostoru bázovıch funkcí ve smíšené formulaci vyaduje ovìøení podmínek, za kterıch je mono smíšenou formulaci provést a~zkonstruovat potøebné prostory funkcí. To nakonec nebylo v~rozsahu této práce moné a~zvládnutelné, proto jsme tento bod zadání zanechali otevøenı pro další práci.
+
+
+
+
+\bibliographystyle{alpha}
+\clearpage
+\thispagestyle{plain}
+\renewcommand{\refname}{Seznam pouité literatury}
+\addcontentsline{toc}{section}{Seznam pouité literatury}
+\bibliography{citace}
+
+
+\newpage
+\appendix
+
+\section{Metoda hranièních prvkù}
+\thispagestyle{plain}
+\label{app:bem}
+V této pøíloze popíšeme teoretickı základ pro metodu hranièních prvkù (v angliètinì BEM -- Boundary element method), kterou se bohuel nepodaøilo v~rámci diplomové práce odladit do funkèního stavu. Tato metoda se liší od FEM pouitím odlišné bázové/testovací funkce a~odvozením integrální rovnice, kterou tvoøí pouze hranièní integrály, èím je sníena dimenze problému (z 3D na 2D sí, v~našem pøípadì z~2D na 1D sí). Pro diskretizaci jsou poté pouity hranièní koneèné prvky. Sestavení soustavy lineárních rovnic vede k~nesymetrické neøídké matici, co je velká nevıhoda oproti FEM, na druhou stranu je však soustava podstatnì menší. Øešit budeme touto metodou prozatím pouze Laplaceovu rovnici $\Delta u =0$.
+
+\subsection{Odvození slabé formulace}
+V èlánku s~poznámkami k~metodám FEM a~BEM~\cite{bem} je odvozeno fundamentální øešení rovnice $\Delta{}u=0$ (tzv. Greenova funkce), které pouijeme jako testovací funkci, je zde odvozena integrální rovnice a~popsána její diskretizace. Uveïme zde stìejní poznatky.
+
+Mìjme rovnici 
+\begin{equation} \label{eqn:bem_laplace}
+  \Delta{}u=0 \qquad \textrm{na } \Omega.
+\end{equation}
+Fundamentálním øešením této rovnice je øešení $\Delta{}\omega + \delta(\xi-x,\eta - y)=0$ na oblasti $\mathbb{R}^2$ (neuvaujeme oblast $\Omega$ a~pùvodní okrajové podmínky). Pøevodem do polárních sou\-øad\-nic, uitím vlastností Dirackovy funkce $\delta$ a~vyøešením upravené rovnice získáme fundamentální øešení, tj. naši testovací funkci (\ref{eqn:bem_test_func}) a~její smìrovou derivaci (\ref{eqn:bem_test_der}), kterou budeme takté potøebovat.
+\begin{equation} \label{eqn:bem_test_func}
+  \omega = -\frac{1}{2\pi}\log{r}
+\end{equation}
+\begin{equation} \label{eqn:bem_test_der}
+  \frac{\partial\omega}{\partial n} = \frac{\partial\omega}{\partial r}\, \frac{\mathrm{d}r}{\mathrm{d}n} = -\frac{1}{2\pi} \, \frac{1}{r}\,\nabla{}r\cdot\mathbf{n},
+\end{equation}
+V (\ref{eqn:bem_test_func}) a~(\ref{eqn:bem_test_der}) je $r=\sqrt{(\xi-x)^2+(\eta-y)^2}$ vzdálenost od bodu se singularitou.
+V~èlánku~\cite{bem} je provedeno podrobné odvození integrální rovnice (\ref{eqn:bem_equation}) pomocí dvojté aplikace Greenovy vìty na Laplaceovu rovnici (\ref{eqn:bem_laplace}) a dosazením (\ref{eqn:bem_test_func}) za testovací funkci.
+
+\begin{equation} \label{eqn:bem_equation}
+  c(P)u(P) + \int\limits_\Gamma u\frac{\partial\omega}{\partial n}\, \mathrm{d}\Gamma = \int\limits_\Gamma \frac{\partial u}{\partial n}\, \omega \, \mathrm{d}\Gamma,
+\end{equation}
+kde $P$ je bodem hranice a konstanta $c(P)$ je dána jeho polohou takto
+\begin{equation*}
+  c(P)= 
+  \begin{cases}
+  1 & \mbox{P je vnitøním bodem}\\
+  \frac{1}{2} & \mbox{P leí na hladké hranici}\\
+  \frac{\alpha}{2\pi} & \mbox{P leí na nehladké hranici, } \alpha \mbox{ je vnitøní úhel}.
+  \end{cases}
+\end{equation*}
+
+\subsection{Diskretizace}
+Hranici $\Gamma$ oblasti $\Omega$ zdiskretizujeme na mnoinu elementù $\Gamma_j$ a~zavedeme aproximaci koneènımi prvky shodnì s~\cite{bem}
+\begin{equation} \label{eqn:bem_equation_1}
+u_j = \sum \limits_{k=1}^{N_j} \alpha_{j,k} \varphi_k, \qquad q_j=\frac{\partial u_j}{\partial n} = \sum \limits_{k=1}^{N_j} \beta_{j,k} \varphi_k,
+\end{equation}
+$u_j,q_j$ jsou hodnoty $u$ a $q$ na $j$-tém elementu, $\alpha_{j,k}$ a $\beta_{j,k}$ jsou stupnì volnosti na $j$-tém elementu a odpovídají hodnotám $u$ a $q$ v $k$-tém uzlu elementu ($P_{j,k}$). Dosazením (\ref{eqn:bem_equation_1}) do (\ref{eqn:bem_equation}) dostaneme
+\begin{equation} \label{eqn:bem_equation_2}
+c(P)u(P) + \sum\limits_{j=1}^N \sum\limits_{k=1}^{N_j} \alpha_{j,k} \int\limits_{\Gamma_j} \varphi_k \frac{\partial\omega}{\partial n}\, \mathrm{d}\Gamma = \sum\limits_{j=1}^N \sum\limits_{k=1}^{N_j} \beta_{j,k} \int\limits_{\Gamma_j} \varphi_k \omega \, \mathrm{d}\Gamma.
+\end{equation}
+Rovnici (\ref{eqn:bem_equation_2}) mùeme vyjádøit pro kadı bod na hranici $\Gamma$. Pokud to provedeme pro všechny uzlové body hranièní sítì, dostaneme soustavu $N$ rovnic ve tvaru
+\begin{equation} \label{eqn:bem_equation_3}
+c_iu_i + \sum\limits_{j=1}^N \sum\limits_{k=1}^{N_j} \alpha_{j,k} \int\limits_{\Gamma_j} \varphi_k \frac{\partial\omega_i}{\partial n}\, \mathrm{d}\Gamma = \sum\limits_{j=1}^N \sum\limits_{k=1}^{N_j} \beta_{j,k} \int\limits_{\Gamma_j} \varphi_k \omega_i \, \mathrm{d}\Gamma.
+\end{equation}
+Rovnice (\ref{eqn:bem_equation_3}) má zatím $2N$ neznámıch. Abychom ji mohli vyøešit, musíme v kadém bodì definovat buï hodnotu $u_{j,k}$ nebo $q_{j,k}$. Potom se v kadém uzlovém bodì pøevede èlen se známımi hodnotami na pravou stranu a dostaneme soustavu lineárních rovnic ve tvaru $\mathbf{Ax}=\mathbf{b}$, kterou musíme vyøešit. Pøipomeòme, e matice $A$ je zaplnìná a~nesymetrická. 
+
+V naší úloze je tedy hledanou velièinou tlaková vıška, proto poloíme $u=h$. Poté na hranici $\Gamma_N$, kde máme definovanou homogenní Neumannovu okrajovou podmínku, poloíme $q_{j,k}=0$. Na hranici s~Dirichletovou okrajovou podmínkou $\Gamma_D$ poloíme $h_{j,k}=h_D(P_{j,k})$. Na hranici vrtu $\partial B_w$ dále poloíme $h_{j,k}=H_w$, tedy rovnu hodnotì tlaku ve vrtu. Hodnotu $h$ v~jakémkoli bodì $P$ oblasti $\Omega$ dostaneme ze vztahu
+\begin{equation} \label{eqn:bem_solution}
+h(P) = \sum\limits_{j=1}^N \sum\limits_{k=1}^{N_j} \beta_{j,k} \int\limits_{\Gamma_j} \varphi_k \omega(P) \,\mathrm{d}\Gamma - \sum\limits_{j=1}^N \sum\limits_{k=1}^{N_j} \alpha_{j,k} \int\limits_\Gamma \varphi_k \frac{\partial\omega(P)}{\partial n} \, \mathrm{d}\Gamma.
+\end{equation}
+\pagebreak
+
+\section{Obrazová pøíloha}
+\thispagestyle{plain}
+\label{app:figures}
+
+\begin{figure}[!htb]
+  \vspace{0pt}
+  \centering    
+  \subfloat[polomìr 0,5]{\label{fig:appA_decomposed_a} 
+    \includegraphics[width=72mm]{\figpath appendix/decomposed_solution_0,5.pdf} }
+  \hspace{-5pt}
+  \subfloat[polomìr 1,5]{\label{fig:appA_decomposed_b} 
+    \includegraphics[width=72mm]{\figpath appendix/decomposed_solution_1,5.pdf} } \\
+  \subfloat[polomìr 2,0]{\label{fig:appA_decomposed_c} 
+    \includegraphics[width=72mm]{\figpath appendix/decomposed_solution_2,0.pdf} }
+  \hspace{-5pt}
+  \subfloat[polomìr 3,0]{\label{fig:appA_decomposed_d} 
+    \includegraphics[width=72mm]{\figpath appendix/decomposed_solution_3,0.pdf} } \\
+  \vspace{-5pt}
+  \subfloat[polomìr 4,0]{\label{fig:appA_decomposed_e} 
+    \includegraphics[width=72mm]{\figpath appendix/decomposed_solution_4,0.pdf} } \\
+  \vspace{0pt}
+  \caption[Rùzné polomìry obohacení]{Úloha s~jedním vrtem a rùzné polomìry obohacení. Na obrázcích \ref{fig:appA_decomposed_a}-\ref{fig:appA_decomposed_e} je znázornìné rozloené øešení metody XFEM (modrá) na obohacenou èást (èervená) a~neobohacenou èást (èerná). }
+  \label{fig:appA_decomposed}
+\end{figure}
+
+\input{\figpath table_enrichment_newton.tex}
+
+
+\lstset{language = C++,
+				lineskip = -2pt,						%zmensuje radkovani
+				frame= lines,								%jakej je ramecek
+					%<none|leftline|topline|bottomline|lines|single|shadowbox>
+        keywordstyle=\bfseries,
+        basicstyle=\footnotesize,
+        commentstyle=\textsl,%\color={red}
+        extendedchars=false,
+				xleftmargin = 1.0cm,				%odsazeni zleva
+				xrightmargin = 0.2cm,					%odsazeni zprava
+				abovecaptionskip = 10pt,		%prostor nad caption
+				belowcaptionskip = 10pt,		%prostor pod caption			
+				framexleftmargin = 1cm,			%zajistuje, ze ramecek jde i nad cislovani
+				}
+\pagebreak
+
+
+\section{Zdrojovı kód}	
+\thispagestyle{plain}
+\label{app:codes}
+V následující pøíloze nalezneme zdrojovı kód nìkterıch metod programu, na které se odkazujeme v~textu. Pro kompletní implementaci a~popisy je nutné nahlédnout do zdrojovıch souborù.
+
+\subsection{\texttt{function AdaptiveIntegration::integrate}} \label{code:integrate}
+\begin{lstlisting}
+void Adaptive_integration::integrate( 
+      FullMatrix<double> &cell_matrix, 
+      Vector<double> &cell_rhs,
+      std::vector<unsigned int> &local_dof_indices,
+      const double &transmisivity)
+{  
+double cell_jakobian = cell_mapping.jakobian();
+cell_matrix = 0;
+cell_rhs = 0;
+
+// number of wells with q_points inside the cell
+unsigned int n_wells_inside = 1;  
+//number of wells affecting the cell
+unsigned int n_wells = xdata->n_wells(); 
+unsigned int dofs_per_cell = fe->dofs_per_cell;
+  
+//local dof indices (both enriched and unenriched)
+local_dof_indices.clear();
+    
+//getting unenriched local dofs indices
+local_dof_indices.resize(dofs_per_cell);
+cell->get_dof_indices(local_dof_indices);
+  
+//weights of enriched nodes = 1, else 0 (for every well)
+std::vector<double> node_weights(n_wells * dofs_per_cell,0);
+  
+//getting weigths of nodes of the cell, enriched dof indices
+for(unsigned int w = 0; w < n_wells; w++)
+{   
+  for(unsigned int i = 0; i < dofs_per_cell; i++)
+  {
+    if(xdata->global_enriched_dofs(w)[i] != 0)        
+    {
+      node_weights[w*dofs_per_cell + i] = 1; //enriched
+      local_dof_indices.push_back(
+      xdata->global_enriched_dofs(w)[i]);
+    }
+  }
+}
+  
+unsigned int n_dofs = local_dof_indices.size();
+  
+for(unsigned int w = 0; w < n_wells; w++)
+{
+  if(xdata->get_q_points(w).size() > 0)
+  {
+    n_wells_inside++;
+    //one more for well testing funtion
+    local_dof_indices.push_back(
+      xdata->get_well_dof_indices(w)); 
+  }
+  
+//initialized with zeros
+cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,
+                                 n_dofs+n_wells_inside);    
+//initialized with zeros
+cell_rhs = Vector<double>(n_dofs+n_wells_inside);  
+
+//temporary for shape values and gradients
+Tensor<1,2> xshape_grad;
+double xshape, jacobian, jxw = 0;
+  
+//vector of quadrature points on the unit square
+std::vector<Point<2> > q_points;
+//vector of quadrature points mapped to unit cell
+std::vector<Point<2> > q_points_mapped;
+  
+//temporary vectors for both shape and xshape values,gradients
+std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
+std::vector<double > shape_val_vec(n_dofs+n_wells_inside,0);
+
+for(unsigned int s=0; s < squares.size(); s++)
+{
+  //unit square quadrature points
+  q_points = squares[s].gauss->get_points();  
+  q_points_mapped = squares[s].gauss->get_points(); 
+  //mapped from unit square to unit cell
+  squares[s].mapping.map_unit_to_real(q_points_mapped); 
+  
+  Quadrature<2> temp_quad(q_points_mapped);
+  FEValues<2> temp_fe_values(*fe,temp_quad, 
+    update_values | update_gradients | update_jacobians);
+  temp_fe_values.reinit(cell);
+    
+  jacobian = squares[s].mapping.jakobian(); 
+   
+  for(unsigned int q=0; q < q_points.size(); q++)
+  {
+    jxw = jacobian * temp_fe_values.jacobian(q).determinant() * 
+          squares[s].gauss->get_weights()[q];
+          
+    // filling shape values and shape gradients at first
+    for(unsigned int i = 0; i < dofs_per_cell; i++)
+    {
+      shape_grad_vec[i] = temp_fe_values.shape_grad(i,q);
+        
+#ifdef SOURCES
+      shape_val_vec[i] = temp_fe_values.shape_value(i,q);
+#endif
+    }
+      
+    // filling xshape values and xshape gradients next
+    //index in the vector of values and gradients
+    unsigned int index = dofs_per_cell; 
+    for(unsigned int w = 0; w < n_wells; w++) //W
+    {
+      Well * well = xdata->get_well(w);
+      //gradient of xfem function needn't be mapped 
+      xshape = well->xshape_value(
+                mapping->transform_unit_to_real_cell(
+                  cell, q_points_mapped[q]));
+      xshape_grad = well->xshape_grad(
+                      mapping->transform_unit_to_real_cell(
+                        cell, q_points_mapped[q]));
+        
+      for(unsigned int k = 0; k < dofs_per_cell; k++) //Ne
+      { 
+        if(xdata->global_enriched_dofs(w)[k] != 0) 
+        {
+#ifdef SOURCES 
+          shape_val_vec[index] = 0;
+#endif
+          shape_grad_vec[index] = 0;
+          for(unsigned int l = 0; l < dofs_per_cell; l++) //N
+          {
+#ifdef SOURCES 
+            shape_val_vec[index] += 
+                node_weights[w*dofs_per_cell + l] *
+                temp_fe_values.shape_value(l,q) *
+                temp_fe_values.shape_value(k,q) *
+                xshape;
+#endif
+                    
+            //gradients of shape functions need to be mapped
+            //scale_to_unit means inverse scaling
+            shape_grad_vec[index] += 
+                node_weights[w*dofs_per_cell + l] *
+                ( temp_fe_values.shape_grad(l,q) *                                    
+                  temp_fe_values.shape_value(k,q) *
+                  xshape
+                  +
+                  temp_fe_values.shape_value(l,q) * 
+                  temp_fe_values.shape_grad(k,q) *
+                  xshape
+                  +
+                  temp_fe_values.shape_value(l,q) *
+                  temp_fe_values.shape_value(k,q) *
+                  xshape_grad
+                );
+          } //for l
+          index ++;
+        } //if
+      } //for k
+      //testing function of the well (minus from equation)
+      shape_val_vec[index] = -1.0;  
+    } //for w        
+        
+    //filling cell matrix now
+    //additions to matrix A,R,S
+      
+    for(unsigned int i = 0; i < n_dofs; i++)
+      for(unsigned int j = 0; j < n_dofs; j++)
+      {
+        cell_matrix(i,j) += transmisivity * 
+                            shape_grad_vec[i] *
+                            shape_grad_vec[j] *
+                            jxw;
+      }
+      
+#ifdef SOURCES
+    for(unsigned int w = 0; w < n_wells; w++) //W
+    {
+      //this condition tests if the quadrature point lies 
+      //within the well (testing function omega)
+      if(xdata->get_well(w)->points_inside(
+          mapping->transform_unit_to_real_cell(
+            cell, q_points_mapped[q])))
+      { 
+        for(unsigned int i = 0; i < n_dofs+n_wells_inside; i++)
+        {
+          for(unsigned int j = 0; j < n_dofs+n_wells_inside; j++)
+          {
+            cell_matrix(i,j) += 
+                    xdata->get_well(w)->get_perm2aquifer() *
+                    shape_val_vec[i] *
+                    shape_val_vec[j] *
+                    jxw;
+          } //for j
+        } //for i
+      } //if
+    } //for w
+#endif
+  
+  } //for q
+} //for s
+
+  
+
+#ifdef BC_NEWTON  
+unsigned int n_w_dofs=0;
+  
+for(unsigned int w = 0; w < n_wells; w++)
+{
+  if(xdata->get_q_points(w).size() > 0)
+  {
+    Well * well = xdata->get_well(w);
+    // jacobian = radius of the well; 
+    // weights are the same all around
+    jxw = 2 * M_PI * well->get_radius() / 
+          well->get_q_points().size();
+      
+    // value of enriching function is constant 
+    // all around the well edge
+    xshape = well->xshape_value(well->get_q_points()[0]);
+        
+    shape_val_vec.clear();
+    node_weights.clear();
+    node_weights.resize(dofs_per_cell,0);
+      
+    unsigned int n_enriched_dofs=0;
+    for(unsigned int i = 0; i < dofs_per_cell; i++)
+    {
+      if(xdata->global_enriched_dofs(w)[i] != 0)        
+      {
+        node_weights[i] = 1; //enriched
+        n_enriched_dofs ++;
+      }
+    }
+      
+    n_w_dofs = dofs_per_cell+n_enriched_dofs+1;
+    //unenriched, enriched, well
+    shape_val_vec.resize(n_w_dofs,0);  
+    
+    //cycle over quadrature points inside the cell
+    for (unsigned int q=0; q<xdata->get_q_points(w).size(); ++q)
+    {
+      Point<2> q_point = *(xdata->get_q_points(w)[q]);
+      //transforming the quadrature point to unit cell
+      Point<2> unit_point = 
+        mapping->transform_real_to_unit_cell(cell, q_point);
+
+      // filling shape values at first
+      for(unsigned int i = 0; i < dofs_per_cell; i++)
+        shape_val_vec[i] = fe->shape_value(i, unit_point);
+      
+      // filling xshape values next
+      //index in the vector of values and gradients
+      unsigned int index = dofs_per_cell;
+        
+      for(unsigned int k = 0; k < dofs_per_cell; k++) //Ne
+      { 
+        if(xdata->global_enriched_dofs(w)[k] != 0) 
+        {
+          shape_val_vec[index] = 0;   // giving zero
+          for(unsigned int l = 0; l < dofs_per_cell; l++) //N
+          {
+            shape_val_vec[index] += 
+                   node_weights[l] *
+                   fe->shape_value(l, unit_point) *                                    
+                   fe->shape_value(k, unit_point) *
+                   xshape;
+          } //for l
+          index ++;
+        } //if
+      } //for k
+        
+      //testing function of the well
+      shape_val_vec[index] = -1.0;  
+       
+      for (unsigned int i=0; i < n_w_dofs; ++i)
+        for (unsigned int j=0; j < n_w_dofs; ++j)
+        {
+          cell_matrix(i,j) += (well->get_perm2aquifer() *
+                               shape_val_vec[i] *
+                               shape_val_vec[j] *
+                               jxw );
+        }
+    } //end of iteration over q_points
+  } //if
+} // for w
+#endif
+}
+\end{lstlisting}
+
+% \subsection{\texttt{class Well}} \label{code:a01}
+% \begin{lstlisting}
+% class Well{
+% private:
+% /radius of the well
+% double radius;
+% //position of the center of the well
+% Point<2> position;
+% //permeability between the well and aquifer
+% double perm2aquifer;
+% //permeability between in the well between aquitards
+% double perm2aquitard;
+% //pressure at the top of the well (Dirichlet BC)
+% double pressure_at_top;
+% 	
+% public:
+% //keeps indices of dofs that the well influces
+% std::vector<unsigned int> well_dof_indices;
+% //the cell on which the well lies
+% DoFHandler<2>::active_cell_iterator cell;
+%     
+% //constructors
+% Well (){}
+% Well (double r, Point<2> pos, 
+%       double perm2fer, double perm2tard) 
+%   : radius(r), position(pos), 
+%     perm2aquifer(perm2fer), perm2aquitard(perm2tard)
+%        {}
+% inline double GetRadius();
+% inline Point<2> GetPosition();
+% inline double GetPerm2aquifer();
+% inline double GetPerm2aquitard();
+% inline double GetPressureAtTop();
+% void SetPressureAtTop(const double pressure);
+% //prints position and dofs
+% void print ();
+% }; 
+% \end{lstlisting}
+% 
+% \subsection{\texttt{FindWellCells}} \label{code:a02}
+% \begin{lstlisting}
+% void Program::FindWellCells(FEValues<2> *fe_values)
+% {
+%  DoFHandler<2>::active_cell_iterator
+%   cell = dof_handler.begin_active(),
+%   endc = dof_handler.end();
+%  Point<2> point;
+%  for (; cell!=endc; ++cell)
+%   {
+%    for (unsigned int w = 0; w < wells.size(); w++)
+%     {
+% 		 point = fe_values->get_mapping().
+% 		 					transform_real_to_unit_cell(
+% 		 					 cell,wells[w].GetPosition());
+% 		 if( point(0) >= 0 && point(0) <= 1 &&
+% 				 point(1) >= 0 && point(1) <= 1)
+% 		 {
+% 		  wells[w].well_dof_indices.resize(fe.dofs_per_cell);		 
+% 		  cell->get_dof_indices(wells[w].well_dof_indices);
+% 		  wells[w].cell = cell;
+% 		 }
+%     }
+%   }
+% }
+% \end{lstlisting}
+% 
+% \subsection{\texttt{setup\_system}} \label{code:a03}
+% \begin{lstlisting}
+% void Program::setup_system (){
+% dof_handler.distribute_dofs (fe);
+% //BLOCK SPARSITY PATTERN
+% unsigned int n1 = dof_handler.n_dofs(),	
+%   	         n2 = (unsigned int)wells.size();
+% BlockCompressedSparsityPattern block_c_sparsity(2,2);
+% block_c_sparsity.block(0,0).reinit(n1,n1);
+% block_c_sparsity.block(0,1).reinit(n1,n2);
+% block_c_sparsity.block(1,0).reinit(n2,n1);
+% block_c_sparsity.block(1,1).reinit(n2,n2);
+% block_c_sparsity.collect_sizes();
+%   
+% //sets pattern to block(0,0)
+% DoFTools::make_sparsity_pattern(dof_handler, 
+%      block_c_sparsity.block(0,0));
+%   
+% //find cell on which the wells are
+% FindWellCells(&fe_values);
+%  
+% //sets pattern of the wells to block(0,1) and (1,0)
+% for (unsigned int w = 0; w < wells.size(); w++)
+% {
+%  for (unsigned int i = 0; 
+%       i < wells[w].well_dof_indices.size(); i++)
+%  {
+%   block_c_sparsity.block(0,1).add(
+%       wells[w].well_dof_indices[i], w);
+%   block_c_sparsity.block(1,0).add(
+%       w, wells[w].well_dof_indices[i]);
+%  }
+%  //diagonal pattern in the block (1,1)
+%  block_c_sparsity.block(1,1).add(w,w);
+% }
+%   
+% //copy from temporary to main BlockSparsityPattern
+% block_sp_pattern.copy_from(block_c_sparsity);
+%     
+% //prints whole BlockSparsityPattern
+% std::ofstream out1 ("block_sp_pattern.1");
+% block_sp_pattern.print_gnuplot (out1);
+% //prints SparsityPattern of the block (0,0)
+% std::ofstream out2 ("00_sp_pattern.1");
+% block_sp_pattern.block(0,0).print_gnuplot (out2);
+%   
+% // END BLOCK SPARSITY PATTERN
+% block_matrix.reinit(block_sp_pattern);
+%   
+% //BLOCK VECTOR - SOLUTION, RHS REINITIALIZATION
+% //two blocks in vectors
+% block_solution.reinit(2);
+% block_system_rhs.reinit(2);
+% block_solution.block(0).reinit(n1);
+% block_solution.block(1).reinit(n2);
+% block_system_rhs.block(0).reinit(n1);
+% block_system_rhs.block(1).reinit(n2);
+% block_solution.collect_sizes();
+% block_system_rhs.collect_sizes();
+% }
+% \end{lstlisting}
+%   
+% \subsection{\texttt{assemble\_system}} \label{code:a04}
+% \begin{lstlisting}
+% void Program::assemble_system (){		 
+% const unsigned int dofs_per_cell = fe.dofs_per_cell;
+% const unsigned int n_q_points = quadrature_formula.size();				   
+% FullMatrix<double> cell_matrix (dofs_per_cell, 
+% 																dofs_per_cell);
+% 				   
+% std::vector<unsigned int> local_dof_indices(dofs_per_cell);
+%    
+% DoFHandler<2>::active_cell_iterator
+%  cell = dof_handler.begin_active(),
+%  endc = dof_handler.end();
+% for (; cell!=endc; ++cell)
+% {
+%  fe_values.reinit (cell);
+%  cell_matrix = 0;
+% 	
+%  //INTEGRALS FOR BLOCK(0,0)
+%  for (unsigned int i=0; i<dofs_per_cell; ++i)
+%   for (unsigned int j=0; j<dofs_per_cell; ++j)
+% 	 for (unsigned int q_point=0; 
+% 	 			q_point<n_q_points; ++q_point)
+% 	 {
+% 		cell_matrix(i,j) += (transmisivity *
+% 			  fe_values.shape_grad (i, q_point) *
+% 			  fe_values.shape_grad (j, q_point) *
+% 			  fe_values.JxW (q_point));
+% 	 }
+% 	
+%  //FILLING MATRIX BLOCK(0,0)
+%  cell->get_dof_indices (local_dof_indices);
+% 	
+%  for (unsigned int i=0; i<dofs_per_cell; ++i)
+%   for (unsigned int j=0; j<dofs_per_cell; ++j)
+% 		block_matrix.block(0,0).add (local_dof_indices[i],
+% 			     local_dof_indices[j],
+% 			     cell_matrix(i,j));
+% }
+% //WELLS
+% const unsigned int n_well_qpoints = 100;
+% for (unsigned int w = 0; w < wells.size(); w++)
+% {
+%  //cell (of the well) matrix dimensions
+%  const unsigned int wm = 
+%  					wells[w].well_dof_indices.size() + 1;
+%  FullMatrix<double> well_cell_matrix (wm,wm);
+% 	
+%  //quadrature for integrating on well boundary
+%  QGauss<2> well_quadrature(n_well_qpoints);
+%  //new fe_values on well with new quadrature
+%  FEValues<2> well_fe_values(fe,well_quadrature, 
+%  														update_values);
+% 	
+%  well_fe_values.reinit (wells[w].cell);
+%  double jxw = 2 * M_PI / n_well_qpoints * 
+%  							wells[w].GetRadius();
+% 	
+%  //addition to block(0,0)
+%  for (unsigned int i=0; i<dofs_per_cell; ++i)
+%   for (unsigned int j=0; j<dofs_per_cell; ++j)
+%    for (unsigned int q_point=0; 
+%    			q_point < n_well_qpoints; ++q_point)
+% 		{
+% 		  well_cell_matrix(i,j) += 
+% 		  		wells[w].GetPerm2aquifer() *
+% 				  well_fe_values.shape_value (i, q_point) *
+% 				  well_fe_values.shape_value (j, q_point) *
+% 				  jxw;
+% 		}
+% 	
+%  //addition to block (0,1)
+%  for (unsigned int i=0; i<dofs_per_cell; ++i)
+%   for (unsigned int q_point=0; 
+%   		 q_point < n_well_qpoints; ++q_point)
+%   {
+% 	 well_cell_matrix(i, wm-1) += (-1) * 
+% 	 		wells[w].GetPerm2aquifer() *
+% 			well_fe_values.shape_value (i, q_point) *
+% 		  jxw;
+%   }
+% 	  
+%  //addition to block (1,0)
+%  for (unsigned int j=0; j<dofs_per_cell; ++j)
+%   for (unsigned int q_point=0; 
+%   		 q_point < n_well_qpoints; ++q_point)
+% 	 {
+% 	  well_cell_matrix(wm-1,j) += 
+% 	  	wells[w].GetPerm2aquifer() *
+% 			well_fe_values.shape_value (j, q_point) *
+% 			jxw;
+% 	 }
+% 	
+%  //addition to block (1,1)
+%  well_cell_matrix(wm-1,wm-1) += (-1) * 
+%  			wells[w].GetPerm2aquitard() * 	
+%  			wells[w].GetPressureAtTop();
+% 	
+%  //FILLING BLOCK MATRIX
+%  //filling block (0,0)
+%  for (unsigned int i=0; i<dofs_per_cell; ++i)
+%   for (unsigned int j=0; j<dofs_per_cell; ++j)
+%    block_matrix.block(0,0).add (
+% 			wells[w].well_dof_indices[i],
+% 			wells[w].well_dof_indices[j],
+% 			well_cell_matrix(i,j));
+% 	
+%  //filling block (0,1)
+%  for (unsigned int i=0; i<dofs_per_cell; ++i)
+%   block_matrix.block(0,1).add (
+% 		wells[w].well_dof_indices[i],
+% 		w,
+% 		well_cell_matrix(i,wm-1));
+% 	
+%  //filling block (1,0)
+%  for (unsigned int j=0; j<dofs_per_cell; ++j)
+%   block_matrix.block(1,0).add (
+% 		w,
+% 		wells[w].well_dof_indices[j],
+% 		well_cell_matrix(wm-1,j));
+% 	
+%  //filling block (1,1)
+%  block_matrix.block(1,1).add(
+%  		w, w, well_cell_matrix(wm-1,wm-1));
+% 	
+%  //addition to rhs
+%  block_system_rhs.block(1)(w) = (-1) * 
+%  		wells[w].GetPerm2aquitard() * 
+%  		wells[w].GetPressureAtTop();
+% }} //end of cycle, end of method 									 
+% \end{lstlisting}
+
+\end{document}
+
+% ******************************************************************************
+% Konec dokumentu
+% ******************************************************************************
+
