@@ -232,7 +232,7 @@ int main ()
        test_convergence = 1,
        test_permeability = 0,
        
-       test_two_enrichment = 1,
+       test_two_enrichment = 0,
        test_two_refinement = 0,
        test_five_wells = 0,
        
@@ -634,7 +634,7 @@ int main ()
       //model_simple.output_results (cycle);
       std::cout << "===== FEM Model_simple finished =====" << std::endl;
       
-      if(cycle < 5)
+      //if(cycle < 5)
       {
       std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
       

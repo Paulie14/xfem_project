@@ -4,7 +4,9 @@
   - optimalization of adaptive_integration
   - other small improvements in code
   - solver setting and preconditiong improved
-  
+  - xfem with shift done
+  - system matrix output
+  - Octave script for matrix analysis
   
 doc_diplomka
   - typing corrections

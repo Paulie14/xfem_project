@@ -1,0 +1,29 @@
+# C++ files
+*.o
+*.cc~
+*.hh~
+.kdev4
+.kdev_include_paths
+build
+output
+
+# LaTeX files
+*.bbl
+*.aux
+*.blg
+*.kate-swp
+*.lof
+*.log
+*.lol
+*.lot
+*.out
+*.swp
+*.toc
+*.bib~
+*.tex~
+
+# other files
+*.m~
+*.m~~
+*.txt~
+*.ods#

@@ -398,7 +398,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
         enriched_weights[local_dof_indices[i]] = 1;
       }
       
-      //adding degree of freedom for every node (both reproducing and blending elements)
+      //adding degree of freedom for every node on enriched element (both reproducing and blending elements)
       enriched_dof_indices[local_dof_indices[i]] = n_global_enriched_dofs;
       local_enriched_dofs[i] = n_global_enriched_dofs;
       n_global_enriched_dofs ++;
@@ -574,7 +574,7 @@ void XModel::setup_system ()
 	    << dof_handler->n_dofs()
 	    << std::endl;
 
-  //find cells on which the wells are
+  //find cells which lies within the enrichment radius of the wells
   find_enriched_cells();
   
   
@@ -584,11 +584,8 @@ void XModel::setup_system ()
     std::vector<unsigned int> well_dof_indices(xdata[x]->n_wells(), 0);
     for(unsigned int w=0; w < xdata[x]->n_wells(); w++)
     {
-      //if(xdata[x]->get_q_points(w).size() > 0 )      //we will need well dofs only in well boundary integral assemble
-      {
-        //DBGMSG("setup-well_dof_indices: wi=%d \n", xdata[x]->get_well_index(w));
-        well_dof_indices[w] = dof_handler->n_dofs() + n_enriched_dofs + xdata[x]->get_well_index(w);
-      }
+      //DBGMSG("setup-well_dof_indices: wi=%d \n", xdata[x]->get_well_index(w));
+      well_dof_indices[w] = dof_handler->n_dofs() + n_enriched_dofs + xdata[x]->get_well_index(w);
     }
     xdata[x]->set_well_dof_indices(well_dof_indices);
   }
@@ -746,14 +743,9 @@ void XModel::assemble_system ()
   const unsigned int dofs_per_cell = fe.dofs_per_cell;
   const unsigned int n_q_points    = quadrature_formula.size();
 
-
   FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
   //Vector<double>       cell_rhs (dofs_per_cell);	//HOMOGENOUS NEUMANN -> = 0
   std::vector<unsigned int> local_dof_indices (dofs_per_cell);
-  
-  FullMatrix<double>   enrich_cell_matrix;
-  std::vector<unsigned int> enrich_dof_indices; //dof indices of enriched and unrenriched dofs
-  Vector<double>       enrich_cell_rhs; 
   
   //for checking number of active cells (there used to be a problem in adaptivity)
   unsigned int count = 0;
@@ -802,6 +794,12 @@ void XModel::assemble_system ()
     }    
     else
     {
+      
+      FullMatrix<double>   enrich_cell_matrix;
+      std::vector<unsigned int> enrich_dof_indices; //dof indices of enriched and unrenriched dofs
+      Vector<double>       enrich_cell_rhs; 
+  
+  
       Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
       
       //DBGMSG("cell: %d .................callling adaptive_integration.........",cell->index());
@@ -819,7 +817,8 @@ void XModel::assemble_system ()
         }
       }
       
-      adaptive_integration.integrate(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+      adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+      //adaptive_integration.integrate_xfem_shift(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
 
 //       //printing enriched nodes and dofs
 //       DBGMSG("Printing dof_indices:  [");
@@ -889,8 +888,7 @@ void XModel::assemble_system ()
     hanging_node_constraints.condense(block_matrix);
     hanging_node_constraints.condense(block_system_rhs);
   }
-  
-  write_block_sparse_matrix(block_matrix,"xfem_matrix");
+    
 }
 
                                
@@ -904,6 +902,8 @@ void XModel::solve ()
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
  
   
+  /*
+  //EIGENVALUES ESTIMATE
   
   double biggest_eigen = 0, 
          smallest_eigen = 0;
@@ -935,6 +935,8 @@ void XModel::solve ()
   {
     *iter = 0;
   }
+  //*/
+  
   
   /*
   //SOLVER SELECTOR
@@ -943,7 +945,7 @@ void XModel::solve ()
   solver_selector.select("cg");
   //*/
   
-  /* 
+  
   //USING CG, BICG, PreconditionJacobi
   //SolverBicgstab<BlockVector<double> > solver_bicg(solver_control,vector_memory);
   SolverCG<BlockVector<double> > solver_cg(solver_control, vector_memory);
@@ -952,10 +954,10 @@ void XModel::solve ()
   preconditioning.initialize(block_matrix, 1.0);
 
   solver_cg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
-  solver_bicg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
+  //solver_bicg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   
   std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
-  */
+  //*/
  
       
   
@@ -967,7 +969,7 @@ void XModel::solve ()
 
   
   
-  //
+  /*
   ReductionControl inner_control (4000, 1.e-16, 1.e-2);
   PreconditionJacobi<BlockSparseMatrix<double> > inner_precondition;
   inner_precondition.initialize(block_matrix, 1.0);
@@ -1007,8 +1009,14 @@ void XModel::solve ()
 
 
 void XModel::output_results (const unsigned int cycle)
-{
-  ///MESH OUTPUT
+{ 
+  // MATRIX OUTPUT
+  std::stringstream matrix_name;
+  matrix_name << "matrix_" << cycle;
+  write_block_sparse_matrix(block_matrix,matrix_name.str());
+  
+  
+  // MESH OUTPUT
   std::stringstream filename1; 
   filename1 << output_dir << "xfem_mesh_" << cycle;
   std::ofstream output1 (filename1.str() + ".msh");
@@ -1016,7 +1024,7 @@ void XModel::output_results (const unsigned int cycle)
   grid_out.write_msh<2> (*triangulation, output1);
    
 
-  //dummy solution for displaying mesh int Paraview
+  // dummy solution for displaying mesh in Paraview
   DataOut<2> data_out;
   data_out.attach_dof_handler (*dof_handler);
   Vector<double> dummys_solution(block_solution.block(0).size());
@@ -1032,7 +1040,7 @@ void XModel::output_results (const unsigned int cycle)
   //computing solution on the computational mesh
   std::vector< Point< 2 > > support_points(dof_handler->n_dofs());
   DoFTools::map_dofs_to_support_points<2>(fe_values.get_mapping(), *dof_handler, support_points);
-  compute_distributed_solution(support_points);
+  //compute_distributed_solution(support_points);
   
   data_out.clear();
   data_out.attach_dof_handler (*dof_handler);
@@ -1264,7 +1272,8 @@ const dealii::Vector< double >& XModel::get_solution()
 
 void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& points)
 {
-  unsigned int n_points = points.size();
+  unsigned int n_points = points.size(),
+               n_vertices = GeometryInfo<2>::vertices_per_cell;
   //clearing distributed solution vectors
   dist_unenriched.reinit(0);
   dist_enriched.reinit(0);
@@ -1283,21 +1292,26 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
   std::vector<unsigned int> local_dof_indices (dofs_per_cell);
   std::vector<double> local_shape_values (dofs_per_cell);
   
+  double xshape;
+  
   Point<2> unit_point;
   unsigned int n=1,
-               n_const = points.size() / 10;
+               n_const = points.size() / 10;            //how often we will write DBGMSG
   //iteration over all points where we compute solution
   for (unsigned int p = 0; p < points.size(); p++)
   {
+    //only writing DBGMSG to see activity
     if(p == n*n_const)
     {
       DBGMSG("point: p=%d\n",p);
       n++;
     }
       
+    //writing zero just for sure
     dist_unenriched[p] = 0;
     dist_enriched[p] = 0;
     dist_solution[p] = 0;
+    
     //DBGMSG("point number: %d\n", p);
     //finds cell where points[p] lies and maps that point to unit_point
     //returns pair<cell, unit_point>
@@ -1305,7 +1319,7 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
     // point = cell_and_point.second
     cell_and_point = GridTools::find_active_cell_around_point<2>(fe_values.get_mapping(), *dof_handler, points[p]);
 
-    unit_point = GeometryInfo<2>::project_to_unit_cell(cell_and_point.second); //due to roundoffs
+    unit_point = GeometryInfo<2>::project_to_unit_cell(cell_and_point.second); //recommended due to roundoffs
     
     fe_values.reinit (cell_and_point.first);
     //unit_point = fe_values.get_mapping().transform_real_to_unit_cell(cell_and_point.first,points[p]);
@@ -1327,19 +1341,23 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
       
       for(unsigned int w = 0; w < cell_xdata->n_wells(); w++)
       {
+        xshape = cell_xdata->get_well(w)->global_enrich_value(points[p]);
+        
         //compute value (weight) of the ramp function
         double weight = 0;
-        for(unsigned int l = 0; l < dofs_per_cell; l++)
+        for(unsigned int l = 0; l < n_vertices; l++)
         {
           weight += cell_xdata->weights(w)[l] * local_shape_values[l];
         }
           
-        for(unsigned int k = 0; k < cell_xdata->global_enriched_dofs(w).size(); k++)
+        for(unsigned int k = 0; k < n_vertices; k++)
         {
           dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
                               weight *
                               local_shape_values[k] *
-                              cell_xdata->get_well(w)->global_enrich_value(points[p]);
+                              xshape;
+                              //(xshape - cell_xdata->get_well(w)->global_enrich_value(cell_and_point.first->vertex(k))); //shifted
+                              //(xshape + 1);
         } //for k
       } //for w
     } //if
@@ -1350,7 +1368,12 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
 
 void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_tria, const unsigned int& cycle, const unsigned int& m_aquifer)
 {
-  ///MESH OUTPUT
+  // MATRIX OUTPUT
+  std::stringstream matrix_name;
+  matrix_name << "matrix_" << cycle;
+  write_block_sparse_matrix(block_matrix,matrix_name.str());
+  
+  // MESH OUTPUT
   std::stringstream filename1;
   filename1 << output_dir << "xfem_mesh_" << cycle;
   std::ofstream output1 (filename1.str() + ".msh");

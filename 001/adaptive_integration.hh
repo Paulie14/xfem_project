@@ -11,8 +11,8 @@
  // #define DECOMPOSED_CELL_MATRIX
 #endif
 
-//#define SOURCES
-#define BC_NEWTON
+#define SOURCES
+//#define BC_NEWTON
   
 #include "mapping.hh"
 
@@ -102,11 +102,17 @@ class Adaptive_integration
       * @param local_dof_indices is vector of dof indices (both unenriched and enriched)
       * @param transmisivity is transmisivity defined on the cell for the Laplace member of the equation
       */
-    void integrate( FullMatrix<double> &cell_matrix, 
-                    Vector<double> &cell_rhs,
-                    std::vector<unsigned int> &local_dof_indices,
-                    const double &transmisivity
-                  );
+    void integrate_xfem( FullMatrix<double> &cell_matrix, 
+                         Vector<double> &cell_rhs,
+                         std::vector<unsigned int> &local_dof_indices,
+                         const double &transmisivity
+                       );
+    
+    void integrate_xfem_shift( FullMatrix<double> &cell_matrix, 
+                               Vector<double> &cell_rhs,
+                               std::vector<unsigned int> &local_dof_indices,
+                               const double &transmisivity
+                             );
     
     /** @brief Calls gnuplot to create image of refined element.
      * 

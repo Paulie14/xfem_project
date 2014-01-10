@@ -198,8 +198,7 @@ void Model_base::set_output_dir(const std::string& path)
 
 void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< double >& matrix, const string& filename)
 {
-  //std::stringstream filename1; 
-  //filename1 << output_dir << "xfem_matrix";
+  // WHOLE SYSTEM MATRIX  ----------------------------------------------------------------
   std::string path = output_dir + filename + ".m";
   std::ofstream output (path);
   
@@ -213,6 +212,49 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
     for(unsigned int j=0; j < m; j++)
     {
       output << matrix.el(i,j) << " ";
+    }
+    output << "\n";
+  }
+  
+  output.close();
+  
+  // A MATRIX ----------------------------------------------------------------
+  path = output_dir + filename + "_a.m";
+  output.clear();
+  output.open(path);
+  
+  if(! output.is_open()) 
+    xprintf(Warn, "Could not open file to write matrix: %s", path.c_str());
+  
+  m = matrix.block(0,0).m();
+  
+  for(unsigned int i=0; i < m; i++)
+  {
+    for(unsigned int j=0; j < m; j++)
+    {
+      output << matrix.block(0,0).el(i,j) << " ";
+    }
+    output << "\n";
+  }
+  
+  output.close();
+  
+  
+  // E MATRIX ----------------------------------------------------------------
+  path = output_dir + filename + "_e.m";
+  output.clear();
+  output.open(path);
+  
+  if(! output.is_open()) 
+    xprintf(Warn, "Could not open file to write matrix: %s", path.c_str());
+  
+  m = matrix.block(1,1).m();
+  
+  for(unsigned int i=0; i < m; i++)
+  {
+    for(unsigned int j=0; j < m; j++)
+    {
+      output << matrix.block(1,1).el(i,j) << " ";
     }
     output << "\n";
   }

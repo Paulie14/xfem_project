@@ -223,7 +223,7 @@ protected:
   //@}
   
   //Writes matrix in matlab .m file.
-    void write_block_sparse_matrix(const BlockSparseMatrix<double> &matrix, const std::string &filename);
+  void write_block_sparse_matrix(const BlockSparseMatrix<double> &matrix, const std::string &filename);
   
   ///Vector of wells.
   std::vector<Well*> wells;

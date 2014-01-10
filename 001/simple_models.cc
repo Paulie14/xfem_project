@@ -72,16 +72,12 @@ void XModel_simple::make_grid()
 {
   dof_handler->clear();
   coarse_tria.clear();
-  DBGMSG("SEG\n");
+  
   if(triangulation != NULL)
   {
-    DBGMSG("SEG\n");
     triangulation->clear();
-    DBGMSG("SEG\n");
     triangulation->clear_flags();
-    DBGMSG("SEG\n");
   }
-  DBGMSG("SEG\n");
   
   switch (grid_create)
   {
@@ -120,7 +116,6 @@ void XModel_simple::make_grid()
     }
     case load_circle:
     {
-      DBGMSG("SEG\n");
       GridGenerator::hyper_ball<2>(coarse_tria,center,radius);
       static const HyperBallBoundary<2> boundary(center,radius);
       coarse_tria.set_boundary(0, boundary);
