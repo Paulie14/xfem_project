@@ -10,3 +10,8 @@
   
 doc_diplomka
   - typing corrections
+  
+002:
+  - XFEM shift
+  - SGFEM
+  - XFEValues
