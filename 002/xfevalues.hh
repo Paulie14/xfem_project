@@ -92,7 +92,7 @@ void XFEValues<T>::reinit(XDataCell* xdata)
         q_enrich_values_[w].resize(this->n_quadrature_points);
 
         for(unsigned int q=0; q < this->n_quadrature_points; q++)
-          q_enrich_values_[w][q] = xdata_->get_well(w)->global_enrich_value(this->quadrature_point(q));
+          q_enrich_values_[w][q] = xdata_->get_well(w)->global_enrich_value(this->quadrature_point(q)); //returns quadrature_point in real coordinates
       }
     }
     prepare();

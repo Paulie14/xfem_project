@@ -93,7 +93,7 @@ double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int 
 }
 
 
-
+//NOT WORKING
 template<>
 Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q)
 {

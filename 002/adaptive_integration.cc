@@ -328,6 +328,8 @@ void Adaptive_integration::gather_w_points()
                          squares[i].mapping.jakobian() );
     }
   }
+  q_points_all.shrink_to_fit();
+  jxw_all.shrink_to_fit();
 }
 
 
@@ -935,7 +937,7 @@ void Adaptive_integration::integrate_xfem_shift( FullMatrix<double> &cell_matrix
                        xshape_shifted;
             }
 #endif
-                     
+                 
             //gradients of shape functions need to be mapped (computed on the unit cell)
             //scale_to_unit means inverse scaling
             shape_grad_vec[index] += 
@@ -956,6 +958,10 @@ void Adaptive_integration::integrate_xfem_shift( FullMatrix<double> &cell_matrix
                          //xshape_grad_shifted
                        );
           } //for l
+//           if (cell->index() == 60)
+//           {
+//             DBGMSG("shape_grad_vec[%d] = %f, %f\n", index, shape_grad_vec[index].operator[](0),shape_grad_vec[index].operator[](1));
+//           }
           index ++;
         } //for k
         
@@ -1061,7 +1067,11 @@ void Adaptive_integration::integrate_xfem_shift( FullMatrix<double> &cell_matrix
 
         // filling shape values at first
         for(unsigned int i = 0; i < dofs_per_cell; i++)
+        {
           shape_val_vec[i] = fe->shape_value(i, unit_point);
+           
+          //DBGMSG("shape_val_vec[%d] = %f\n", i, shape_val_vec[i]);
+        }
         
         //computing value (weight) of the ramp function
         double weight = 0;
@@ -1076,7 +1086,8 @@ void Adaptive_integration::integrate_xfem_shift( FullMatrix<double> &cell_matrix
                      weight *
                      shape_val_vec[k] * 
                      ( xshape - xshape_nodes[w*n_vertices + k] );
-            //DBGMSG("shape_val_vec[%d]: %f\n",index, shape_val_vec[index]);
+ 
+            //DBGMSG("shape_val_vec[%d] = %f\n", dofs_per_cell+k, shape_val_vec[dofs_per_cell+k]);
         } //for k
         
         shape_val_vec[n_w_dofs-1] = -1.0;  //testing function of the well
@@ -1135,8 +1146,8 @@ void Adaptive_integration::integrate_xfem_shift2( FullMatrix<double> &cell_matri
                n_dofs = n_wells*n_vertices + dofs_per_cell;     // n_wells * XFEM_n_dofs_ + FEM_n_dofs
                
   gather_w_points();
-  Quadrature<2> *quad = new Quadrature<2>(q_points_all, jxw_all);
-  XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,*quad, update_values 
+  Quadrature<2> quad(q_points_all, jxw_all);
+  XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,quad, update_values 
                                                                | update_gradients 
                                                                | update_quadrature_points 
                                                                | update_covariant_transformation 
@@ -1279,8 +1290,14 @@ void Adaptive_integration::integrate_xfem_shift2( FullMatrix<double> &cell_matri
   {
     if(xdata->q_points(w).size() > 0)
     {
-      Quadrature<2> *quad2 = new Quadrature<2>(xdata->q_points(w));
-      XFEValues<Enrichment_method::xfem_shift> xfevalues2(*fe,*quad2, update_values 
+      std::vector<Point<2> > points(xdata->q_points(w).size());
+      for (unsigned int p =0; p < points.size(); p++)
+      {
+        
+        points[p] = mapping->transform_real_to_unit_cell(cell,*(xdata->q_points(w)[p]));
+      }
+      Quadrature<2> quad2 (points);
+      XFEValues<Enrichment_method::xfem_shift> xfevalues2(*fe,quad2, update_values 
                                                                | update_quadrature_points 
                                                                | update_covariant_transformation 
                                                                | update_gradients 
@@ -1324,13 +1341,18 @@ void Adaptive_integration::integrate_xfem_shift2( FullMatrix<double> &cell_matri
       {
         // filling shape values at first
         for(unsigned int i = 0; i < dofs_per_cell; i++)
+        {
           shape_val_vec[i] = xfevalues2.shape_value(i,q);
+          //DBGMSG("shape_val_vec[%d] = %f\n", i, shape_val_vec[i]);
+        }
         
         
         for(unsigned int k = 0; k < n_vertices; k++)
         { 
             shape_val_vec[dofs_per_cell + k] = xfevalues2.enrichment_value(k,w,q);
-            //DBGMSG("shape_val_vec[%d]: %f\n",index, shape_val_vec[index]);
+//             { 
+//               DBGMSG("shape_val_vec[%d] = %f\n", dofs_per_cell+k, shape_val_vec[dofs_per_cell+k]);
+//             }
         } //for k
         
         shape_val_vec[n_w_dofs-1] = -1.0;  //testing function of the well
