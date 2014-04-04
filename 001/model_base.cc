@@ -23,6 +23,9 @@ Model_base::Model_base()
     n_aquifers(1),
     
     last_run_time_(0),
+    solver_it(0),
+    matrix_output_(false),
+    sparsity_pattern_output_(false),
     output_dir("../output/model/"),
     main_output_dir("../output/"),
     name("model_base")
@@ -42,6 +45,9 @@ Model_base::Model_base(const std::string& name,
     n_aquifers(n_aquifers),
     
     last_run_time_(0),
+    solver_it(0),
+    matrix_output_(false),
+    sparsity_pattern_output_(false),
     output_dir("../output/model/"),
     main_output_dir("../output/"),
     name(name)
@@ -66,6 +72,9 @@ Model_base::Model_base(const std::vector< Well* >& wells,
     n_aquifers(n_aquifers),
     
     last_run_time_(0),
+    solver_it(0),
+    matrix_output_(false),
+    sparsity_pattern_output_(false),
     output_dir("../output/model/"),
     main_output_dir("../output/"),
     name(name)
@@ -90,6 +99,10 @@ Model_base::Model_base(const Model_base &model, std::string name)
   n_aquifers(model.n_aquifers),
   transmisivity(model.transmisivity),
   
+  last_run_time_(0),
+  solver_it(0),
+  matrix_output_(false),
+  sparsity_pattern_output_(false),
   output_dir(model.main_output_dir+name+"/"),
   main_output_dir(model.main_output_dir),
   name(name)

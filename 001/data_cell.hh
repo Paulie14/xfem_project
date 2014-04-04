@@ -40,7 +40,7 @@ public:
   
   ///Returns number of wells comunicating with the cell
   inline unsigned int n_wells()
-  { return wells_.size(); } 
+  { return n_wells_; } 
   
   /// Returns pointer to one of the wells comunicating with the cell this data belong to.
   /**
@@ -71,6 +71,10 @@ public:
    */
   virtual void add_data(Well *well, const unsigned int &well_index);
   
+  
+  /// Initialize rutines before system assembly
+  virtual void initialize(){}
+  
 protected:
   ///iterator of the cell to which this data object belongs
   dealii::DoFHandler<2>::active_cell_iterator cell_;
@@ -80,6 +84,10 @@ protected:
   std::vector<unsigned int> wells_indices_;
   ///global dof indices of the wells
   std::vector<unsigned int> well_dof_indices_;
+  
+  unsigned int n_wells_;
+  unsigned int n_vertices_;
+  bool well_inside;
 };
 
 
@@ -183,6 +191,9 @@ class XDataCell : public DataCellBase
     /// Getter for quadrature points along the edge of the well.
     const std::vector<const dealii::Point<2>* > &q_points(const unsigned int &local_well_index);
     
+    /// Getter for enrichment function values at nodes.
+    const std::vector<double> &node_enrich_value(unsigned int local_well_index);
+    
     /// Add enriched data (without q_points)
     void add_data(Well *well, 
                   const unsigned int &well_index, 
@@ -196,12 +207,21 @@ class XDataCell : public DataCellBase
                   const std::vector<unsigned int> &weights,
                   const std::vector<const dealii::Point<2>* > &q_points);
     
+    /// Initialize rutines before system assembly
+    void initialize();
+    
   private:
     /** Global numbers of enriched DoFs. 
      * Index subset in \f$ \mathcal{M}_w \f$ (nodes on both reproducing and blending elements).
      * Access the index in format [well_index][local_node_index].
      */
     std::vector<std::vector<unsigned int> > global_enriched_dofs_;
+    
+    /** Enrichment function values at nodes.
+     * Index subset in \f$ \mathcal{M}_w \f$ (nodes on both reproducing and blending elements).
+     * Access the index in format [well_index][local_node_index].
+     */
+    std::vector<std::vector<double> > node_enrich_values_;
     
     /** Weights of enriched nodes. 
      * Weight is equal \f$ g_u = 1 \$ at enriched node from subset \f$ \mathcal{N}_w \f$.

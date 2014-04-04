@@ -122,6 +122,11 @@ public:
   inline double get_transmisivity(const unsigned int &m_aquifer) const
   {return transmisivity[m_aquifer];}
   
+  
+  ///Returns number of iterations
+  inline unsigned int solver_iterations() const
+  {return solver_it; }
+  
   //@}
   
   /** @name Setters
@@ -141,8 +146,8 @@ public:
   ///@param trans is a vector of transmisivities of all aquifers
   void set_transmisivity(const std::vector<double> &trans);
   
-  ///Setter of initial refinement.
-  ///@param ref initial refinement to be set
+  ///Setter of initial refinement level. Default is 0.
+  ///@param ref initial refinement level to be set
   inline void set_refinement(const double &ref)
   {init_refinement = ref;}
   
@@ -150,19 +155,18 @@ public:
   ///@param path file path a directory
   void set_output_dir(const std::string &path);
   
-  ///Sets the name of the model and creates individual output directory.
+  ///Sets the name of the model and creates individual output directory. Default is 'model_base'.
   ///@param name is the name to be set
   inline void set_name(const std::string &name)
   { this->name = name;
     set_output_dir(main_output_dir); //reseting output directory
   }
   
-  ///Sets how the grid should be created.
+  ///Sets how the grid should be created. Default is 'rect'.
   void set_grid_create_type(grid_create_type type)
   { grid_create = type; }
   
-  ///Sets adaptivity on and off
-  ///adaptivity is off by default
+  ///Sets adaptivity on and off. Default is false.
   inline void set_adaptivity (bool is_on)
   { this->is_adaptive = is_on;}
 
@@ -174,11 +178,20 @@ public:
   }
   
   ///Sets the function defining the Dirichlet function.
-  void set_dirichlet_function(Function<2> *func)
+  inline void set_dirichlet_function(Function<2> *func)
   {
     dirichlet_function = func;
   }
+  
+  ///Sets output of the system matrix on/off. Default is false.
+  inline void set_matrix_output(bool matrix_output)
+  { matrix_output_ = matrix_output;}
+  
+  ///Sets output of the sparsity pattern on/off. Default is false.
+  inline void set_sparsity_pattern_output(bool sparsity_pattern_output)
+  { sparsity_pattern_output_ = sparsity_pattern_output;}
   //@}
+    
     
 protected:
   
@@ -218,7 +231,7 @@ protected:
    * This cannot be done the same for all models, if we will consider enrichment at the boundary in the future.
    */
   virtual void assemble_dirichlet() 
-  {std::cout << "No Dirichlet BC is applied." << std::endl; }; //does nothing
+  {std::cout << "No Dirichlet BC is applied." << std::endl; };
 
   //@}
   
@@ -257,6 +270,10 @@ protected:
   //@{
   ///last run time (setup, assemble, solve)
   double last_run_time_;
+  
+  unsigned int solver_it;
+  bool matrix_output_,
+       sparsity_pattern_output_;
   
   /** @brief Path to output directory.
    * Name should be defined before, else name="Model".

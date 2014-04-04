@@ -147,7 +147,7 @@ void Model::make_grid ()
           triangulation->read_flags(in);
         else
         {
-          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.", ref_flags_file.c_str());
+          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.\n", ref_flags_file.c_str());
         }
         //creates actual grid to be available
         triangulation->restore();
@@ -389,13 +389,16 @@ void Model::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  //prints whole BlockSparsityPattern
-  std::ofstream out1 (output_dir + "block_sp_pattern.1");
-  block_sp_pattern.print_gnuplot (out1);
+  if(sparsity_pattern_output_)
+  {
+    //prints whole BlockSparsityPattern
+    std::ofstream out1 (output_dir + "block_sp_pattern.1");
+    block_sp_pattern.print_gnuplot (out1);
 
-  //prints SparsityPattern of the block (0,0)
-  std::ofstream out2 (output_dir + "00_sp_pattern.1");
-  block_sp_pattern.block(0,0).print_gnuplot (out2);
+    //prints SparsityPattern of the block (0,0)
+    std::ofstream out2 (output_dir + "00_sp_pattern.1");
+    block_sp_pattern.block(0,0).print_gnuplot (out2);
+  }
   
   // END BLOCK SPARSITY PATTERN
  
@@ -788,8 +791,6 @@ void Model::assemble_system ()
   
   hanging_node_constraints.condense(block_matrix);
   hanging_node_constraints.condense(block_system_rhs);
-  
-  write_block_sparse_matrix(block_matrix,"fem_matrix");
 }
                                
     
@@ -797,7 +798,7 @@ void Model::solve ()
 {
   //block_matrix.print_formatted(std::cout);
   //block_system_rhs.print(std::cout);
-  SolverControl	solver_control(2500, 1e-12);
+  SolverControl	solver_control(4000, 1e-10);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
   //this solver is used for block matrices and vectors
   SolverCG<BlockVector<double> > solver(solver_control, vector_memory);
@@ -807,6 +808,7 @@ void Model::solve ()
 			  
   solver.solve(block_matrix, block_solution, block_system_rhs, preconditioner); //PreconditionIdentity());
   
+  solver_it = solver_control.last_step();
   std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
   
   hanging_node_constraints.distribute(block_solution);
@@ -816,6 +818,10 @@ void Model::solve ()
 
 void Model::output_results (const unsigned int cycle)
 {
+  // MATRIX OUTPUT
+  if(matrix_output_)
+    write_block_sparse_matrix(block_matrix,"fem_matrix");
+  
    //MESH OUTPUT
    std::stringstream filename;
    
@@ -903,6 +909,15 @@ void Model::output_distributed_solution(const std::string& mesh_file, const std:
 
 void Model::output_distributed_solution(const dealii::Triangulation< 2 >& dist_tria, const unsigned int& cycle)
 {
+  // MATRIX OUTPUT
+  if(matrix_output_)
+  {
+    std::stringstream matrix_name;
+    matrix_name << "matrix_" << cycle;
+    write_block_sparse_matrix(block_matrix,matrix_name.str());
+  }
+  
+  
   FE_Q<2>          dist_fe(1);                    
   DoFHandler<2>    dist_dof_handler;
   ConstraintMatrix hanging_node_constraints;

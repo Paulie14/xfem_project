@@ -108,7 +108,7 @@ void XModel_simple::make_grid()
           triangulation->read_flags(in);
         else
         {
-          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.", ref_flags_file.c_str());
+          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.\n", ref_flags_file.c_str());
         }
         //creates actual grid to be available
         triangulation->restore();
@@ -194,25 +194,26 @@ void XModel_simple::refine_grid()
   if(r_enr.size() > 0)
     enrichment_radius = r_enr[0];
   
+  triangulation->set_all_refine_flags();
+  
   if(grid_create == load_circle)
-  {
-    triangulation->set_all_refine_flags();
-    
+  {  
     Triangulation<2>::active_cell_iterator  
       cell = triangulation->begin_active(),
       endc = triangulation->end();
     //DBGMSG("refinement: %d\n",ref);
     for (; cell!=endc; ++cell)
     {
-      if(cell->at_boundary() || (cell->center().distance(center) > (enrichment_radius+enriched_cell_diameter) && (cell->level() > 4)))
+      if(cell->at_boundary() || (cell->level() > xdata[0]->get_cell()->level()))
+      //if(cell->at_boundary() || (cell->center().distance(center) > (enrichment_radius+enriched_cell_diameter) && (cell->level() > 4)))
       //if(cell->center().distance(center) > (r_enr[0]+enriched_cell_diameter)) //cell->at_boundary())
       {
         cell->clear_refine_flag();
       }
     }
-    
-    triangulation->execute_coarsening_and_refinement();
   }
+  
+  triangulation->execute_coarsening_and_refinement();
   triangulation_changed = true;
 }
 

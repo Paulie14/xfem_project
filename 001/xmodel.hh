@@ -65,6 +65,25 @@ class XDataCell;
  */
 
 
+/** Enumerates methods of enrichment.
+   */
+  struct Enrichment_method
+  {
+    typedef enum {xfem_ramp,   ///< means that the values at the boundary points will be used outside the interval_miss_a
+                  xfem_shift,  ///< means that the linear approximation on the first and last subintervals will be used outside the interval 
+                  sgfem        ///< means that the original functor will be called outside interpolation interval
+    } Type;
+  };
+  
+///type of grid creation
+    struct Well_computation 
+    { 
+      typedef enum {
+        bc_newton,  //wells act like newton boundary condition   
+        sources     //wells act like sources
+      }Type;  
+    };
+
 /// class XModel
 /**
  * @brief Model of an aquifer with wells using XFEM on non-adaptively refined grid.
@@ -76,12 +95,6 @@ class XDataCell;
 class XModel : public Model_base 
 {
   public:
-    ///type of grid creation
-    typedef enum { 
-      bc_newton,  //wells act like newton boundary condition   
-      sources     //wells act like sources
-    } well_computation_type;
-  
     /// Default constructor
     XModel ();
     
@@ -160,14 +173,19 @@ class XModel : public Model_base
     { return *triangulation; }
     
     ///Returns the total number of degrees of freedom (both enriched and unenriched)
-    unsigned int get_number_of_dofs()
-    { return n_enriched_dofs + dof_handler->n_dofs(); }
+    std::pair<unsigned int, unsigned int> get_number_of_dofs()
+    { //std::pair<unsigned int, unsigned int> pair(n_enriched_dofs, dof_handler->n_dofs()); 
+      return std::make_pair(dof_handler->n_dofs(), n_enriched_dofs);
+    }
+    
+    //unsigned int get_number_of_dofs()
+    //{ return n_enriched_dofs + dof_handler->n_dofs(); }
     //@}
     
     
     /// @name Setters
     //@{
-    inline void set_enrichment_radius(const double &r_enr)
+    inline void set_enrichment_radius(double r_enr)
     { this->rad_enr = r_enr; }
     
     inline void set_output_features(bool decomposed = true, bool shape_functions = false)
@@ -180,16 +198,19 @@ class XModel : public Model_base
      * @param coarse_mesh is the path to the GMSH file to be loaded
      * @param ref_flags is the path to the file with refinement flags
      */
-    inline void set_computational_mesh (const std::string &coarse_mesh, const std::string &ref_flags)
+    inline void set_computational_mesh (std::string coarse_mesh, std::string ref_flags = "")
     { this->coarse_grid_file = coarse_mesh;
       this->ref_flags_file = ref_flags;
       grid_create = load;
     }
     
-    inline void set_well_computation_type(well_computation_type well_computation)
+    inline void set_well_computation_type(Well_computation::Type well_computation)
     {
-      this->well_computation = well_computation;
+      well_computation_ = well_computation;
     }
+    
+    inline void set_enrichment_method (Enrichment_method::Type enrichment_method)
+    { enrichment_method_ = enrichment_method;}
     //@}
     
     //returns vector of support points 
@@ -229,6 +250,18 @@ class XModel : public Model_base
                       unsigned int &n_global_enriched_dofs
                       );
    
+    /** @brief Recursive function to mark enriched cells and nodes.
+     * Recusively marks enriched cells and distribute 
+     * degrees of freedom of the enrichment.
+     * Uses @p user_flags of the triangulation and tests only cells inside or on the edge
+     * of the well. That means it will not go through all the cells.
+     */
+    void enrich_cell_sgfem (const DoFHandler<2>::active_cell_iterator cell, 
+                      const unsigned int &well_index,
+                      std::vector<unsigned int> &enriched_dof_indices,
+                      unsigned int &n_global_enriched_dofs
+                      );
+    
     /** @brief Helpful function used when outputing the enriched shape function.
      * 
      * It returns in the vector @p cells all the cells, that are enriched by the given degree of freedom.
@@ -251,9 +284,11 @@ class XModel : public Model_base
                       bool xfem = true
                      );
     
+    ///Type of enrichment method
+    Enrichment_method::Type enrichment_method_;
     
     //Type of well compuation. How do we consider the well.
-    well_computation_type well_computation;
+    Well_computation::Type well_computation_;
         
     /** path to computational mesh
      * temporary, should be removed (only for output)

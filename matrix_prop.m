@@ -5,33 +5,16 @@ disp('dimensions and rank: ');
 r = rank(A,eps)
 
 
+%{
 disp('Octave matrix type: ');
 pd_temp = matrix_type(A)
 if(pd_temp == 'Positive Definite')
 	pd = 1;
 else pd=0;
 endif
+%}
 
-disp('Symetry (=norm(A-AT)): ');
-norm_sym = norm(A-A');
-if (norm_sym == 0)
-	disp('YES');
-	sym = 1;
-else
-	disp('NO');
-	sym = 0;
-endif
 
-%computation of eigenvalues and condition number
-disp('Condition number:');
-lambda = eig(A);
-max_lambda = max(lambda)
-min_lambda = min(lambda)
-c = abs( max_lambda/min_lambda)
-cond (A)
-condest(A)
-
-%{
 disp('Positive definite:');
 
 pos_def = 0;
@@ -48,6 +31,27 @@ else
 endif
 
 %}
+
+disp('Symetry (=norm(A-AT)): ');
+norm_sym = norm(A-A');
+if (norm_sym <= eps)
+	disp('YES');
+	sym = 1;
+else
+	disp('NO');
+	sym = 0;
+endif
+
+%computation of eigenvalues and condition number
+disp('Condition number:');
+lambda = eig(A);
+max_lambda = max(lambda)
+min_lambda = min(lambda)
+c = abs( max_lambda/min_lambda)
+cond (A)
+% fghcondest(A)
+
+
 
 % diagonally dominant
 % diagA = diag( A )' ;    % Get the diagonal entries of S

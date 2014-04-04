@@ -11,8 +11,8 @@
  // #define DECOMPOSED_CELL_MATRIX
 #endif
 
-#define SOURCES
-//#define BC_NEWTON
+//#define SOURCES
+#define BC_NEWTON
   
 #include "mapping.hh"
 
@@ -113,6 +113,12 @@ class Adaptive_integration
                                std::vector<unsigned int> &local_dof_indices,
                                const double &transmisivity
                              );
+    
+    void integrate_sgfem( FullMatrix<double> &cell_matrix, 
+                          Vector<double> &cell_rhs,
+                          std::vector<unsigned int> &local_dof_indices,
+                          const double &transmisivity
+                        );
     
     /** @brief Calls gnuplot to create image of refined element.
      * 

@@ -56,7 +56,8 @@
 
 XModel::XModel () 
   : Model_base(),
-    well_computation(bc_newton),
+    enrichment_method_(Enrichment_method::xfem_shift),
+    well_computation_(Well_computation::bc_newton),
     rad_enr(0),
     n_enriched_dofs(0),
     //dealii fem
@@ -76,7 +77,8 @@ XModel::XModel ()
 XModel::XModel (const std::string &name, 
                 const unsigned int &n_aquifers) 
 :   Model_base::Model_base(name, n_aquifers),
-    well_computation(bc_newton),
+    enrichment_method_(Enrichment_method::xfem_shift),
+    well_computation_(Well_computation::bc_newton),
     rad_enr(0),
     n_enriched_dofs(0),
     //dealii fem
@@ -97,7 +99,8 @@ XModel::XModel (const std::vector<Well*> &wells,
                 const std::string &name, 
                 const unsigned int &n_aquifers) 
 :   Model_base::Model_base(wells, name, n_aquifers),
-    well_computation(bc_newton),
+    enrichment_method_(Enrichment_method::xfem_shift),
+    well_computation_(Well_computation::bc_newton),
     rad_enr(0),
     n_enriched_dofs(0),
     //dealii fem
@@ -169,7 +172,7 @@ void XModel::make_grid ()
           triangulation->read_flags(in);
         else
         {
-          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.", ref_flags_file.c_str());
+          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.\n", ref_flags_file.c_str());
         }
         //creates actual grid to be available
         triangulation->restore();
@@ -278,21 +281,24 @@ void XModel::find_enriched_cells()
         //getting r_enr (circle in which dofs(nodes) will be enriched)
         //setting first XData for the cell in which the center of the well lies
         r_enr[w]=wells[w]->radius(); //can be set to well radius or 0
-        
-        //user defined enrichment radius
-        if(rad_enr > 0)
-          r_enr[w] = std::max(rad_enr, r_enr[w]);
+        r_enr[w] = std::max(rad_enr, r_enr[w]);
         
         //check off the minimal enrichment radius (has to include at least one node)
-        for(unsigned int i=0; i < fe.dofs_per_cell; i++)
+        double dist = std::max(cell->vertex(0).distance(wells[w]->center()), r_enr[w]);
+        for(unsigned int i=1; i < fe.dofs_per_cell; i++)
         {
           //assumming that the well radius is smaller than the cell
-          r_enr[w] = std::max(cell->vertex(i).distance(wells[w]->center()), r_enr[w]);
+          dist = std::min(cell->vertex(i).distance(wells[w]->center()), r_enr[w]);
+          //dist = std::max(cell->vertex(i).distance(wells[w]->center()), dist);
         }  
-          
+        r_enr[w] = std::max(dist, r_enr[w]);
           
         triangulation->clear_user_flags();
-        enrich_cell(cell, w, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
+        
+        if(enrichment_method_ == Enrichment_method::sgfem)
+          enrich_cell_sgfem(cell, w, enriched_dof_indices, n_global_enriched_dofs);
+        else
+          enrich_cell(cell, w, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
         
         std::cout << "enrichment radius: wanted: " << rad_enr << "  finally set: " << r_enr[w] << std::endl;
         
@@ -329,7 +335,6 @@ void XModel::find_enriched_cells()
   }
   //*/
 }
-
 
 
 //-------------------------------------------------------------------------------------- ENRICH CELL
@@ -409,7 +414,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
  
  
   /////-----------------------------Well Boundary Integration part--------------start
-  if(well_computation == bc_newton)
+  //if(well_computation_ == Well_computation::bc_newton)
   {
     //looking for quadrature poitns of the well in the current cell
     //temporary vector of q_points
@@ -460,7 +465,9 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
     }
   }
   /////-----------------------------Well Boundary Integration part--------------end
-  else if(well_computation == sources)
+  /*
+  //this will be possible if we know at this point whether the well crosses the cell (we know this only from q_points)
+  else if(well_computation_ == Well_computation::sources)
   {
     //checking if there has been xdata already created
     //if not it is created
@@ -482,6 +489,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
                                 local_enriched_dofs, local_enriched_node_weights );
     }
   }
+  //*/
   
   // searching neighbors...
   for (unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; ++face_no)
@@ -542,6 +550,218 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
             enrich_cell(neighbor, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
+          }
+      }
+  }
+}
+
+//-------------------------------------------------------------------------------------- ENRICH CELL
+void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
+                           const unsigned int &well_index,
+                           std::vector<unsigned int> &enriched_dof_indices,
+                           unsigned int &n_global_enriched_dofs
+                         )
+{
+  //std::cout << "CALL enrich_cell on: " << cell->index();
+  // if the flag is set = we have been already there, so continue
+    if ( cell->user_flag_set() == true)
+    {
+      //std::cout << "\thave already been at cell\n";
+      return;
+    }
+  
+  //sets user flag for the cell in which we have been
+  cell->set_user_flag();
+  
+  //flag is true if no node is to be enriched (is not in the enrichment radius )
+  bool cell_not_enriching = true;
+  
+  for(unsigned int i=0; i < fe.dofs_per_cell; i++)
+  {
+    if(cell->vertex(i).distance(wells[well_index]->center()) <= r_enr[well_index])
+    {
+      cell_not_enriching = false;
+    }
+  }
+  
+  //if there is no previously enriched dof we can return
+  if (cell_not_enriching)
+  {
+    return;
+  }
+  //else
+  
+  
+  std::vector<unsigned int> local_dof_indices(fe.dofs_per_cell);
+  cell->get_dof_indices(local_dof_indices);
+  
+  //else we continue by enriching dofs
+  //std::cout << "\tenriched: ";
+  //temporary space for enriched dofs
+  std::vector<unsigned int> local_enriched_dofs(fe.dofs_per_cell,0);
+  std::vector<unsigned int> local_enriched_node_weights(fe.dofs_per_cell,0);    //not needed - is input to XDataCell::add(...)
+  //enriching dofs
+  for(unsigned int i=0; i < fe.dofs_per_cell; i++)
+  {
+    //if the node was previously enriched
+    if (enriched_dof_indices[local_dof_indices[i]] != 0)
+    {
+      //adding enriched dof that has been already defined from previous cell
+      local_enriched_dofs[i] = enriched_dof_indices[local_dof_indices[i]];
+    }
+    else
+    { 
+      //if the node should be enriched
+      if (cell->vertex(i).distance(wells[well_index]->center()) <= r_enr[well_index])
+      {
+        //adding degree of freedom for every (and only) ENRICHED node on enriched element
+        enriched_dof_indices[local_dof_indices[i]] = n_global_enriched_dofs;
+        local_enriched_dofs[i] = n_global_enriched_dofs;
+        n_global_enriched_dofs ++;
+      }
+    }
+    //std::cout << enriched_dof_indices[local_dof_indices[i]] << " ";
+  }
+  //std::cout << std::endl;
+ 
+ 
+  /////-----------------------------Well Boundary Integration part--------------start
+  //if(well_computation_ == Well_computation::bc_newton)
+  {
+    //looking for quadrature poitns of the well in the current cell
+    //temporary vector of q_points
+    std::vector<const Point<2>* > points;
+    //flag for addition cell to the vector in well object
+    bool q_points_to_add = false;
+    //checking if the q_points are in the cell
+    for(unsigned int p=0; p < wells[well_index]->q_points().size(); p++)
+    {
+      if (cell->point_inside(wells[well_index]->q_points()[p]))
+      {
+        q_points_to_add = true;
+        //adding point
+        points.push_back( &(wells[well_index]->q_points()[p]) );
+      }
+    }
+    
+    //checking if there has been xdata already created
+    //if not it is created
+    //if so it means that XData object has been created and there are additions from other wells
+    if(cell->user_pointer() == NULL)
+    {
+      if(q_points_to_add)
+      xdata.push_back(new XDataCell(cell, 
+                                    wells[well_index], 
+                                    well_index, 
+                                    local_enriched_dofs, 
+                                    local_enriched_node_weights, 
+                                    points));
+      else
+      xdata.push_back(new XDataCell(cell, 
+                                    wells[well_index], 
+                                    well_index, 
+                                    local_enriched_dofs, 
+                                    local_enriched_node_weights));
+    
+      cell->set_user_pointer(xdata.back());
+    }
+    else
+    {
+      XDataCell* xdata_pointer = static_cast<XDataCell*> (cell->user_pointer());
+      if(q_points_to_add)
+        xdata_pointer->add_data(wells[well_index], well_index, 
+                                local_enriched_dofs, local_enriched_node_weights, points );
+      else
+        xdata_pointer->add_data(wells[well_index], well_index, 
+                                local_enriched_dofs, local_enriched_node_weights );
+    }
+  }
+  /////-----------------------------Well Boundary Integration part--------------end
+  /*
+  //this will be possible if we know at this point whether the well crosses the cell (we know this only from q_points)
+  else if(well_computation_ == Well_computation::sources)
+  {
+    //checking if there has been xdata already created
+    //if not it is created
+    //if so it means that XData object has been created and there are additions from other wells
+    if(cell->user_pointer() == NULL)
+    {
+      xdata.push_back(new XDataCell(cell, 
+                                    wells[well_index], 
+                                    well_index, 
+                                    local_enriched_dofs, 
+                                    local_enriched_node_weights));
+    
+      cell->set_user_pointer(xdata.back());
+    }
+    else
+    {
+      XDataCell* xdata_pointer = static_cast<XDataCell*> (cell->user_pointer());
+        xdata_pointer->add_data(wells[well_index], well_index, 
+                                local_enriched_dofs, local_enriched_node_weights );
+    }
+  }
+  //*/
+  
+  // searching neighbors...
+  for (unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; ++face_no)
+  {
+    //std::cout << "\tface(" << face_no << "): ";
+    typename DoFHandler<2>::face_iterator face = cell->face(face_no);
+    
+    //if the face is at the boundary, there is no neighbor, so continue
+    if (face->at_boundary()) 
+    {
+      //std::cout << "at the boundary\n";
+      continue;
+    }
+    
+    // asking face about children - if so, then there must also be finer cells 
+    // which are children or farther offsprings of our neighbor.
+    if (face->has_children())
+      {
+        //std::cout << "\t Face has children." << std::endl;
+        //TODO: check if adaptivity
+        // iteration over subfaces - children
+        for (unsigned int subface_no = 0; subface_no < face->number_of_children(); ++subface_no)
+          {
+            typename DoFHandler<2>::cell_iterator neighbor_child
+                           = cell->neighbor_child_on_subface (face_no, subface_no);
+            Assert (!neighbor_child->has_children(), ExcInternalError());
+            
+            //std::cout << "\tFace=" << face_no << " subface=" << subface_no 
+            //          << " entering cell=" << neighbor_child->index() << std::endl;
+            // entering on the neighbor's children behind the current face
+            enrich_cell_sgfem(neighbor_child, well_index, enriched_dof_indices, n_global_enriched_dofs);
+          }
+          //*/
+      }
+    else
+      {
+        // creating neighbor's cell iterator
+        MASSERT(cell->neighbor(face_no).state() == IteratorState::valid,
+            "Neighbor's state is invalid.");
+        typename DoFHandler<2>::cell_iterator neighbor = cell->neighbor(face_no);
+        MASSERT(!neighbor->has_children(), "Neighbor has children and is not active!");
+        
+        // asking if the neighbor is coarser, if not then it is neither coarser nor finer
+        // so it is the same level of refinement
+        if (!cell->neighbor_is_coarser(face_no) 
+            //&&
+            //(neighbor->index() > cell->index() ||
+            //(neighbor->level() < cell->level() &&
+            //neighbor->index() == cell->index() ))
+           )
+          {
+            //std::cout << "\tneigh: " << neighbor->index() << "\t same refine level: " 
+            //          << neighbor->level() << std::endl;
+            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs);
+          } 
+        else
+          //is coarser
+          {
+            //std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
+            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs);
           }
       }
   }
@@ -676,7 +896,7 @@ void XModel::setup_system ()
             }
           }
           //block C, C_transpose - unenriched dofs
-          if(cell_xdata->q_points(w).size() > 0)
+          if(cell_xdata->q_points(w).size() > 0)        //does the well cross the cell?
           {
             block_c_sparsity.add(local_dof_indices[k], n_well_block + cell_xdata->get_well_index(w));
             block_c_sparsity.add(n_well_block + cell_xdata->get_well_index(w), local_dof_indices[k]);
@@ -722,13 +942,16 @@ void XModel::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  //prints whole BlockSparsityPattern
-  std::ofstream out1 (output_dir+"block_sp_pattern.1");
-  block_sp_pattern.print_gnuplot (out1);
+  if(sparsity_pattern_output_)
+  {
+    //prints whole BlockSparsityPattern
+    std::ofstream out1 (output_dir+"block_sp_pattern.1");
+    block_sp_pattern.print_gnuplot (out1);
 
-  //prints SparsityPattern of the block (0,0)
-  std::ofstream out2 (output_dir+"00_sp_pattern.1");
-  block_sp_pattern.block(0,0).print_gnuplot (out2);
+    //prints SparsityPattern of the block (0,0)
+    std::ofstream out2 (output_dir+"00_sp_pattern.1");
+    block_sp_pattern.block(0,0).print_gnuplot (out2);
+  }
   
   
   //DBGMSG("Printing sparsity pattern: \n");
@@ -817,9 +1040,17 @@ void XModel::assemble_system ()
         }
       }
       
-      adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-      //adaptive_integration.integrate_xfem_shift(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-
+      switch(enrichment_method_)
+      {
+        case Enrichment_method::xfem_ramp: 
+          adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          break;
+        case Enrichment_method::xfem_shift:
+          adaptive_integration.integrate_xfem_shift(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          break;
+        case Enrichment_method::sgfem:
+          adaptive_integration.integrate_sgfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+      }
 //       //printing enriched nodes and dofs
 //       DBGMSG("Printing dof_indices:  [");
 //       for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
@@ -898,7 +1129,7 @@ void XModel::solve ()
   //how to do things for BLOCK objects
   //http://www.dealii.org/archive/dealii/msg02097.html
   
-  SolverControl	solver_control(4000, 1e-16);
+  SolverControl	solver_control(4000, 1e-10);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
  
   
@@ -956,6 +1187,8 @@ void XModel::solve ()
   solver_cg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   //solver_bicg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   
+  solver_it = solver_control.last_step();
+  
   std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
   //*/
  
@@ -1011,10 +1244,12 @@ void XModel::solve ()
 void XModel::output_results (const unsigned int cycle)
 { 
   // MATRIX OUTPUT
-  std::stringstream matrix_name;
-  matrix_name << "matrix_" << cycle;
-  write_block_sparse_matrix(block_matrix,matrix_name.str());
-  
+  if(matrix_output_)
+  {
+    std::stringstream matrix_name;
+    matrix_name << "matrix_" << cycle;
+    write_block_sparse_matrix(block_matrix,matrix_name.str());
+  }
   
   // MESH OUTPUT
   std::stringstream filename1; 
@@ -1179,11 +1414,14 @@ void XModel::get_dof_func(const std::vector< Point< 2 > >& points,
                   dof_func[p] += // block_solution(dof_index) *
                                  //fe.shape_value(l, unit_point) * 
                                  fe.shape_value(k, unit_point) *
-                                 cell_xdata->get_well(w)->global_enrich_value(points[p]);
+                                 (cell_xdata->get_well(w)->global_enrich_value(points[p]) 
+                                  - cell_xdata->get_well(w)->global_enrich_value(cells[c]->vertex(k))
+                                );
                   }
                 } //for l
-                w = cell_xdata->n_wells();
-                k = cell_xdata->global_enriched_dofs(w).size();
+                break;
+                //w = cell_xdata->n_wells();
+                //k = cell_xdata->global_enriched_dofs(w).size();
               } //if
             } //for k
           } //for w
@@ -1342,23 +1580,57 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
       for(unsigned int w = 0; w < cell_xdata->n_wells(); w++)
       {
         xshape = cell_xdata->get_well(w)->global_enrich_value(points[p]);
+        double ramp = 0;        
+        double xshape_inter = 0;
         
-        //compute value (weight) of the ramp function
-        double weight = 0;
-        for(unsigned int l = 0; l < n_vertices; l++)
+        switch(enrichment_method_)
         {
-          weight += cell_xdata->weights(w)[l] * local_shape_values[l];
-        }
-          
-        for(unsigned int k = 0; k < n_vertices; k++)
-        {
-          dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
-                              weight *
-                              local_shape_values[k] *
-                              xshape;
-                              //(xshape - cell_xdata->get_well(w)->global_enrich_value(cell_and_point.first->vertex(k))); //shifted
-                              //(xshape + 1);
-        } //for k
+          case Enrichment_method::xfem_shift:
+            //compute value (weight) of the ramp function
+            for(unsigned int l = 0; l < n_vertices; l++)
+            {
+              ramp += cell_xdata->weights(w)[l] * local_shape_values[l];
+            }
+            for(unsigned int k = 0; k < n_vertices; k++)
+            {
+              dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
+                                  ramp *
+                                  local_shape_values[k] *
+                                  (xshape - cell_xdata->get_well(w)->global_enrich_value(cell_and_point.first->vertex(k))); //shifted                      
+            }
+            break;
+            
+          case Enrichment_method::xfem_ramp: 
+            //compute value (weight) of the ramp function
+            for(unsigned int l = 0; l < n_vertices; l++)
+            {
+              ramp += cell_xdata->weights(w)[l] * local_shape_values[l];
+            }
+            for(unsigned int k = 0; k < n_vertices; k++)
+            {
+              dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
+                                  ramp *
+                                  local_shape_values[k] *
+                                  xshape;                      
+            }
+            break;
+
+          case Enrichment_method::sgfem:
+            //compute value interpolant
+            for(unsigned int l = 0; l < n_vertices; l++) //M_w
+            {
+              xshape_inter += local_shape_values[l] * cell_xdata->node_enrich_value(w)[l];
+            }
+            for(unsigned int k = 0; k < n_vertices; k++)
+            {
+              if(cell_xdata->global_enriched_dofs(w)[k] != 0)
+              dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
+                                  local_shape_values[k] *
+                                  (xshape - xshape_inter);
+            }
+            break;
+        } //switch
+        
       } //for w
     } //if
     
@@ -1369,9 +1641,12 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
 void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_tria, const unsigned int& cycle, const unsigned int& m_aquifer)
 {
   // MATRIX OUTPUT
-  std::stringstream matrix_name;
-  matrix_name << "matrix_" << cycle;
-  write_block_sparse_matrix(block_matrix,matrix_name.str());
+  if(matrix_output_)
+  {
+    std::stringstream matrix_name;
+    matrix_name << "matrix_" << cycle;
+    write_block_sparse_matrix(block_matrix,matrix_name.str());
+  }
   
   // MESH OUTPUT
   std::stringstream filename1;
@@ -1469,7 +1744,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     {
       dist_dof_func.push_back(Vector<double>(dist_dof_handler.n_dofs()));
       get_dof_func(support_points,i, dist_dof_func.back() );
-      //DBGMSG("output of xfem shape function of enriched dof %d\n",i);
+      DBGMSG("output of xfem shape function of enriched dof %d\n",i);
     }
   
     for(unsigned int i = 0; i < dist_dof_func.size(); i++)
@@ -1495,6 +1770,14 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
 
 void XModel::output_distributed_solution(const std::string& mesh_file, const std::string &flag_file, bool is_circle, const unsigned int& cycle, const unsigned int &m_aquifer)
 {
+  // MATRIX OUTPUT
+  if(matrix_output_)
+  {
+    std::stringstream matrix_name;
+    matrix_name << "matrix_" << cycle;
+    write_block_sparse_matrix(block_matrix,matrix_name.str());
+  }
+  
   //triangulation for distributing solution onto domain
   Triangulation<2> dist_coarse_tria;  
   PersistentTriangulation<2> *dist_tria;  

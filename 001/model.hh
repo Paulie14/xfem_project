@@ -94,7 +94,7 @@ class Model : public Model_base
       * @param ref is percentage of refinement
       * @param coarse is percentage of coarsening
       */
-    inline void set_ref_coarse_percentage(const float & ref, const float &coarse)
+    inline void set_ref_coarse_percentage(float ref, float coarse)
     { 
       refinement_percentage = ref;
       coarsing_percentage = coarse;
@@ -105,7 +105,7 @@ class Model : public Model_base
      * @param coarse_mesh is the path to the GMSH file to be loaded
      * @param ref_flags is the path to the file with refinement flags
      */
-    inline void set_computational_mesh (const std::string &coarse_mesh, const std::string &ref_flags)
+    inline void set_computational_mesh (std::string coarse_mesh, std::string ref_flags = "")
     { this->coarse_grid_file = coarse_mesh;
       this->ref_flags_file = ref_flags;
       grid_create = load;
@@ -117,9 +117,9 @@ class Model : public Model_base
      * @param center is center of the circle
      * @param radius is the radius of the circle
      */
-    inline void set_computational_mesh_circle(const std::string &ref_flags, 
-                                              const Point<2> &center, 
-                                              const double &radius)
+    inline void set_computational_mesh_circle(std::string ref_flags, 
+                                              Point<2> center, 
+                                              double radius)
     {
       this->center = center;
       this->radius = radius;
