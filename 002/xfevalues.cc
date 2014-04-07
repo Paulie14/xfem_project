@@ -93,7 +93,7 @@ double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int 
 }
 
 
-//NOT WORKING
+
 template<>
 Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q)
 {
@@ -117,9 +117,35 @@ Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsi
           ;
 }
 
+
+template<>
+Tensor<1,2> XFEValues<Enrichment_method::sgfem>::enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q)
+{
+  MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape grad function for this node undefined.");
+  
+  //interpolation of enrichment function
+  Tensor<1,2> interpolation_grad;       //is initialized with zeros
+  for(unsigned int i=0; i < n_vertices_; i++)
+  {
+    interpolation_grad += this->shape_grad(i,q) * xdata_->node_enrich_value(w,i);
+  }
+    
+  return  this->shape_value(function_no,q) *
+          (xdata_->get_well(w)->global_enrich_grad(this->quadrature_point(q)) - interpolation_grad) 
+          +
+          this->shape_grad(function_no,q) *
+          q_enrich_values_[w][q];
+          
+}
+
+
+
+
+//NOT WORKING
 template<>
 Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsigned int function_no, const unsigned int w, const Point<2> p)
 {
+  MASSERT(0, "thit method is not working correctly.");
   Point<2> unit_point = this->get_mapping().transform_real_to_unit_cell(cell_,p);
   
   //ramp function
@@ -186,9 +212,11 @@ Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsi
           ;
 }
 
+//NOT WORKING
 template<>
 Tensor<1,2> XFEValues<Enrichment_method::sgfem>::enrichment_grad(const unsigned int function_no, const unsigned int w, const Point<2> p)
 {
+  MASSERT(0, "thit method is not working correctly.");
   MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape grad function for this node undefined.");
   Point<2> unit_point = this->get_mapping().transform_real_to_unit_cell(cell_,p);
   

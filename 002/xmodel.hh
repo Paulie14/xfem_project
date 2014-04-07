@@ -168,6 +168,9 @@ class XModel : public Model_base
       return std::make_pair(dof_handler->n_dofs(), n_enriched_dofs);
     }
     
+    inline const Triangulation<2> & get_output_triangulation()
+    { return *output_triangulation;}
+    
     //unsigned int get_number_of_dofs()
     //{ return n_enriched_dofs + dof_handler->n_dofs(); }
     //@}
@@ -356,6 +359,7 @@ class XModel : public Model_base
     //output
     bool out_decomposed;
     bool out_shape_functions;
+    PersistentTriangulation<2>* output_triangulation;
 };
 
 #endif  //XModel_h

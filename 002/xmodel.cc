@@ -62,14 +62,15 @@ XModel::XModel ()
     rad_enr(0),
     n_enriched_dofs(0),
     //dealii fem
-    triangulation(NULL),
+    triangulation(nullptr),
     fe (1),
     quadrature_formula(2),
     fe_values (fe, quadrature_formula,
       update_values | update_gradients | update_JxW_values),
     hanging_nodes(true),
     out_decomposed(true),
-    out_shape_functions(false)
+    out_shape_functions(false),
+    output_triangulation(nullptr)
 {
   name = "Default_XFEM_Model";
   dof_handler = new DoFHandler<2>();
@@ -83,14 +84,15 @@ XModel::XModel (const std::string &name,
     rad_enr(0),
     n_enriched_dofs(0),
     //dealii fem
-    triangulation(NULL),
+    triangulation(nullptr),
     fe (1),
     quadrature_formula(2),
     fe_values (fe, quadrature_formula,
       update_values | update_gradients | update_JxW_values),
     hanging_nodes(true),
     out_decomposed(true),
-    out_shape_functions(false)
+    out_shape_functions(false),
+    output_triangulation(nullptr)
     
 {
   dof_handler = new DoFHandler<2>();
@@ -105,14 +107,15 @@ XModel::XModel (const std::vector<Well*> &wells,
     rad_enr(0),
     n_enriched_dofs(0),
     //dealii fem
-    triangulation(NULL),
+    triangulation(nullptr),
     fe (1),
     quadrature_formula(2),
     fe_values (fe, quadrature_formula,
       update_values | update_gradients | update_JxW_values),
     hanging_nodes(true),
     out_decomposed(true),
-    out_shape_functions(false)
+    out_shape_functions(false),
+    output_triangulation(nullptr)
     
 {
   //DBGMSG("XModel constructor, wells_size: %d\n",this->wells.size());
@@ -126,11 +129,14 @@ XModel::~XModel()
   for(unsigned int i=0; i < xdata.size(); i++)
     delete xdata[i];
   
-  if(dof_handler != NULL)
+  if(dof_handler != nullptr)
     delete dof_handler;
   
-  if(triangulation != NULL)
+  if(triangulation != nullptr)
     delete triangulation;
+  
+  if(output_triangulation != nullptr)
+    delete output_triangulation;
 }
 
 
@@ -138,7 +144,7 @@ void XModel::make_grid ()
 {
   dof_handler->clear();
   coarse_tria.clear();
-  if(triangulation != NULL)
+  if(triangulation != nullptr)
   {
     triangulation->clear();
     triangulation->clear_flags();
@@ -436,7 +442,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
     //checking if there has been xdata already created
     //if not it is created
     //if so it means that XData object has been created and there are additions from other wells
-    if(cell->user_pointer() == NULL)
+    if(cell->user_pointer() == nullptr)
     {
       if(q_points_to_add)
       xdata.push_back(new XDataCell(cell, 
@@ -473,7 +479,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
     //checking if there has been xdata already created
     //if not it is created
     //if so it means that XData object has been created and there are additions from other wells
-    if(cell->user_pointer() == NULL)
+    if(cell->user_pointer() == nullptr)
     {
       xdata.push_back(new XDataCell(cell, 
                                     wells[well_index], 
@@ -648,7 +654,7 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
     //checking if there has been xdata already created
     //if not it is created
     //if so it means that XData object has been created and there are additions from other wells
-    if(cell->user_pointer() == NULL)
+    if(cell->user_pointer() == nullptr)
     {
       if(q_points_to_add)
       xdata.push_back(new XDataCell(cell, 
@@ -685,7 +691,7 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
     //checking if there has been xdata already created
     //if not it is created
     //if so it means that XData object has been created and there are additions from other wells
-    if(cell->user_pointer() == NULL)
+    if(cell->user_pointer() == nullptr)
     {
       xdata.push_back(new XDataCell(cell, 
                                     wells[well_index], 
@@ -862,7 +868,7 @@ void XModel::setup_system ()
       }
     }
     
-    if (cell->user_pointer() != NULL)
+    if (cell->user_pointer() != nullptr)
     { 
       //A *a=static_cast<A*>(cell->user_pointer()); //from DEALII (TriaAccessor)
       XDataCell *cell_xdata = static_cast<XDataCell*>( cell->user_pointer() );
@@ -998,7 +1004,7 @@ void XModel::assemble_system ()
     std::cout <<"\n";
     //*/
       
-    if (cell->user_pointer() == NULL)
+    if (cell->user_pointer() == nullptr)
     {
       cell->get_dof_indices (local_dof_indices);
     
@@ -1051,11 +1057,12 @@ void XModel::assemble_system ()
           break;
         case Enrichment_method::xfem_shift:
           //adaptive_integration.integrate_xfem_shift(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-          adaptive_integration.integrate_xfem_shift2(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-          //adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          //adaptive_integration.integrate_xfem_shift2(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           break;
         case Enrichment_method::sgfem:
           //adaptive_integration.integrate_sgfem2(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          //adaptive_integration.integrate_sgfem3(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
       }
 //       //printing enriched nodes and dofs
@@ -1322,7 +1329,9 @@ void XModel::output_results (const unsigned int cycle)
   
   DBGMSG("tria: %d  %d \n",triangulation->n_refinement_steps(), triangulation->n_levels());
   
-  PersistentTriangulation<2> output_grid(coarse_tria);
+  output_triangulation = new PersistentTriangulation<2>(coarse_tria);
+  PersistentTriangulation<2> &output_grid = *output_triangulation;
+  
   output_grid.copy_triangulation(*triangulation);
   output_grid.restore();
   
@@ -1336,7 +1345,7 @@ void XModel::output_results (const unsigned int cycle)
   dist_unenriched = block_solution.block(0);
   dist_solution = dist_unenriched;
   double tolerance = 1e-3;
-  for(unsigned int n = 0; n < 10; n++)
+  for(unsigned int n = 0; n < 15; n++)
   {
     if( recursive_output(tolerance, output_grid, temp_dof_handler, temp_fe, cycle) )
       break;
@@ -1379,11 +1388,11 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
   {
     //DBGMSG("cell: %d\n",cell->index());
     // is there NOT a user pointer on the cell (i.e. is enriched)
-    if (cell->user_pointer() == NULL)
+    if (cell->user_pointer() == nullptr)
     {
       //if parent is enriched then provide user pointer to children, else continue(the cell is out of the enriched area) 
       if( (cell->level() != 0) && 
-          (cell->parent()->user_pointer() != NULL) 
+          (cell->parent()->user_pointer() != nullptr) 
         )
         cell->parent()->recursively_set_user_pointer(cell->parent()->user_pointer());
       else
@@ -1462,7 +1471,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     for (; c!=ec; ++c)
     {
       if( (c->level() != 0) && 
-          (c->parent()->user_pointer() != NULL) 
+          (c->parent()->user_pointer() != nullptr) 
         )
         c->parent()->recursively_set_user_pointer(c->parent()->user_pointer());
     }
@@ -1612,7 +1621,7 @@ void XModel::get_dof_func(const std::vector< Point< 2 > >& points,
         
         if(xfem)
         {
-          MASSERT(cells[c]->user_pointer() != NULL,"Cell not enriched!");
+          MASSERT(cells[c]->user_pointer() != nullptr,"Cell not enriched!");
         
           cell_xdata = static_cast<XDataCell*>( cells[c]->user_pointer() );
       
@@ -1684,7 +1693,7 @@ void XModel::get_dof_func(const std::vector< Point< 2 > >& points,
     }
 
     
-    if (cell_and_point.first->user_pointer() != NULL && xfem)
+    if (cell_and_point.first->user_pointer() != nullptr && xfem)
     {
       cell_xdata = static_cast<XData*>( cell_and_point.first->user_pointer() );
       
@@ -1788,7 +1797,7 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
     }
 
     
-    if (cell_and_point.first->user_pointer() != NULL)
+    if (cell_and_point.first->user_pointer() != nullptr)
     {
       cell_xdata = static_cast<XDataCell*>( cell_and_point.first->user_pointer() );
       

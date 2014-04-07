@@ -747,9 +747,10 @@ void test_output(std::string output_dir)
   
   XModel_simple xmodel(well);  
   
-//     xmodel.set_name(test_name + "sgfem");
-//     //xmodel.set_name(test_name + "sgfem_new");
-//     xmodel.set_enrichment_method(Enrichment_method::sgfem);
+  //xmodel.set_name(test_name + "sgfem");
+  //xmodel.set_name(test_name + "sgfem_new");
+//   xmodel.set_name(test_name + "sgfem_oldnew");
+//   xmodel.set_enrichment_method(Enrichment_method::sgfem);
   
   //xmodel.set_name(test_name + "xfem_shift");
   //xmodel.set_name(test_name + "xfem_shift_new");
@@ -770,6 +771,13 @@ void test_output(std::string output_dir)
   
   xmodel.run();
   xmodel.output_results();
+  
+  //double exact_norm = Comparing::L2_norm_exact(xmodel.get_output_triangulation(),well,radius);
+  double l2_norm_dif_xfem = Comparing::L2_norm_diff(xmodel.get_distributed_solution(),
+                                                    xmodel.get_output_triangulation(),
+                                                    well,
+                                                    radius);
+  std::cout << "l2_norm of difference to exact solution: " << l2_norm_dif_xfem << std::endl;
 }
 
 int main ()

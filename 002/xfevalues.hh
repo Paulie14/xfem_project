@@ -47,7 +47,7 @@ public:
    */
   double enrichment_value(const unsigned int function_no, const unsigned int w, const Point<2> p);
   
-  /** Returns the value of the gradient of the enrichment test function at quadrature point.
+  /** Returns the value of the gradient of the enrichment test function at quadrature point (according to used quadrature).
    */
   Tensor<1,2> enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q);
   
