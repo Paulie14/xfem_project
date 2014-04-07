@@ -747,14 +747,14 @@ void test_output(std::string output_dir)
   
   XModel_simple xmodel(well);  
   
-  //xmodel.set_name(test_name + "sgfem");
   //xmodel.set_name(test_name + "sgfem_new");
-//   xmodel.set_name(test_name + "sgfem_oldnew");
-//   xmodel.set_enrichment_method(Enrichment_method::sgfem);
+  //xmodel.set_name(test_name + "sgfem_oldnew");
+//  xmodel.set_name(test_name + "sgfem");
+//  xmodel.set_enrichment_method(Enrichment_method::sgfem);
   
-  //xmodel.set_name(test_name + "xfem_shift");
   //xmodel.set_name(test_name + "xfem_shift_new");
-  xmodel.set_name(test_name + "xfem_shift_oldnew");
+  //xmodel.set_name(test_name + "xfem_shift_oldnew");
+  xmodel.set_name(test_name + "xfem_shift");
   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
   
   xmodel.set_output_dir(output_dir);

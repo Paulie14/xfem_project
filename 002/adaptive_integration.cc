@@ -788,6 +788,202 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
 
 
 
+
+void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, bool real, bool show)
+{
+  //DBGMSG("gnuplotting\n");
+  std::string fgnuplot_ref = "adaptive_integration_refinement.dat",
+              fgnuplot_qpoints = "adaptive_integration_qpoints.dat",
+              script_file = "g_script_adapt.p";
+  
+  try
+    {
+        Gnuplot g1("adaptive_integration");
+        //g1.savetops("test_output");
+        //g1.set_title("adaptive_integration\nrefinement");
+        //g1.set_grid();
+        
+        /*
+        std::vector<double> x(squares.size()), y(squares.size());
+
+        for (unsigned int i = 0; i < squares.size(); i++)
+        {
+          for (unsigned int j = 0; j < 4; j++) 
+          {
+            x.push_back(squares[i].vertices[j][0]);          
+            y.push_back(squares[i].vertices[j][1]);
+          }
+        }
+        */
+        
+        
+        std::ofstream myfile1;
+        myfile1.open (output_dir + fgnuplot_ref);
+        if (myfile1.is_open()) 
+        {
+       
+        for (unsigned int i = 0; i < squares.size(); i++)
+        {
+          for (unsigned int j = 0; j < 4; j++) 
+          {
+            if(real)
+              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j]);
+              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
+            else
+              myfile1 << squares[i].vertices[j];
+            
+            myfile1 << "\n";
+          }
+          if(real)
+              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[0]);
+              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
+            else
+              myfile1 << squares[i].vertices[0];
+
+          myfile1 << "\n\n";
+        }
+        std::cout << left << setw(53) <<  "Adaptive XFEM element refinement written in: " << fgnuplot_ref << endl;
+        }
+        else 
+        { 
+          std::cout << "Coud not write refinement for gnuplot.\n";
+        }
+        myfile1.close();
+        
+        std::ofstream myfile2;
+        myfile2.open (output_dir + fgnuplot_qpoints);
+        if (myfile2.is_open()) 
+        {
+       
+        for (unsigned int i = 0; i < squares.size(); i++)
+        {
+          for (unsigned int j = 0; j < squares[i].gauss->get_points().size(); j++) 
+          {
+            if(real)
+              myfile2 << mapping->transform_unit_to_real_cell(cell, squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
+              //myfile2 << cell_mapping.map_unit_to_real(squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
+            else
+              myfile2 << squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]);
+             
+            myfile2 << "\n";
+          }
+        }
+        
+        std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
+        }
+        else 
+        { 
+          std::cout << "Coud not write qpoints for gnuplot." << std::endl;
+        }
+        myfile2.close();
+        
+        //g1.set_style("lines").plotfile_xy("adaptive_integration_refinement.dat",1,2,"Adaptive integration refinement");
+        
+        //g1.set_multiplot();
+        
+        //creating command
+        std::ostringstream strs;
+        strs << "set terminal x11\n";
+        strs << "set size ratio -1\n";
+        strs << "set parametric\n";
+        strs << "set trange [0:2*pi]\n";
+        
+        //unsigned int w = 0;
+        for(unsigned int w = 0; w < xdata->n_wells(); w++)
+        {
+          /* # parametricly plotted circle
+           * set parametric
+           * set trange [0:2*pi]
+           * # Parametric functions for a circle
+           * fx(t) = r*cos(t)
+           * fy(t) = r*sin(t)
+           * plot fx(t),fy(t)
+           */
+          if(real)
+          {
+            strs << "fx" << w << "(t) = " << xdata->get_well(w)->center()[0] 
+                << " + "<< xdata->get_well(w)->radius() << "*cos(t)\n";
+            strs << "fy" << w << "(t) = " << xdata->get_well(w)->center()[1] 
+                << " + "<< xdata->get_well(w)->radius() << "*sin(t)\n";
+          }
+          else
+          {
+            strs << "fx" << w << "(t) = " << m_well_center[w][0] 
+                << " + "<< m_well_radius[w] << "*cos(t)\n";
+            strs << "fy" << w << "(t) = " << m_well_center[w][1] 
+                << " + "<< m_well_radius[w] << "*sin(t)\n";
+          }
+        }
+        
+        strs << "plot \"" << "adaptive_integration_refinement.dat\" using 1:2 with lines,\\\n"
+             << "\"" << "adaptive_integration_qpoints.dat\" using 1:2 with points lc rgb \"light-blue\",\\\n";
+        for(unsigned int w = 0; w < xdata->n_wells(); w++)
+        {
+          strs << "fx" << w << "(t),fy" << w << "(t)";
+          if(w != xdata->n_wells()-1) 
+            strs << ",\\\n";
+        } 
+        
+        //saving gnuplot script
+        std::ofstream myfile3;
+        myfile3.open (output_dir + script_file);
+        if (myfile3.is_open()) 
+        {
+          // header
+          myfile3 << "# Gnuplot script for printing adaptively refined element.\n" <<
+                     "# Made by Pavel Exner.\n#\n" <<
+                     "# Run the script in gnuplot:\n" <<
+                     "# > load \"" << script_file << "\"\n#\n" <<
+                     "# Data files used:\n" << 
+                     "# " << fgnuplot_ref << "\n"
+                     "# " << fgnuplot_qpoints << "\n" 
+                     "#\n#" << std::endl;
+          // script
+          myfile3 << strs.str() << std::endl;
+          
+          std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
+        }
+        else 
+        { 
+          std::cout << "Coud not write gnuplot script.\n";
+        }
+        myfile3.close();
+        
+        
+        //show the plot by gnuplot if show == true
+        if(show)
+        {
+          //finally plot
+          g1.cmd(strs.str());
+        
+          //g1.unset_multiplot();
+          
+          //g1.set_style("points").plot_xy(x,y,"user-defined points 2d");
+        
+          //g1.showonscreen(); // window output
+         
+          #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
+          std::cout << std::endl << "GNUPLOT output on cell " << cell->index() << " ... Press ENTER to continue..." << std::endl;
+
+          std::cin.clear();
+          std::cin.ignore(std::cin.rdbuf()->in_avail());
+          std::cin.get();
+          #endif
+        }
+        
+    return;
+    
+    }
+    catch (GnuplotException ge)
+    {
+      std::cout << ge.what() << std::endl;
+    }
+}
+
+
+//OBSOLETE
+/*
+////////////////////////////////////////////////////// INTEGRATE_XFEM_SHIFT2 ////////////////////////////////////////////
 void Adaptive_integration::integrate_xfem_shift2( FullMatrix<double> &cell_matrix, 
                                       Vector<double> &cell_rhs,
                                       std::vector<unsigned int> &local_dof_indices,
@@ -1017,10 +1213,368 @@ void Adaptive_integration::integrate_xfem_shift2( FullMatrix<double> &cell_matri
 //     std::cout << "--------------------- " << std::endl;
     
 }
+//*/
 
 
 
+
+
+
+//OBSOLETE
 /*
+////////////////////////////////////////////////////// INTEGRATE_XFEM_SHIFT ////////////////////////////////////////////
+void Adaptive_integration::integrate_xfem_shift( FullMatrix<double> &cell_matrix, 
+                                      Vector<double> &cell_rhs,
+                                      std::vector<unsigned int> &local_dof_indices,
+                                      const double &transmisivity)
+{  
+  unsigned int n_wells_inside = 0,                      // number of wells with q_points inside the cell, zero initialized
+               n_wells = xdata->n_wells(),              // number of wells affecting the cell
+               dofs_per_cell = fe->dofs_per_cell,
+               n_vertices = GeometryInfo<2>::vertices_per_cell,
+               n_dofs = n_wells*n_vertices + dofs_per_cell;     // n_wells * XFEM_n_dofs_ + FEM_n_dofs
+               
+  //temporary for shape values and gradients
+  Tensor<1,2> xshape_grad,
+              xshape_grad_shifted;
+  double xshape = 0,
+         xshape_shifted = 0,
+         jacobian = 0, 
+         jxw = 0;
+  //xshape values and gradients in nodes
+         
+  std::vector<double> xshape_nodes(n_wells * n_vertices);
+  std::vector<Tensor<1,2> > xshape_grad_nodes(n_wells * n_vertices);
+         
+  //getting unenriched local dofs indices : [FEM(dofs_per_cell), XFEM(n_wells*dofs_per_cell), WELL(n_wells)]
+  local_dof_indices.clear();
+  local_dof_indices.resize(dofs_per_cell);
+  cell->get_dof_indices(local_dof_indices);
+  
+  local_dof_indices.resize(n_dofs);
+  //getting enriched dof indices and well indices
+  for(unsigned int w = 0; w < n_wells; w++)
+  {   
+    for(unsigned int i = 0; i < n_vertices; i++)
+    {
+      local_dof_indices[dofs_per_cell+w*n_vertices+i] = xdata->global_enriched_dofs(w)[i];
+     
+      xshape_nodes[w*n_vertices+i] =  xdata->get_well(w)->global_enrich_value(cell->vertex(i));
+      xshape_grad_nodes[w*n_vertices+i] =  xdata->get_well(w)->global_enrich_grad(cell->vertex(i));
+    }
+    if(xdata->q_points(w).size() > 0)
+    {
+      n_wells_inside++;
+      local_dof_indices.push_back(xdata->get_well_dof_index(w)); //one more for well testing funtion
+    }
+  }
+    
+  cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
+  cell_matrix = 0;
+  cell_rhs = Vector<double>(n_dofs+n_wells_inside);
+  cell_rhs = 0;
+  
+  //vector of quadrature points on the unit square
+  std::vector<Point<2> > q_points;
+  //vector of quadrature points mapped to unit cell
+  std::vector<Point<2> > q_points_mapped;
+  
+  //temporary vectors for both shape and xshape values and gradients
+  std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
+  std::vector<double > shape_val_vec(n_dofs+n_wells_inside,0);
+  
+  for(unsigned int s=0; s < squares.size(); s++)
+  {
+    //we are integrating on squares of the unit cell mapped from real cell!!
+    q_points = squares[s].gauss->get_points();  //unit square quadrature points
+    q_points_mapped = squares[s].gauss->get_points(); 
+    squares[s].mapping.map_unit_to_real(q_points_mapped);  //mapped from unit square to unit cell
+
+    Quadrature<2> temp_quad(q_points_mapped);
+    FEValues<2> temp_fe_values(*fe,temp_quad, update_values | update_gradients | update_jacobians);
+    temp_fe_values.reinit(cell);
+
+    
+//     //testing print of mapped q_points
+//     if (s == 1)
+//     {
+//       DBGMSG("mapping q_points:\n");
+//       for(unsigned int q=0; q < q_points.size(); q++)
+//       {
+//         std::cout << q_points[q] << " | ";
+//       }
+//       std::cout << "\n";
+//       for(unsigned int q=0; q < q_points.size(); q++)
+//       {
+//         std::cout << q_points_mapped[q] << " | ";
+//       }
+//       std::cout << "\n";
+//     }
+//     
+//     
+//     //in refinement=3 this cell is enriched but does not cross any well
+//     if (cell->index() == 33)
+//     {
+//       DBGMSG("integration:s_jakobian: %f cell_jakobian: %f\n",squares[s].mapping.jakobian(),cell_jakobian);
+//       DBGMSG("number of wells affecting this cell: %d\n", n_wells);
+//     }
+    
+    jacobian = squares[s].mapping.jakobian(); //square.mapping.jakobian = area of the square
+    
+    for(unsigned int q=0; q < q_points.size(); q++)
+    {
+      jxw = jacobian * temp_fe_values.jacobian(q).determinant() * squares[s].gauss->get_weights()[q];
+          
+      // filling FE shape values and shape gradients at first
+      for(unsigned int i = 0; i < dofs_per_cell; i++)
+      {
+        
+        shape_grad_vec[i] = temp_fe_values.shape_grad(i,q);
+        
+#ifdef SOURCES //----------------------------------------------------------------------------sources
+        if(n_wells_inside > 0)
+          shape_val_vec[i] = temp_fe_values.shape_value(i,q);
+#endif
+      }
+
+      // filling xshape values and xshape gradients next
+      
+      unsigned int index = dofs_per_cell; //index in the vector of values and gradients
+      for(unsigned int w = 0; w < n_wells; w++) //W
+      { 
+        Well* well = xdata->get_well(w);
+        //gradient of xfem function needn't be mapped (it is computed in real coordinates)
+        xshape = well->global_enrich_value(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
+        xshape_grad = well->global_enrich_grad(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
+        
+        for(unsigned int k = 0; k < n_vertices; k++) //M_w
+        { 
+          //SHIFT
+          xshape_shifted = xshape - xshape_nodes[w*n_vertices + k];
+          //xshape_grad_shifted = xshape_grad - xshape_grad_nodes[w*n_vertices + k];
+          //xshape_grad_shifted = xshape_grad;
+          
+#ifdef SOURCES //----------------------------------------------------------------------------sources
+          if(n_wells_inside > 0)
+            shape_val_vec[index] = 0;   // giving zero for sure (initialized with zeros)
+#endif
+          shape_grad_vec[index] = 0;  // giving zero for sure (Tensor<dim> is also initialized with zeros)
+          for(unsigned int l = 0; l < n_vertices; l++) //M_w
+          {
+            
+#ifdef SOURCES //----------------------------------------------------------------------------sources
+            if(n_wells_inside > 0)
+            {
+              shape_val_vec[index] += 
+                       xdata->weights(w)[l] *
+                       temp_fe_values.shape_value(l,q) *             // from weight function 
+                       temp_fe_values.shape_value(k,q) *
+                       //xshape;
+                       xshape_shifted;
+            }
+#endif
+                 
+            //gradients of shape functions need to be mapped (computed on the unit cell)
+            //scale_to_unit means inverse scaling
+            shape_grad_vec[index] += 
+                       xdata->weights(w)[l] *
+                       ( temp_fe_values.shape_grad(l,q) *            // from weight function
+                         temp_fe_values.shape_value(k,q) *
+                         //xshape
+                         xshape_shifted
+                         +
+                         temp_fe_values.shape_value(l,q) *           // from weight function
+                         temp_fe_values.shape_grad(k,q) *
+                         //xshape
+                         xshape_shifted
+                         +
+                         temp_fe_values.shape_value(l,q) *           // from weight function 
+                         temp_fe_values.shape_value(k,q) *
+                         xshape_grad
+                         //xshape_grad_shifted
+                       );
+          } //for l
+//           if (cell->index() == 60)
+//           {
+//             DBGMSG("shape_grad_vec[%d] = %f, %f\n", index, shape_grad_vec[index].operator[](0),shape_grad_vec[index].operator[](1));
+//           }
+          index ++;
+        } //for k
+        
+#ifdef SOURCES //----------------------------------------------------------------------------sources
+        //DBGMSG("index=%d\n",index);
+        //DBGMSG("shape_val_vec.size=%d\n",shape_val_vec.size());
+        if(n_wells_inside > 0)
+          shape_val_vec[index] = -1.0;  //testing function of the well
+#endif
+      } //for w
+      
+      //filling cell matrix now
+      //additions to matrix A,R,S from LAPLACE---------------------------------------------- LAPLACE
+      
+      for(unsigned int i = 0; i < n_dofs; i++)
+        for(unsigned int j = 0; j < n_dofs; j++)
+        {
+          cell_matrix(i,j) += transmisivity * 
+                              shape_grad_vec[i] *
+                              shape_grad_vec[j] *
+                              jxw;
+        }
+
+      //addition from SOURCES--------------------------------------------------------------- SOURCES
+#ifdef SOURCES
+      for(unsigned int w = 0; w < n_wells; w++) //W
+      {
+        //this condition tests if the quadrature point lies within the well (testing function omega)
+        if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q])))
+        { 
+          for(unsigned int i = 0; i < n_dofs+n_wells_inside; i++)
+          {
+            for(unsigned int j = 0; j < n_dofs+n_wells_inside; j++)
+            {  
+              cell_matrix(i,j) += xdata->get_well(w)->perm2aquifer() *
+                                  shape_val_vec[i] *
+                                  shape_val_vec[j] *
+                                  jxw;
+                                  
+            } //for j
+          } //for i
+        } //if
+      } //for w
+#endif
+
+    
+    } //for q 
+  } //for s
+  
+  
+//   std::cout << "cell_matrix" << std::endl;
+//   cell_matrix.print_formatted(std::cout);
+//   std::cout << std::endl;
+    
+  
+  //------------------------------------------------------------------------------ BOUNDARY INTEGRAL
+#ifdef BC_NEWTON //------------------------------------------------------------------------bc_newton
+  FullMatrix<double> well_cell_matrix;
+  unsigned int n_w_dofs=0;
+  
+  for(unsigned int w = 0; w < n_wells; w++)
+  {
+    if(xdata->q_points(w).size() > 0)
+    {
+      //DBGMSG("well number: %d\n",w);
+      Well * well = xdata->get_well(w);
+      //jacobian = radius of the well; weights are the same all around
+      jxw = 2 * M_PI * well->radius() / well->q_points().size();
+      
+      //value of enriching function is constant all around the well edge
+      xshape = well->global_enrich_value(well->q_points()[0]);
+      //DBGMSG("q=%d  xshape=%f \n",q,xshape);
+        
+      shape_val_vec.clear();
+      //node_weights.clear();
+      //node_weights.resize(dofs_per_cell,0);
+      
+      
+//       unsigned int n_enriched_dofs=0;
+//       for(unsigned int i = 0; i < dofs_per_cell; i++)
+//       {
+//         if(xdata->weights(w)[i] != 0)        
+//         {
+//           n_enriched_dofs ++;
+//         }
+//       }
+      
+      
+      // FEM dofs, XFEM dofs, well dof
+      //n_w_dofs = dofs_per_cell+n_enriched_dofs+1;
+      n_w_dofs = dofs_per_cell + n_vertices + 1;
+      
+      well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
+      
+      shape_val_vec.resize(n_w_dofs,0);  //unenriched, enriched, well
+    
+      //cycle over quadrature points inside the cell
+      for (unsigned int q=0; q < xdata->q_points(w).size(); ++q)
+      {
+        Point<2> q_point = *(xdata->q_points(w)[q]);
+        //transforming the quadrature point to unit cell
+        Point<2> unit_point = mapping->transform_real_to_unit_cell(cell, q_point);
+
+        // filling shape values at first
+        for(unsigned int i = 0; i < dofs_per_cell; i++)
+        {
+          shape_val_vec[i] = fe->shape_value(i, unit_point);
+           
+          //DBGMSG("shape_val_vec[%d] = %f\n", i, shape_val_vec[i]);
+        }
+        
+        //computing value (weight) of the ramp function
+        double weight = 0;
+        for(unsigned int l = 0; l < n_vertices; l++)
+        { 
+          weight += xdata->weights(w)[l] * shape_val_vec[l]; 
+        }
+        
+        for(unsigned int k = 0; k < n_vertices; k++)
+        { 
+            shape_val_vec[dofs_per_cell + k] = 
+                     weight *
+                     shape_val_vec[k] * 
+                     ( xshape - xshape_nodes[w*n_vertices + k] );
+ 
+            //DBGMSG("shape_val_vec[%d] = %f\n", dofs_per_cell+k, shape_val_vec[dofs_per_cell+k]);
+        } //for k
+        
+        shape_val_vec[n_w_dofs-1] = -1.0;  //testing function of the well
+        
+        //printing enriched nodes and dofs
+//         DBGMSG("Printing shape_val_vec:  [");
+//         for(unsigned int a=0; a < shape_val_vec.size(); a++)
+//         {
+//           std::cout << std::setw(6) << shape_val_vec[a] << "  ";
+//         }
+//         std::cout << "]" << std::endl;
+        
+        for (unsigned int i=0; i < n_w_dofs; ++i)
+          for (unsigned int j=0; j < n_w_dofs; ++j)
+          {
+              cell_matrix(i,j) += ( well->perm2aquifer() *
+                                    shape_val_vec[i] *
+                                    shape_val_vec[j] *
+                                    jxw );
+//               // for debugging
+//               well_cell_matrix(i,j) += ( well->perm2aquifer() *
+//                                     shape_val_vec[i] *
+//                                     shape_val_vec[j] *
+//                                     jxw );
+              
+          }
+      } //end of iteration over q_points
+    } //if
+  } // for w
+#endif
+    
+//     std::cout << "cell_matrix" << std::endl;
+//     cell_matrix.print_formatted(std::cout);
+//     std::cout << std::endl;
+//     //std::cout << "well_cell_matrix" << std::endl;
+//     //well_cell_matrix.print_formatted(std::cout);
+//     //std::cout << std::endl;
+//     
+//     cell_rhs.print(std::cout);
+//     std::cout << "--------------------- " << std::endl;
+    
+}
+//*/
+
+
+
+
+
+//OBSOLETE
+/*
+////////////////////////////////////////////////////// INTEGRATE_SGFEM ////////////////////////////////////////////
 void Adaptive_integration::integrate_sgfem( FullMatrix<double> &cell_matrix, 
                                       Vector<double> &cell_rhs,
                                       std::vector<unsigned int> &local_dof_indices,
@@ -1299,8 +1853,9 @@ void Adaptive_integration::integrate_sgfem( FullMatrix<double> &cell_matrix,
 
 
 
-
-
+//OBSOLETE
+/*
+////////////////////////////////////////////////////// INTEGRATE_SGFEM2 ////////////////////////////////////////////
 void Adaptive_integration::integrate_sgfem2( FullMatrix<double> &cell_matrix, 
                                       Vector<double> &cell_rhs,
                                       std::vector<unsigned int> &local_dof_indices,
@@ -1630,6 +2185,12 @@ void Adaptive_integration::integrate_sgfem2( FullMatrix<double> &cell_matrix,
 //*/
 
 
+
+
+
+//OBSOLETE
+/*
+////////////////////////////////////////////////////// INTEGRATE_SGFEM3 ////////////////////////////////////////////
 void Adaptive_integration::integrate_sgfem3( FullMatrix<double> &cell_matrix, 
                                       Vector<double> &cell_rhs,
                                       std::vector<unsigned int> &local_dof_indices,
@@ -1863,548 +2424,6 @@ void Adaptive_integration::integrate_sgfem3( FullMatrix<double> &cell_matrix,
               
           }
       }
-    } //if
-  } // for w
-#endif
-    
-//     std::cout << "cell_matrix" << std::endl;
-//     cell_matrix.print_formatted(std::cout);
-//     std::cout << std::endl;
-//     //std::cout << "well_cell_matrix" << std::endl;
-//     //well_cell_matrix.print_formatted(std::cout);
-//     //std::cout << std::endl;
-//     
-//     cell_rhs.print(std::cout);
-//     std::cout << "--------------------- " << std::endl;
-    
-}
-
-
-
-void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, bool real, bool show)
-{
-  //DBGMSG("gnuplotting\n");
-  std::string fgnuplot_ref = "adaptive_integration_refinement.dat",
-              fgnuplot_qpoints = "adaptive_integration_qpoints.dat",
-              script_file = "g_script_adapt.p";
-  
-  try
-    {
-        Gnuplot g1("adaptive_integration");
-        //g1.savetops("test_output");
-        //g1.set_title("adaptive_integration\nrefinement");
-        //g1.set_grid();
-        
-        /*
-        std::vector<double> x(squares.size()), y(squares.size());
-
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < 4; j++) 
-          {
-            x.push_back(squares[i].vertices[j][0]);          
-            y.push_back(squares[i].vertices[j][1]);
-          }
-        }
-        */
-        
-        
-        std::ofstream myfile1;
-        myfile1.open (output_dir + fgnuplot_ref);
-        if (myfile1.is_open()) 
-        {
-       
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < 4; j++) 
-          {
-            if(real)
-              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j]);
-              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
-            else
-              myfile1 << squares[i].vertices[j];
-            
-            myfile1 << "\n";
-          }
-          if(real)
-              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[0]);
-              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
-            else
-              myfile1 << squares[i].vertices[0];
-
-          myfile1 << "\n\n";
-        }
-        std::cout << left << setw(53) <<  "Adaptive XFEM element refinement written in: " << fgnuplot_ref << endl;
-        }
-        else 
-        { 
-          std::cout << "Coud not write refinement for gnuplot.\n";
-        }
-        myfile1.close();
-        
-        std::ofstream myfile2;
-        myfile2.open (output_dir + fgnuplot_qpoints);
-        if (myfile2.is_open()) 
-        {
-       
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < squares[i].gauss->get_points().size(); j++) 
-          {
-            if(real)
-              myfile2 << mapping->transform_unit_to_real_cell(cell, squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-              //myfile2 << cell_mapping.map_unit_to_real(squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-            else
-              myfile2 << squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]);
-             
-            myfile2 << "\n";
-          }
-        }
-        
-        std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
-        }
-        else 
-        { 
-          std::cout << "Coud not write qpoints for gnuplot." << std::endl;
-        }
-        myfile2.close();
-        
-        //g1.set_style("lines").plotfile_xy("adaptive_integration_refinement.dat",1,2,"Adaptive integration refinement");
-        
-        //g1.set_multiplot();
-        
-        //creating command
-        std::ostringstream strs;
-        strs << "set terminal x11\n";
-        strs << "set size ratio -1\n";
-        strs << "set parametric\n";
-        strs << "set trange [0:2*pi]\n";
-        
-        //unsigned int w = 0;
-        for(unsigned int w = 0; w < xdata->n_wells(); w++)
-        {
-          /* # parametricly plotted circle
-           * set parametric
-           * set trange [0:2*pi]
-           * # Parametric functions for a circle
-           * fx(t) = r*cos(t)
-           * fy(t) = r*sin(t)
-           * plot fx(t),fy(t)
-           */
-          if(real)
-          {
-            strs << "fx" << w << "(t) = " << xdata->get_well(w)->center()[0] 
-                << " + "<< xdata->get_well(w)->radius() << "*cos(t)\n";
-            strs << "fy" << w << "(t) = " << xdata->get_well(w)->center()[1] 
-                << " + "<< xdata->get_well(w)->radius() << "*sin(t)\n";
-          }
-          else
-          {
-            strs << "fx" << w << "(t) = " << m_well_center[w][0] 
-                << " + "<< m_well_radius[w] << "*cos(t)\n";
-            strs << "fy" << w << "(t) = " << m_well_center[w][1] 
-                << " + "<< m_well_radius[w] << "*sin(t)\n";
-          }
-        }
-        
-        strs << "plot \"" << "adaptive_integration_refinement.dat\" using 1:2 with lines,\\\n"
-             << "\"" << "adaptive_integration_qpoints.dat\" using 1:2 with points lc rgb \"light-blue\",\\\n";
-        for(unsigned int w = 0; w < xdata->n_wells(); w++)
-        {
-          strs << "fx" << w << "(t),fy" << w << "(t)";
-          if(w != xdata->n_wells()-1) 
-            strs << ",\\\n";
-        } 
-        
-        //saving gnuplot script
-        std::ofstream myfile3;
-        myfile3.open (output_dir + script_file);
-        if (myfile3.is_open()) 
-        {
-          // header
-          myfile3 << "# Gnuplot script for printing adaptively refined element.\n" <<
-                     "# Made by Pavel Exner.\n#\n" <<
-                     "# Run the script in gnuplot:\n" <<
-                     "# > load \"" << script_file << "\"\n#\n" <<
-                     "# Data files used:\n" << 
-                     "# " << fgnuplot_ref << "\n"
-                     "# " << fgnuplot_qpoints << "\n" 
-                     "#\n#" << std::endl;
-          // script
-          myfile3 << strs.str() << std::endl;
-          
-          std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
-        }
-        else 
-        { 
-          std::cout << "Coud not write gnuplot script.\n";
-        }
-        myfile3.close();
-        
-        
-        //show the plot by gnuplot if show == true
-        if(show)
-        {
-          //finally plot
-          g1.cmd(strs.str());
-        
-          //g1.unset_multiplot();
-          
-          //g1.set_style("points").plot_xy(x,y,"user-defined points 2d");
-        
-          //g1.showonscreen(); // window output
-         
-          #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-          std::cout << std::endl << "GNUPLOT output on cell " << cell->index() << " ... Press ENTER to continue..." << std::endl;
-
-          std::cin.clear();
-          std::cin.ignore(std::cin.rdbuf()->in_avail());
-          std::cin.get();
-          #endif
-        }
-        
-    return;
-    
-    }
-    catch (GnuplotException ge)
-    {
-      std::cout << ge.what() << std::endl;
-    }
-}
-
-
-
-
-//OBSOLETE
-/*
-void Adaptive_integration::integrate_xfem_shift( FullMatrix<double> &cell_matrix, 
-                                      Vector<double> &cell_rhs,
-                                      std::vector<unsigned int> &local_dof_indices,
-                                      const double &transmisivity)
-{  
-  unsigned int n_wells_inside = 0,                      // number of wells with q_points inside the cell, zero initialized
-               n_wells = xdata->n_wells(),              // number of wells affecting the cell
-               dofs_per_cell = fe->dofs_per_cell,
-               n_vertices = GeometryInfo<2>::vertices_per_cell,
-               n_dofs = n_wells*n_vertices + dofs_per_cell;     // n_wells * XFEM_n_dofs_ + FEM_n_dofs
-               
-  //temporary for shape values and gradients
-  Tensor<1,2> xshape_grad,
-              xshape_grad_shifted;
-  double xshape = 0,
-         xshape_shifted = 0,
-         jacobian = 0, 
-         jxw = 0;
-  //xshape values and gradients in nodes
-         
-  std::vector<double> xshape_nodes(n_wells * n_vertices);
-  std::vector<Tensor<1,2> > xshape_grad_nodes(n_wells * n_vertices);
-         
-  //getting unenriched local dofs indices : [FEM(dofs_per_cell), XFEM(n_wells*dofs_per_cell), WELL(n_wells)]
-  local_dof_indices.clear();
-  local_dof_indices.resize(dofs_per_cell);
-  cell->get_dof_indices(local_dof_indices);
-  
-  local_dof_indices.resize(n_dofs);
-  //getting enriched dof indices and well indices
-  for(unsigned int w = 0; w < n_wells; w++)
-  {   
-    for(unsigned int i = 0; i < n_vertices; i++)
-    {
-      local_dof_indices[dofs_per_cell+w*n_vertices+i] = xdata->global_enriched_dofs(w)[i];
-     
-      xshape_nodes[w*n_vertices+i] =  xdata->get_well(w)->global_enrich_value(cell->vertex(i));
-      xshape_grad_nodes[w*n_vertices+i] =  xdata->get_well(w)->global_enrich_grad(cell->vertex(i));
-    }
-    if(xdata->q_points(w).size() > 0)
-    {
-      n_wells_inside++;
-      local_dof_indices.push_back(xdata->get_well_dof_index(w)); //one more for well testing funtion
-    }
-  }
-    
-  cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
-  cell_matrix = 0;
-  cell_rhs = Vector<double>(n_dofs+n_wells_inside);
-  cell_rhs = 0;
-  
-  //vector of quadrature points on the unit square
-  std::vector<Point<2> > q_points;
-  //vector of quadrature points mapped to unit cell
-  std::vector<Point<2> > q_points_mapped;
-  
-  //temporary vectors for both shape and xshape values and gradients
-  std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
-  std::vector<double > shape_val_vec(n_dofs+n_wells_inside,0);
-  
-  for(unsigned int s=0; s < squares.size(); s++)
-  {
-    //we are integrating on squares of the unit cell mapped from real cell!!
-    q_points = squares[s].gauss->get_points();  //unit square quadrature points
-    q_points_mapped = squares[s].gauss->get_points(); 
-    squares[s].mapping.map_unit_to_real(q_points_mapped);  //mapped from unit square to unit cell
-
-    Quadrature<2> temp_quad(q_points_mapped);
-    FEValues<2> temp_fe_values(*fe,temp_quad, update_values | update_gradients | update_jacobians);
-    temp_fe_values.reinit(cell);
-
-    
-//     //testing print of mapped q_points
-//     if (s == 1)
-//     {
-//       DBGMSG("mapping q_points:\n");
-//       for(unsigned int q=0; q < q_points.size(); q++)
-//       {
-//         std::cout << q_points[q] << " | ";
-//       }
-//       std::cout << "\n";
-//       for(unsigned int q=0; q < q_points.size(); q++)
-//       {
-//         std::cout << q_points_mapped[q] << " | ";
-//       }
-//       std::cout << "\n";
-//     }
-//     
-//     
-//     //in refinement=3 this cell is enriched but does not cross any well
-//     if (cell->index() == 33)
-//     {
-//       DBGMSG("integration:s_jakobian: %f cell_jakobian: %f\n",squares[s].mapping.jakobian(),cell_jakobian);
-//       DBGMSG("number of wells affecting this cell: %d\n", n_wells);
-//     }
-    
-    jacobian = squares[s].mapping.jakobian(); //square.mapping.jakobian = area of the square
-    
-    for(unsigned int q=0; q < q_points.size(); q++)
-    {
-      jxw = jacobian * temp_fe_values.jacobian(q).determinant() * squares[s].gauss->get_weights()[q];
-          
-      // filling FE shape values and shape gradients at first
-      for(unsigned int i = 0; i < dofs_per_cell; i++)
-      {
-        
-        shape_grad_vec[i] = temp_fe_values.shape_grad(i,q);
-        
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-        if(n_wells_inside > 0)
-          shape_val_vec[i] = temp_fe_values.shape_value(i,q);
-#endif
-      }
-
-      // filling xshape values and xshape gradients next
-      
-      unsigned int index = dofs_per_cell; //index in the vector of values and gradients
-      for(unsigned int w = 0; w < n_wells; w++) //W
-      { 
-        Well* well = xdata->get_well(w);
-        //gradient of xfem function needn't be mapped (it is computed in real coordinates)
-        xshape = well->global_enrich_value(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
-        xshape_grad = well->global_enrich_grad(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
-        
-        for(unsigned int k = 0; k < n_vertices; k++) //M_w
-        { 
-          //SHIFT
-          xshape_shifted = xshape - xshape_nodes[w*n_vertices + k];
-          //xshape_grad_shifted = xshape_grad - xshape_grad_nodes[w*n_vertices + k];
-          //xshape_grad_shifted = xshape_grad;
-          
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-          if(n_wells_inside > 0)
-            shape_val_vec[index] = 0;   // giving zero for sure (initialized with zeros)
-#endif
-          shape_grad_vec[index] = 0;  // giving zero for sure (Tensor<dim> is also initialized with zeros)
-          for(unsigned int l = 0; l < n_vertices; l++) //M_w
-          {
-            
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-            if(n_wells_inside > 0)
-            {
-              shape_val_vec[index] += 
-                       xdata->weights(w)[l] *
-                       temp_fe_values.shape_value(l,q) *             // from weight function 
-                       temp_fe_values.shape_value(k,q) *
-                       //xshape;
-                       xshape_shifted;
-            }
-#endif
-                 
-            //gradients of shape functions need to be mapped (computed on the unit cell)
-            //scale_to_unit means inverse scaling
-            shape_grad_vec[index] += 
-                       xdata->weights(w)[l] *
-                       ( temp_fe_values.shape_grad(l,q) *            // from weight function
-                         temp_fe_values.shape_value(k,q) *
-                         //xshape
-                         xshape_shifted
-                         +
-                         temp_fe_values.shape_value(l,q) *           // from weight function
-                         temp_fe_values.shape_grad(k,q) *
-                         //xshape
-                         xshape_shifted
-                         +
-                         temp_fe_values.shape_value(l,q) *           // from weight function 
-                         temp_fe_values.shape_value(k,q) *
-                         xshape_grad
-                         //xshape_grad_shifted
-                       );
-          } //for l
-//           if (cell->index() == 60)
-//           {
-//             DBGMSG("shape_grad_vec[%d] = %f, %f\n", index, shape_grad_vec[index].operator[](0),shape_grad_vec[index].operator[](1));
-//           }
-          index ++;
-        } //for k
-        
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-        //DBGMSG("index=%d\n",index);
-        //DBGMSG("shape_val_vec.size=%d\n",shape_val_vec.size());
-        if(n_wells_inside > 0)
-          shape_val_vec[index] = -1.0;  //testing function of the well
-#endif
-      } //for w
-      
-      //filling cell matrix now
-      //additions to matrix A,R,S from LAPLACE---------------------------------------------- LAPLACE
-      
-      for(unsigned int i = 0; i < n_dofs; i++)
-        for(unsigned int j = 0; j < n_dofs; j++)
-        {
-          cell_matrix(i,j) += transmisivity * 
-                              shape_grad_vec[i] *
-                              shape_grad_vec[j] *
-                              jxw;
-        }
-
-      //addition from SOURCES--------------------------------------------------------------- SOURCES
-#ifdef SOURCES
-      for(unsigned int w = 0; w < n_wells; w++) //W
-      {
-        //this condition tests if the quadrature point lies within the well (testing function omega)
-        if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q])))
-        { 
-          for(unsigned int i = 0; i < n_dofs+n_wells_inside; i++)
-          {
-            for(unsigned int j = 0; j < n_dofs+n_wells_inside; j++)
-            {  
-              cell_matrix(i,j) += xdata->get_well(w)->perm2aquifer() *
-                                  shape_val_vec[i] *
-                                  shape_val_vec[j] *
-                                  jxw;
-                                  
-            } //for j
-          } //for i
-        } //if
-      } //for w
-#endif
-
-    
-    } //for q 
-  } //for s
-  
-  
-//   std::cout << "cell_matrix" << std::endl;
-//   cell_matrix.print_formatted(std::cout);
-//   std::cout << std::endl;
-    
-  
-  //------------------------------------------------------------------------------ BOUNDARY INTEGRAL
-#ifdef BC_NEWTON //------------------------------------------------------------------------bc_newton
-  FullMatrix<double> well_cell_matrix;
-  unsigned int n_w_dofs=0;
-  
-  for(unsigned int w = 0; w < n_wells; w++)
-  {
-    if(xdata->q_points(w).size() > 0)
-    {
-      //DBGMSG("well number: %d\n",w);
-      Well * well = xdata->get_well(w);
-      //jacobian = radius of the well; weights are the same all around
-      jxw = 2 * M_PI * well->radius() / well->q_points().size();
-      
-      //value of enriching function is constant all around the well edge
-      xshape = well->global_enrich_value(well->q_points()[0]);
-      //DBGMSG("q=%d  xshape=%f \n",q,xshape);
-        
-      shape_val_vec.clear();
-      //node_weights.clear();
-      //node_weights.resize(dofs_per_cell,0);
-      
-      
-//       unsigned int n_enriched_dofs=0;
-//       for(unsigned int i = 0; i < dofs_per_cell; i++)
-//       {
-//         if(xdata->weights(w)[i] != 0)        
-//         {
-//           n_enriched_dofs ++;
-//         }
-//       }
-      
-      
-      // FEM dofs, XFEM dofs, well dof
-      //n_w_dofs = dofs_per_cell+n_enriched_dofs+1;
-      n_w_dofs = dofs_per_cell + n_vertices + 1;
-      
-      well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
-      
-      shape_val_vec.resize(n_w_dofs,0);  //unenriched, enriched, well
-    
-      //cycle over quadrature points inside the cell
-      for (unsigned int q=0; q < xdata->q_points(w).size(); ++q)
-      {
-        Point<2> q_point = *(xdata->q_points(w)[q]);
-        //transforming the quadrature point to unit cell
-        Point<2> unit_point = mapping->transform_real_to_unit_cell(cell, q_point);
-
-        // filling shape values at first
-        for(unsigned int i = 0; i < dofs_per_cell; i++)
-        {
-          shape_val_vec[i] = fe->shape_value(i, unit_point);
-           
-          //DBGMSG("shape_val_vec[%d] = %f\n", i, shape_val_vec[i]);
-        }
-        
-        //computing value (weight) of the ramp function
-        double weight = 0;
-        for(unsigned int l = 0; l < n_vertices; l++)
-        { 
-          weight += xdata->weights(w)[l] * shape_val_vec[l]; 
-        }
-        
-        for(unsigned int k = 0; k < n_vertices; k++)
-        { 
-            shape_val_vec[dofs_per_cell + k] = 
-                     weight *
-                     shape_val_vec[k] * 
-                     ( xshape - xshape_nodes[w*n_vertices + k] );
- 
-            //DBGMSG("shape_val_vec[%d] = %f\n", dofs_per_cell+k, shape_val_vec[dofs_per_cell+k]);
-        } //for k
-        
-        shape_val_vec[n_w_dofs-1] = -1.0;  //testing function of the well
-        
-        //printing enriched nodes and dofs
-//         DBGMSG("Printing shape_val_vec:  [");
-//         for(unsigned int a=0; a < shape_val_vec.size(); a++)
-//         {
-//           std::cout << std::setw(6) << shape_val_vec[a] << "  ";
-//         }
-//         std::cout << "]" << std::endl;
-        
-        for (unsigned int i=0; i < n_w_dofs; ++i)
-          for (unsigned int j=0; j < n_w_dofs; ++j)
-          {
-              cell_matrix(i,j) += ( well->perm2aquifer() *
-                                    shape_val_vec[i] *
-                                    shape_val_vec[j] *
-                                    jxw );
-//               // for debugging
-//               well_cell_matrix(i,j) += ( well->perm2aquifer() *
-//                                     shape_val_vec[i] *
-//                                     shape_val_vec[j] *
-//                                     jxw );
-              
-          }
-      } //end of iteration over q_points
     } //if
   } // for w
 #endif
