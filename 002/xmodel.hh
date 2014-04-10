@@ -107,13 +107,14 @@ class XModel : public Model_base
     /// Destructor
     virtual ~XModel ();
     
-    
+    /// @name Output
+    //@{
     /** @brief Outputs solution on the computational mesh.
      * 
      * It still must compute enriched and unenriched part of solution at a point sum it up.
      * @param cycle is the number of a iteration, if the model is run in cycles
      */
-    virtual void output_results (const unsigned int cycle=0);
+    virtual void output_results (const unsigned int cycle=0) override;
     
     
     /** @brief Outputs solution on given mesh.
@@ -126,8 +127,11 @@ class XModel : public Model_base
      * @param cycle is the number of a iteration, if the model is run in cycles
      * @param m_aquifer number of aquifer which is meshed with the mesh loaded (not used)
      */
-    virtual void output_distributed_solution (const std::string &mesh_file, const std::string &flag_file, bool is_circle=false,
-                                              const unsigned int &cycle=0, const unsigned int &m_aquifer=0);
+    virtual void output_distributed_solution (const std::string &mesh_file, 
+                                              const std::string &flag_file, 
+                                              bool is_circle=false,
+                                              const unsigned int &cycle=0, 
+                                              const unsigned int &m_aquifer=0) override;
     
     /** @brief Computes the solution on the given triangulation.
      * 
@@ -138,7 +142,8 @@ class XModel : public Model_base
      * @param m_aquifer number of aquifer which is meshed with the mesh loaded (not used)
      */
     void output_distributed_solution (const Triangulation<2> &dist_tria,
-                                      const unsigned int &cycle=0, const unsigned int &m_aquifer=0);
+                                      const unsigned int &cycle=0, 
+                                      const unsigned int &m_aquifer=0);
     
     
     /** Computes decomposed (enriched, unenriched and complete) solution at specified points.
@@ -146,17 +151,17 @@ class XModel : public Model_base
      * @param points is the vector of points where we want to evaluate
      */
     void compute_distributed_solution(const std::vector< Point< 2 > >& points);
-    
+    //@}
     
     /// @name Getters
     //@{
     /** Returns constant reference to distributed solution.
      */
-    virtual const Vector< double > &get_solution();
+    const Vector< double > &get_solution() override;
     
     /** Returns constant reference to distributed solution.
      */
-    virtual const Vector< double > &get_distributed_solution();
+    const Vector< double > &get_distributed_solution() override;
     
     ///Returns reference to the computational grid
     inline const Triangulation<2> &get_triangulation()
@@ -213,11 +218,11 @@ class XModel : public Model_base
 
 
   protected:
-    virtual void make_grid ();
-    virtual void refine_grid();
-    virtual void setup_system ();
-    virtual void assemble_system ();
-    virtual void solve ();
+    virtual void make_grid () override;
+    virtual void refine_grid() override;
+    void setup_system () override;
+    void assemble_system () override;
+    void solve ();
    
     
     //Computes error in comparision to another solution

@@ -71,10 +71,6 @@ public:
    */
   virtual void add_data(Well *well, const unsigned int &well_index);
   
-  
-  /// Initialize rutines before system assembly
-  virtual void initialize(){}
-  
 protected:
   ///iterator of the cell to which this data object belongs
   dealii::DoFHandler<2>::active_cell_iterator cell_;
@@ -85,9 +81,8 @@ protected:
   ///global dof indices of the wells
   std::vector<unsigned int> well_dof_indices_;
   
-  unsigned int n_wells_;
-  unsigned int n_vertices_;
-  bool well_inside;
+  unsigned int n_wells_;                ///< Number of wells that affect the cell.
+  unsigned int n_vertices_;             ///< Number of vertices.
 };
 
 

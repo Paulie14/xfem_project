@@ -53,12 +53,12 @@ class XModel_simple : public XModel
   protected:
     
     ///Virtual method overriden to enable circle grid.
-    virtual void make_grid();
+    void make_grid() override;
     ///Virtual method overriden to enable refining of the circle grid.
-    virtual void refine_grid();
+    void refine_grid() override;
     
     ///if Dirichlet condition is wanted then this method will do it
-    virtual void assemble_dirichlet();
+    void assemble_dirichlet() override;
     
     ///center of the circle area of computation
     Point<2> center;
@@ -102,9 +102,9 @@ class Model_simple : public Model
     ///Virtual method overriden.
     ///Refine grid apaptively but leaves boundary elements unchanged 
     ///(important to comparision)
-    virtual void refine_grid();
+    void refine_grid() override;
     ///if Dirichlet condition is wanted then this method will do it
-    virtual void assemble_dirichlet();
+    void assemble_dirichlet() override;
 };
 
 #endif //Simple_models_h

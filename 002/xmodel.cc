@@ -1056,13 +1056,9 @@ void XModel::assemble_system ()
           adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           break;
         case Enrichment_method::xfem_shift:
-          //adaptive_integration.integrate_xfem_shift(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-          //adaptive_integration.integrate_xfem_shift2(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           break;
         case Enrichment_method::sgfem:
-          //adaptive_integration.integrate_sgfem2(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-          //adaptive_integration.integrate_sgfem3(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
       }
 //       //printing enriched nodes and dofs

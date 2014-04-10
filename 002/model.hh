@@ -58,13 +58,13 @@ class Model : public Model_base
     void output_foreign_results(const unsigned int cycle,const Vector<double> &foreign_solution);
     
     
-    virtual void output_results (const unsigned int cycle=0);
+    void output_results (const unsigned int cycle=0) override;
     
-    virtual void output_distributed_solution ( const std::string &mesh_file,
-                                               const std::string &flag_file,
-                                               bool is_circle=false,
-                                               const unsigned int &cycle=0, 
-                                               const unsigned int &m_aquifer=0);
+    void output_distributed_solution ( const std::string &mesh_file,
+                                       const std::string &flag_file,
+                                       bool is_circle=false,
+                                       const unsigned int &cycle=0, 
+                                       const unsigned int &m_aquifer=0);
     
     void output_distributed_solution(const dealii::Triangulation< 2 >& dist_tria, 
                                      const unsigned int& cycle);
@@ -73,11 +73,11 @@ class Model : public Model_base
     //@{
     /** Returns constant reference to distributed solution.
      */
-    virtual const Vector< double > &get_solution();
+    const Vector< double > &get_solution() override;
     
     /** Returns constant reference to distributed solution.
      */
-    virtual const Vector< double > &get_distributed_solution();
+    const Vector< double > &get_distributed_solution() override;
     
     ///Returns pointer to the computational triangulation (PersistentTriangulation).
     inline const Triangulation<2> &get_triangulation()
@@ -129,11 +129,11 @@ class Model : public Model_base
     //@}
 
   protected:
-    virtual void make_grid ();
-    virtual void refine_grid();
-    virtual void setup_system ();
-    virtual void assemble_system ();
-    virtual void solve ();
+    void make_grid () override;
+    virtual void refine_grid() override;
+    void setup_system () override;
+    void assemble_system () override;
+    void solve () override;
     
     
     ///Computes error in comparision to analytic solution
@@ -209,9 +209,6 @@ class Model : public Model_base
     BlockVector<double> block_solution;
     ///vector of right hand side
     BlockVector<double> block_system_rhs;
-    
-    //Vector<double>      solution_error;
-    //Vector<double>      solution_exact;
     
     Vector<double>      dist_solution;
 };
