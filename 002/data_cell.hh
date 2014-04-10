@@ -88,8 +88,6 @@ protected:
   unsigned int n_wells_;
   unsigned int n_vertices_;
   bool well_inside;
-  
-  //template<Enrichment_method::Type T> friend class XFEValues;
 };
 
 
@@ -184,21 +182,40 @@ class XDataCell : public DataCellBase
     virtual ~XDataCell()
     {}
     
-    /// Getter for enriched dofs.
-    const std::vector<unsigned int> &global_enriched_dofs(const unsigned int &local_well_index);
-    
-    /// Getter for weights.
-    const std::vector<unsigned int> &weights(const unsigned int &local_well_index);
-    
-    /// Getter for quadrature points along the edge of the well.
-    const std::vector<const dealii::Point<2>* > &q_points(const unsigned int &local_well_index);
-    
-    
-    /// Getter for enrichment function values at nodes.
-    inline double node_enrich_value(unsigned int local_well_index, unsigned int local_vertex_index) const
-    {
-      return node_values->operator[](local_well_index).at(cell_->vertex_index(local_vertex_index));
-    }
+    /// @name Getters
+    //@{    
+      /// Getter for enriched dofs by a single well.
+      const std::vector<unsigned int> &global_enriched_dofs(const unsigned int &local_well_index);
+      
+      /// Getter for weights of a single well.
+      const std::vector<unsigned int> &weights(const unsigned int &local_well_index);
+      
+      /// Getter for quadrature points along the edge of a single well.
+      const std::vector<const dealii::Point<2>* > &q_points(const unsigned int &local_well_index);
+      
+      
+      /** Getter for enrichment function value of a single well at nodes.
+       * Provides acces to the map of node values of enrichment functions.
+       */
+      inline double node_enrich_value(unsigned int local_well_index, unsigned int local_vertex_index) const
+      {
+        return node_values->operator[](local_well_index).at(cell_->vertex_index(local_vertex_index));
+      }
+      
+      /** Writes local DoFs in given vector: wells*[FE dofs, Xdofs, Wdofs]
+       * Sets n_wells_inside, n_dofs, n_xdofs, n_wdofs.
+       */
+      void get_dof_indices(std::vector<unsigned int> &local_dof_indices, unsigned int fe_dofs_per_cell);
+      
+      /// Number of all degrees of freedom on the cell (from all wells).
+      unsigned int n_enriched_dofs();
+      
+      /// Number of degrees of freedom on the cell (from a single wells).
+      unsigned int n_enriched_dofs(unsigned int local_well_index);
+      
+      /// Number of wells that has nonzero cross-section with the cell.
+      unsigned int n_wells_inside();
+    //@}
     
     /// Add enriched data (without q_points).
     void add_data(Well *well, 
@@ -206,14 +223,18 @@ class XDataCell : public DataCellBase
                   const std::vector<unsigned int> &enriched_dofs,
                   const std::vector<unsigned int> &weights);
     
-    /// Add enriched data.
+    /// Add enriched data (possibly with q_points).
     void add_data(Well *well, 
                   const unsigned int &well_index, 
                   const std::vector<unsigned int> &enriched_dofs,
                   const std::vector<unsigned int> &weights,
                   const std::vector<const dealii::Point<2>* > &q_points);
     
-    /// Initialize node values of enrichment before system assembly.
+    /** STATIC function. Goes through given XDataCells objects and initialize node values of enrichment before system assembly.
+     * @param data_vector is given output vector (by wells) of maps which map enrichment values to the nodes
+     * @param xdata is given vector of XDataCell objects (includes enrichment functions and cells)
+     * @param n_wells is the total number of wells in the model
+     */
     static void initialize_node_values(std::vector<std::map<unsigned int, double> > &data_vector, 
                                        std::vector<XDataCell*> xdata, 
                                        unsigned int n_wells);
@@ -230,16 +251,22 @@ class XDataCell : public DataCellBase
      * Index subset in \f$ \mathcal{M}_w \f$ (nodes on both reproducing and blending elements).
      * Access the index in format [well_index][local_node_index].
      */
-    std::vector<std::vector<unsigned int> > global_enriched_dofs_;
+    std::vector<std::vector<unsigned int> > global_enriched_dofs_; 
+    
+    std::vector<unsigned int> n_enriched_dofs_; ///<Number of enriched dofs by a single well.
+    unsigned int n_xdofs_,                      ///< Total number of enriched dofs.
+                 n_wells_inside_;               ///< Number of wells inside the cell.
     
     /** Weights of enriched nodes. 
      * Weight is equal \f$ g_u = 1 \$ at enriched node from subset \f$ \mathcal{N}_w \f$.
      * Weight is equal \f$ g_u = 0 \$ at enriched node from subset \f$ \mathcal{M}_w \f$ which is not in \f$ \mathcal{N}_w \f$
-     * Access the index in format [well_index][local_node_index].
+     * Access the index in format [local_well_index][local_node_index].
      */
     std::vector<std::vector<unsigned int> > weights_;
     
-    /// Each well has its own vector of quadrature points that lie on this cell.
+    /** Pointers to quadrature points of wells that lies inside the cell.
+     * Access: Point = [local_well_index][q] 
+     */
     std::vector< std::vector< const dealii::Point<2>* > > q_points_;
     
     ///just for returning zero lenght vector

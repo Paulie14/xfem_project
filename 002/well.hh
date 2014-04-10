@@ -23,6 +23,9 @@ class Well
     ///constructor
     Well (Well *well);    
 
+    /// @name Getters
+    //@{
+    
     /// returns radius
     inline double radius()
     {return radius_;}
@@ -49,9 +52,11 @@ class Well
     
     inline const std::vector<Point<2> > &q_points()
     {return q_points_;}
+    //@}
   
   
-  
+    /// @name Setters
+    //@{
     /// sets permeability to aquifer
     inline void set_perm2aquifer(const double &perm)
     { perm2aquifer_ = perm;}
@@ -63,7 +68,7 @@ class Well
     /// sets pressure
     inline void set_pressure(const double &press)
     { pressure_ = press;}
-    
+    //@}
     
     
     /// returns true if the given point lies within the well radius

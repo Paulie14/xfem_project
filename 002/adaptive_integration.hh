@@ -244,9 +244,24 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                n_wells = xdata->n_wells(),              // number of wells affecting the cell
                dofs_per_cell = fe->dofs_per_cell,
                n_vertices = GeometryInfo<2>::vertices_per_cell,
-               n_dofs = dofs_per_cell;   
+               n_dofs = 0;   
                
-  gather_w_points();
+  /*getting dof's indices : 
+   * [ FEM(dofs_per_cell), 
+   *   n_wells * [SGFEM / XFEM(maximum of n_wells*dofs_per_cell), 
+   *              well_dof)]_w 
+   * ]
+   */
+  xdata->get_dof_indices(local_dof_indices, dofs_per_cell);
+  n_wells_inside = xdata->n_wells_inside();
+  n_dofs = dofs_per_cell + xdata->n_enriched_dofs();
+  
+  cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
+  cell_matrix = 0;
+  cell_rhs = Vector<double>(n_dofs+n_wells_inside);
+  cell_rhs = 0;
+               
+  gather_w_points();    //gathers all quadrature points from square into one vector and maps them to unit cell
   Quadrature<2> quad(q_points_all, jxw_all);
   XFEValues<EnrType> xfevalues(*fe,quad, update_values 
                                                                | update_gradients 
@@ -271,38 +286,6 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                                                                //| update_inverse_jacobians
                                                     );
   xfevalues.reinit(xdata);
-         
-  //TODO: do this in XFEValues and return things like FEValues
-  //getting unenriched local dofs indices : [FEM(dofs_per_cell), SGFEM / XFEM(maximum of n_wells*dofs_per_cell), WELL(n_wells)]
-  local_dof_indices.clear();
-  local_dof_indices.resize(dofs_per_cell);
-  cell->get_dof_indices(local_dof_indices);
-  
-  local_dof_indices.resize(n_dofs);
-  //getting enriched dof indices and well indices
-  for(unsigned int w = 0; w < n_wells; w++)
-  {   
-    for(unsigned int i = 0; i < n_vertices; i++)
-    {
-      //local_dof_indices[dofs_per_cell+w*n_vertices+i] = xdata->global_enriched_dofs(w)[i];
-      if(xdata->global_enriched_dofs(w)[i] != 0)
-      {
-        local_dof_indices.push_back(xdata->global_enriched_dofs(w)[i]);
-        n_dofs++;
-      }
-    }
-    if(xdata->q_points(w).size() > 0)
-    {
-      n_wells_inside++;
-      local_dof_indices.push_back(xdata->get_well_dof_index(w)); //one more for well testing funtion
-    }
-  }
-    
-  cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
-  cell_matrix = 0;
-  cell_rhs = Vector<double>(n_dofs+n_wells_inside);
-  cell_rhs = 0;
-  
   
   //temporary vectors for both shape and xshape values and gradients
   std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
@@ -396,7 +379,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   {
     if(xdata->q_points(w).size() > 0)
     {
-      //TODO : map the points in gather method
+      //TODO : map the points somewhere before (in node enrichment routines..)
       std::vector<Point<2> > points(xdata->q_points(w).size());
       for (unsigned int p =0; p < points.size(); p++)
       {

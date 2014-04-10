@@ -35,7 +35,7 @@ public:
   using dealii::FEValues<2>::reinit;
   
   /** Reinits the values for the enriched cell (node values etc.)
-   * Note that it does not call the reinit function of the Deal II FEValues.
+   * Note that it calls the reinit function of the Deal II FEValues.
    */
   void reinit(XDataCell* xdata);
 
@@ -51,7 +51,7 @@ public:
    */
   Tensor<1,2> enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q);
   
-    /** Returns the value of the gradient of the enrichment test function at given point.
+  /** NOT WORKING. Returns the value of the gradient of the enrichment test function at given point.
    */
   Tensor<1,2> enrichment_grad(const unsigned int function_no, const unsigned int w, const Point<2> p);
   

@@ -130,6 +130,25 @@ const std::vector< const dealii::Point< 2 >* >& XDataCell::q_points(const unsign
 }
 
 
+unsigned int XDataCell::n_enriched_dofs()
+{
+  MASSERT(n_xdofs_ > 0, "Call get_dof_indices() before!");
+  return n_xdofs_;
+}
+
+unsigned int XDataCell::n_enriched_dofs(unsigned int local_well_index)
+{
+  MASSERT(n_xdofs_ > 0, "Call get_dof_indices() before!");
+  return n_enriched_dofs_[local_well_index];
+}
+
+unsigned int XDataCell::n_wells_inside()
+{
+  MASSERT(n_xdofs_ > 0, "Call get_dof_indices() before!");
+  return n_wells_inside_;
+}
+
+
 void XDataCell::initialize_node_values(std::vector<std::map<unsigned int, double> > &data_vector, 
                                        std::vector<XDataCell*> xdata, 
                                        unsigned int n_wells)
@@ -147,6 +166,36 @@ void XDataCell::initialize_node_values(std::vector<std::map<unsigned int, double
           xdata[k]->get_well(w)->global_enrich_value( xdata[k]->get_cell()->vertex(i) );
       }
     }
+  }
+}
+
+void XDataCell::get_dof_indices(std::vector< unsigned int >& local_dof_indices, unsigned int fe_dofs_per_cell)
+{
+  local_dof_indices.resize(fe_dofs_per_cell);
+  cell_->get_dof_indices(local_dof_indices);
+  n_enriched_dofs_.resize(n_wells_);
+  n_xdofs_ = 0;
+  n_wells_inside_ = 0;
+  //getting enriched dof indices and well indices
+  for(unsigned int w = 0; w < n_wells_; w++)
+  {   
+    n_enriched_dofs_[w] = 0;
+    for(unsigned int i = 0; i < n_vertices_; i++)
+    {
+      //local_dof_indices[dofs_per_cell+w*n_vertices+i] = xdata->global_enriched_dofs(w)[i];
+      if(global_enriched_dofs_[w][i] != 0)
+      {
+        local_dof_indices.push_back(global_enriched_dofs_[w][i]);
+        n_xdofs_++;
+        n_enriched_dofs_[w]++;
+      }
+    }
+    if(w < q_points_.size())
+      if(q_points_[w].size() > 0)
+      {
+        n_wells_inside_++;
+        local_dof_indices.push_back(well_dof_indices_[w]); //one more for well testing funtion
+      }
   }
 }
 
