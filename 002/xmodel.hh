@@ -277,6 +277,7 @@ class XModel : public Model_base
                       bool xfem = true
                      );
     
+    template<Enrichment_method::Type> 
     int recursive_output(double tolerance, PersistentTriangulation<2> &output_grid, DoFHandler<2> &temp_dof_handler, FE_Q<2> &temp_fe, const unsigned int cycle);
     
     ///Type of enrichment method
@@ -361,5 +362,8 @@ class XModel : public Model_base
     bool out_shape_functions;
     PersistentTriangulation<2>* output_triangulation;
 };
+
+#include "xmodel_impl.hh"
+
 
 #endif  //XModel_h
