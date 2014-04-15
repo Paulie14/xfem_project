@@ -1,0 +1,34 @@
+%%
+%% Example
+%%
+
+\documentclass[a4paper,11pt]{article}
+
+\usepackage[cp1250]{inputenc}
+%\usepackage[czech]{babel}          %Windows
+\usepackage{czech}
+
+\begin{document}
+
+
+{
+\begin{center}
+{\bf\MakeUppercase{Faculty of Mechatronics, Informatics and Interdisciplinary Studies \newline Technical University of Liberec}} \newline
+Pavel Exner \newline
+Partition of unity methods for approximation of point water sources in porous media
+\end{center}
+}
+
+People often consider in their models of flow in porous media very large areas which can contain various phenomena of a very small scale
+compared with the size of the areas. These can be some disruptions of the porous media, e.g. cracks and wells, or material inhomogeneities
+which cause large gradients in pressure head and velocity or even their discontinuities.
+
+Using the standard Finite Element Method (FEM) with linear finite elements we are unable to properly approximate the quantities in the vicinity of these 
+disturbances, unless we introduce cells of the same scale in the mesh. This leads to very fine meshes and increases computational costs.
+
+We use Partition of Unity Methods (PUM) to overcome this problem and demonstrate it on a steady quasi-three-dimensional model of multi-aquifer 
+system containing hydro-geological wells which cause singularities in the solution. The corrected eXtended FEM (XFEM) 
+and Stable Generalized FEM (SGFEM) will be presented.
+
+
+\end{document}
