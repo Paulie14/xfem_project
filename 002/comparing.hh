@@ -10,6 +10,69 @@
 
 using namespace dealii;
 
+/** Groups together the exact solutions and source terms.
+ * All the classes are descendants of abstract templated class @p dealii::Function<2>
+ */
+namespace Solution
+{
+  /** @brief Class representing function of the exact solution.
+   * 
+   * We can compute value of analytical solution on a circle area with well source placed in the center.
+   * The solution is given by
+   *   \f{equation}
+   *     u(r) = a \log(\frac{r}{R}), \quad \textrm{kde } a=\frac{P_w}{\log\frac{r_w}{R}}
+   *   \f}
+   * @p value returns value of exact solution in given point.
+   */
+  class ExactBase : public Function<2>
+    {
+      public:
+        /** @brief Constructor.
+         * @param well is pointer to @p Well object 
+         * @param radius is radius of the circle area
+         */
+        
+        ExactBase(Well *well, double radius);
+        
+        ///Returns value of exact soution in given point @p p.
+        ///@param p is given point
+        ///@param component is set to 0 cause it is a scalar function
+        virtual double value (const Point<2>   &p,
+                              const unsigned int  component = 0) const = 0;    
+      protected:    
+        ///Pointer to @p Well object.
+        Well *well; 
+        ///Constants used in computation @p value.
+        double a,b;
+    };
+
+    
+    class ExactSolution : public ExactBase
+    {
+    public:
+      ExactSolution(Well *well, double radius) : ExactBase(well, radius) {}
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
+    
+    class ExactSolution1 : public ExactBase
+    {
+    public:
+      ExactSolution1(Well *well, double radius) : ExactBase(well, radius) {}
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
+    
+    class Source1 : public Function<2>
+    {
+    public:
+      Source1(){}
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
+}  
+using namespace Solution;
+    
 /** @brief Class contains helpful methods for comparing models.
  * 
  * Contains methods computing \f$L^2\f$ norm \f$\|\cdot\|_{L^2(\Omega)}\f$ of 
@@ -48,8 +111,7 @@ public:
    */
   static double L2_norm_diff (const Vector<double> &input_vector, 
                               const Triangulation< 2 > &tria, 
-                              Well *well,
-                              const double &area_radius);
+                              Function<2>* exact_solution);
 
   /// Returns \f$L^2\f$ norm of difference between two dealii vectors.
   /** Return -1 if sizes does not match.
@@ -58,8 +120,7 @@ public:
    * @param area_radius
    */
   static double L2_norm_exact (const Triangulation< 2 > &tria, 
-                         Well *well,
-                         const double &area_radius);
+                               Function<2>* exact_solution);
   
   ///Returns \f$L^2\f$ norm of the vector on the given triangulation
   /**
@@ -68,38 +129,6 @@ public:
    */
   static double L2_norm(const Vector< double >& input_vector, 
                         const dealii::Triangulation< 2 >& tria);
-  
-  /** @brief Class representing function of the exact solution.
-   * 
-   * We can compute value of analytical solution on a circle area with well source placed in the center.
-   * The solution is given by
-   *   \f{equation}
-   *     u(r) = a \log(\frac{r}{R}), \quad \textrm{kde } a=\frac{P_w}{\log\frac{r_w}{R}}
-   *   \f}
-   * @p value returns value of exact solution in given point.
-   */
-  class Exact_solution : public Function<2>
-    {
-      public:
-        /** @brief Constructor.
-         * @param well is pointer to @p Well object 
-         * @param radius is radius of the circle area
-         */
-        
-        Exact_solution(Well *well, double radius);
-        
-        ///Returns value of exact soution in given point @p p.
-        ///@param p is given point
-        ///@param component is set to 0 cause it is a scalar function
-        virtual double value (const Point<2>   &p,
-                              const unsigned int  component = 0) const;    
-      private:    
-        ///Pointer to @p Well object.
-        Well *well; 
-        ///Constants used in computation @p value.
-        double a,b;
-    };
 };
-
 
 #endif //end of comparing_h

@@ -15,7 +15,8 @@ Model_base::Model_base()
 :   grid_create(Model_base::rect),
     down_left(Point<2>(0.0,0.0)),
     up_right(Point<2>(1.0,1.0)),
-    dirichlet_function(NULL),
+    dirichlet_function(nullptr),
+    rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
     init_refinement(0),
@@ -37,7 +38,8 @@ Model_base::Model_base(const std::string& name,
   : grid_create(Model_base::rect),
     down_left(Point<2>(0.0,0.0)),
     up_right(Point<2>(1.0,1.0)),
-    dirichlet_function(NULL),
+    dirichlet_function(nullptr),
+    rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
     init_refinement(0),
@@ -64,7 +66,8 @@ Model_base::Model_base(const std::vector< Well* >& wells,
     grid_create(Model_base::rect),
     down_left(Point<2>(0.0,0.0)),
     up_right(Point<2>(1.0,1.0)),
-    dirichlet_function(NULL),
+    dirichlet_function(nullptr),
+    rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
     init_refinement(0),
@@ -91,7 +94,8 @@ Model_base::Model_base(const Model_base &model, std::string name)
   grid_create(model.grid_create),
   down_left(model.down_left),
   up_right(model.up_right),
-  dirichlet_function(NULL),
+  dirichlet_function(nullptr),
+  rhs_function(nullptr),
   triangulation_changed(true),
   is_adaptive(false),
   init_refinement(model.init_refinement),
@@ -111,11 +115,6 @@ Model_base::Model_base(const Model_base &model, std::string name)
 }
 
 Model_base::~Model_base()
-{
-}
-
-
-Model_base::Boundary_pressure::Boundary_pressure() : Function<2>()
 {
 }
 

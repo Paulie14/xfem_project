@@ -66,7 +66,7 @@ XModel::XModel ()
     fe (1),
     quadrature_formula(2),
     fe_values (fe, quadrature_formula,
-      update_values | update_gradients | update_JxW_values),
+      update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
     out_decomposed(true),
     out_shape_functions(false),
@@ -88,7 +88,7 @@ XModel::XModel (const std::string &name,
     fe (1),
     quadrature_formula(2),
     fe_values (fe, quadrature_formula,
-      update_values | update_gradients | update_JxW_values),
+      update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
     out_decomposed(true),
     out_shape_functions(false),
@@ -111,7 +111,7 @@ XModel::XModel (const std::vector<Well*> &wells,
     fe (1),
     quadrature_formula(2),
     fe_values (fe, quadrature_formula,
-      update_values | update_gradients | update_JxW_values),
+      update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
     out_decomposed(true),
     out_shape_functions(false),
@@ -320,7 +320,7 @@ void XModel::find_enriched_cells()
   
   
   //printing enriched nodes and dofs
-  
+  /*
   DBGMSG("Printing xdata:\n");
   for(unsigned int i=0; i < xdata.size(); i++)
   {
@@ -977,7 +977,7 @@ void XModel::assemble_system ()
   const unsigned int n_q_points    = quadrature_formula.size();
 
   FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
-  //Vector<double>       cell_rhs (dofs_per_cell);	//HOMOGENOUS NEUMANN -> = 0
+  Vector<double>       cell_rhs (dofs_per_cell);        //HOMOGENOUS NEUMANN -> = 0, else source term
   std::vector<unsigned int> local_dof_indices (dofs_per_cell);
   
   //for checking number of active cells (there used to be a problem in adaptivity)
@@ -1024,6 +1024,21 @@ void XModel::assemble_system ()
                             local_dof_indices[j],
                             cell_matrix(i,j)
                             );
+          
+      if(rhs_function != nullptr)
+      {
+        // HOMOGENOUS NEUMANN -> = 0, else source term
+        for (unsigned int i=0; i<dofs_per_cell; ++i)
+        for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+        {
+          cell_rhs(i) += (fe_values.shape_value (i, q_point) *
+            rhs_function->value(fe_values.quadrature_point(q_point)) *   // 0 for homohenous neumann
+            fe_values.JxW (q_point));
+        }
+        //assembling RHS
+        for (unsigned int i=0; i<dofs_per_cell; ++i)
+          block_system_rhs(local_dof_indices[i]) += cell_rhs(i);
+      }
     }    
     else
     {
@@ -1035,7 +1050,7 @@ void XModel::assemble_system ()
   
       Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
       
-      DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
+      //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
       unsigned int refinement_level = 12;
       
       for(unsigned int t=0; t < refinement_level; t++)
@@ -1049,6 +1064,10 @@ void XModel::assemble_system ()
           //adaptive_integration.gnuplot_refinement(output_dir);
         }
       }
+      
+      //sets the dirichlet and source function
+      if(dirichlet_function || rhs_function)
+        adaptive_integration.set_functors(dirichlet_function, rhs_function);
       
       switch(enrichment_method_)
       {
@@ -1084,23 +1103,7 @@ void XModel::assemble_system ()
         
         block_system_rhs( enrich_dof_indices[i]) += enrich_cell_rhs[i];
       }
-      
     } //end for(cells)
-    
-    /* HOMOGENOUS NEUMANN -> = 0
-    for (unsigned int i=0; i<dofs_per_cell; ++i)
-    for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
-    {
-      cell_rhs(i) += (fe_values.shape_value (i, q_point) *
-        0 *
-        fe_values.JxW (q_point));
-    }
-    //*/
-
-    /* HOMOGENOUS NEUMANN -> = 0
-    for (unsigned int i=0; i<dofs_per_cell; ++i)
-      system_rhs(local_dof_indices[i]) += cell_rhs(i);
-    //*/
   }
   
   for (unsigned int w = 0; w < wells.size(); w++)
@@ -1253,6 +1256,8 @@ void XModel::solve ()
 
 void XModel::output_results (const unsigned int cycle)
 { 
+  //TODO: output flags - to set what should be output
+  
   // MATRIX OUTPUT
   if(matrix_output_)
   {
@@ -1281,7 +1286,7 @@ void XModel::output_results (const unsigned int cycle)
   std::cout << "\nXFEM mesh written in:\t" << filename1.str() << ".msh \n\t\tand " << filename1.str() << ".vtk" << std::endl;
   
   
-  
+  /*
   //computing solution on the computational mesh
   std::vector< Point< 2 > > support_points(dof_handler->n_dofs());
   DoFTools::map_dofs_to_support_points<2>(fe_values.get_mapping(), *dof_handler, support_points);
@@ -1325,6 +1330,8 @@ void XModel::output_results (const unsigned int cycle)
   
   DBGMSG("tria: %d  %d \n",triangulation->n_refinement_steps(), triangulation->n_levels());
   
+  if(output_triangulation) delete output_triangulation;
+  
   output_triangulation = new PersistentTriangulation<2>(coarse_tria);
   PersistentTriangulation<2> &output_grid = *output_triangulation;
   
@@ -1340,7 +1347,7 @@ void XModel::output_results (const unsigned int cycle)
   
   dist_unenriched = block_solution.block(0);
   dist_solution = dist_unenriched;
-  double tolerance = 1e-3;
+  double tolerance = 1e-4;
   
   switch(enrichment_method_)
   {
@@ -1351,6 +1358,7 @@ void XModel::output_results (const unsigned int cycle)
     case Enrichment_method::xfem_shift:
       for(unsigned int n = 0; n < 15; n++)
       {
+        DBGMSG("output [%d]:\n", n);
         if( recursive_output<Enrichment_method::xfem_shift>(tolerance, output_grid, temp_dof_handler, temp_fe, cycle) )
           break;
       }
@@ -1359,6 +1367,7 @@ void XModel::output_results (const unsigned int cycle)
     case Enrichment_method::sgfem:
       for(unsigned int n = 0; n < 15; n++)
       {
+        DBGMSG("output [%d]:\n", n);
         if( recursive_output<Enrichment_method::sgfem>(tolerance, output_grid, temp_dof_handler, temp_fe, cycle) )
           break;
       }
@@ -1903,9 +1912,6 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
   //destroy persistent triangulation, release pointer to coarse triangulation
   delete dist_tria;
 }
-
-
-
 
 
 

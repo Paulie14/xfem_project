@@ -79,6 +79,8 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
                                           )
   : cell(cell), fe(&fe), mapping (&mapping),
     cell_mapping(cell->vertex(0), cell->vertex(3)),
+    dirichlet_function(nullptr),
+    rhs_function(nullptr),
     level(0)
 {
       MASSERT(cell->user_pointer() != NULL, "NULL user_pointer in the cell"); 

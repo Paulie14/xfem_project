@@ -6,6 +6,7 @@
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/lac/vector.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/base/function.h>
 
 #ifdef DEBUG
  // #define DECOMPOSED_CELL_MATRIX
@@ -82,6 +83,10 @@ class Adaptive_integration
     inline unsigned int get_level()
     {return level;}
     
+    inline void set_functors(Function<2>* dirichlet_function, Function<2>* rhs_function)
+    { this->dirichlet_function = dirichlet_function;
+      this->rhs_function = rhs_function;
+    }
     
     /// @brief Refinement along the well edge.
     /** If the square is crossed by the well edge
@@ -213,6 +218,11 @@ class Adaptive_integration
     std::vector<Point<2> > q_points_all;
     std::vector<double> jxw_all;
     
+    ///Pointer to function describing Dirichlet boundary condition.
+    Function<2> *dirichlet_function;         
+    ///Pointer to function describing RHS - sources.
+    Function<2> *rhs_function;
+  
     ///Level of current refinement.
     unsigned int level;
     
@@ -261,30 +271,30 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   cell_rhs = Vector<double>(n_dofs+n_wells_inside);
   cell_rhs = 0;
                
-  gather_w_points();    //gathers all quadrature points from square into one vector and maps them to unit cell
+  gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
   Quadrature<2> quad(q_points_all, jxw_all);
   XFEValues<EnrType> xfevalues(*fe,quad, update_values 
-                                                               | update_gradients 
-                                                               | update_quadrature_points 
-                                                               //| update_covariant_transformation 
-                                                               //| update_transformation_values 
-                                                               //| update_transformation_gradients
-                                                               //| update_boundary_forms 
-                                                               //| update_cell_normal_vectors 
-                                                               | update_JxW_values 
-                                                               //| update_normal_vectors
-                                                               //| update_contravariant_transformation
-                                                               //| update_q_points
-                                                               //| update_support_points
-                                                               //| update_support_jacobians 
-                                                               //| update_support_inverse_jacobians
-                                                               //| update_second_derivatives
-                                                               //| update_hessians
-                                                               //| update_volume_elements
-                                                               //| update_jacobians
-                                                               //| update_jacobian_grads
-                                                               //| update_inverse_jacobians
-                                                    );
+                                       | update_gradients 
+                                       | update_quadrature_points 
+                                       //| update_covariant_transformation 
+                                       //| update_transformation_values 
+                                       //| update_transformation_gradients
+                                       //| update_boundary_forms 
+                                       //| update_cell_normal_vectors 
+                                       | update_JxW_values 
+                                       //| update_normal_vectors
+                                       //| update_contravariant_transformation
+                                       //| update_q_points
+                                       //| update_support_points
+                                       //| update_support_jacobians 
+                                       //| update_support_inverse_jacobians
+                                       //| update_second_derivatives
+                                       //| update_hessians
+                                       //| update_volume_elements
+                                       //| update_jacobians
+                                       //| update_jacobian_grads
+                                       //| update_inverse_jacobians
+                                                 );
   xfevalues.reinit(xdata);
   
   //temporary vectors for both shape and xshape values and gradients
@@ -299,10 +309,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     {   
       shape_grad_vec[i] = xfevalues.shape_grad(i,q);
         
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-        if(n_wells_inside > 0)
+      if(n_wells_inside > 0 || rhs_function)
           shape_val_vec[i] = xfevalues.shape_value(i,q);
-#endif
     }
 
     // filling xshape values and xshape gradients next
@@ -313,10 +321,9 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       { 
         if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
         
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-        if(n_wells_inside > 0)
-          shape_val_vec[index] = 0;   // giving zero for sure (initialized with zeros)
-#endif
+        if(n_wells_inside > 0 || rhs_function)
+          shape_val_vec[index] = xfevalues.enrichment_value(k,w,q);
+          
         //shape_grad_vec[index] = xfevalues.enrichment_grad(k,w,mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
         shape_grad_vec[index] = xfevalues.enrichment_grad(k,w,q);
         index ++;
@@ -333,6 +340,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     //filling cell matrix now
     //additions to matrix A,R,S from LAPLACE---------------------------------------------- LAPLACE  
       for(unsigned int i = 0; i < n_dofs; i++)
+      {
         for(unsigned int j = 0; j < n_dofs; j++)
         {
           cell_matrix(i,j) += transmisivity * 
@@ -340,7 +348,12 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                               shape_grad_vec[j] *
                               xfevalues.JxW(q); //weight of gauss * square_jacobian * cell_jacobian;
         }
-
+        //assembling RHS
+        if(rhs_function)
+        {
+          cell_rhs(i) += rhs_function->value(xfevalues.quadrature_point(q)) * shape_val_vec[i];
+        }
+      }
       //addition from SOURCES--------------------------------------------------------------- SOURCES
 #ifdef SOURCES
       for(unsigned int w = 0; w < n_wells; w++) //W

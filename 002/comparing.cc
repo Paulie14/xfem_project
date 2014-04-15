@@ -105,9 +105,9 @@ double Comparing::L2_norm_diff(const dealii::Vector< double >& v1,
   //DBGMSG("Vector sizes: n1=%d \t n2=%d",n1,n2);
   MASSERT(n1 == n2, "Vectors are not of the same size!");
   
-  QGauss<2> quad(2);
   FE_Q<2> fe(1);
   DoFHandler<2> dof_handler;
+  QGauss<2> quad(fe.degree + 2);
   FEValues<2> fe_values(fe,quad, update_values | update_JxW_values);
   
   dof_handler.initialize(tria,fe);
@@ -143,15 +143,14 @@ double Comparing::L2_norm_diff(const dealii::Vector< double >& v1,
 
 double Comparing::L2_norm_diff(const dealii::Vector< double >& input_vector, 
                                const Triangulation< 2 > &tria,
-                               Well *well,
-                               const double &area_radius
+                               Function<2>* exact_solution
                               )
 {
   FE_Q<2> fe(1);
   DoFHandler<2> dof_handler;
   
   dof_handler.initialize(tria,fe);
-  QGauss<2> quad(2);
+  QGauss<2> quad(fe.degree + 2);
   
   Vector<double> difference(dof_handler.n_dofs());
   
@@ -159,7 +158,7 @@ double Comparing::L2_norm_diff(const dealii::Vector< double >& input_vector,
   //DoFTools::make_hanging_node_constraints (dof_handler, hanging_node_constraints);  
   //hanging_node_constraints.close();
   
-  VectorTools::integrate_difference<2>(dof_handler,input_vector, Comparing::Exact_solution(well,area_radius), difference, quad,VectorTools::NormType::L2_norm);
+  VectorTools::integrate_difference<2>(dof_handler,input_vector, *exact_solution, difference, quad,VectorTools::NormType::L2_norm);
   
   double result = 0;
   
@@ -192,17 +191,18 @@ double Comparing::L2_norm_diff(const dealii::Vector< double >& input_vector,
   
 }
 
-double Comparing::L2_norm_exact(const dealii::Triangulation< 2 >& tria, Well* well, const double& area_radius)
+double Comparing::L2_norm_exact(const dealii::Triangulation< 2 >& tria, 
+                                Function<2>* exact_solution)
 {
   FE_Q<2> fe(1);
   DoFHandler<2> dof_handler;
   
   dof_handler.initialize(tria,fe);
-  QGauss<2> quad(2);
+  QGauss<2> quad(fe.degree + 2);
   
   Vector<double> zero_vector(dof_handler.n_dofs());
   Vector<double> difference(dof_handler.n_dofs());
-  VectorTools::integrate_difference<2>(dof_handler,zero_vector, Comparing::Exact_solution(well,area_radius), difference, quad,VectorTools::NormType::L2_norm);
+  VectorTools::integrate_difference<2>(dof_handler,zero_vector, *exact_solution, difference, quad,VectorTools::NormType::L2_norm);
   
   return difference.l2_norm();
 }
@@ -213,7 +213,7 @@ double Comparing::L2_norm(const dealii::Vector< double >& input_vector, const de
   DoFHandler<2> dof_handler;
   
   dof_handler.initialize(tria,fe);
-  QGauss<2> quad(2);
+  QGauss<2> quad(fe.degree + 2);
   
   Vector<double> difference(dof_handler.n_dofs());
   VectorTools::integrate_difference<2>(dof_handler, input_vector, ZeroFunction<2>(), difference, quad,VectorTools::NormType::L2_norm);
@@ -222,7 +222,9 @@ double Comparing::L2_norm(const dealii::Vector< double >& input_vector, const de
 }
 
 
-Comparing::Exact_solution::Exact_solution(Well* well, double radius)
+/******************         SOLUTIONS           **************************/
+
+Solution::ExactBase::ExactBase(Well* well, double radius)
   : Function< 2 >(),
     well(well)
 {
@@ -231,7 +233,7 @@ Comparing::Exact_solution::Exact_solution(Well* well, double radius)
 }
 
 
-double Comparing::Exact_solution::value(const dealii::Point< 2 >& p, const unsigned int /*component*/) const
+double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well->center().distance(p);
   if(distance >= well->radius())
@@ -240,6 +242,19 @@ double Comparing::Exact_solution::value(const dealii::Point< 2 >& p, const unsig
     return well->pressure();
 }
 
+double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  double distance = well->center().distance(p);
+  if(distance >= well->radius())
+    return a * std::log(distance) + b + std::sin(p[0]);
+  else
+    return well->pressure() + std::sin(p[0]);
+}
+
+double Solution::Source1::value(const Point< 2 >& p, const unsigned int component) const
+{
+  return std::sin(p[0]);
+}
 
 
 

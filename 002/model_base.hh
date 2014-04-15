@@ -183,6 +183,12 @@ public:
     dirichlet_function = func;
   }
   
+  ///Sets the function defining the Dirichlet function.
+  inline void set_rhs_function(Function<2> *func)
+  {
+    rhs_function = func;
+  }
+  
   ///Sets output of the system matrix on/off. Default is false.
   inline void set_matrix_output(bool matrix_output)
   { matrix_output_ = matrix_output;}
@@ -194,22 +200,6 @@ public:
     
     
 protected:
-  
-  /** @brief Class that represents a Dirichlet boundary condition.
-   * 
-   * It is a Deal II function that returns value of pressure at the boundary.
-   * Is pure virtual, must be implemented inside model classes.
-   */
-  class Boundary_pressure : public Function<2>
-    {
-      public:
-        ///Constructor
-        Boundary_pressure();
-        
-        ///Returns the value of pressure at the boundary.
-        virtual double value (const Point<2>   &p,
-                              const unsigned int  component = 0) const = 0;           
-    };
     
   /** @name Run methods 
    * Methods called in @p run.
@@ -250,6 +240,8 @@ protected:
   
   ///Pointer to function describing Dirichlet boundary condition.
   Function<2> *dirichlet_function;         
+  ///Pointer to function describing RHS - sources.
+  Function<2> *rhs_function;
   
   ///flag is true if the triangulation has been changed in the current cycle
   bool triangulation_changed;
