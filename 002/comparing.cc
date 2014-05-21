@@ -224,12 +224,12 @@ double Comparing::L2_norm(const dealii::Vector< double >& input_vector, const de
 
 /******************         SOLUTIONS           **************************/
 
-Solution::ExactBase::ExactBase(Well* well, double radius)
+Solution::ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
   : Function< 2 >(),
     well(well)
 {
-  a = well->pressure() / (std::log(well->radius() / radius));
-  b = - a * std::log(radius);
+  a = (well->pressure() - p_dirichlet) / (std::log(well->radius() / radius));
+  b = p_dirichlet - a * std::log(radius);
 }
 
 

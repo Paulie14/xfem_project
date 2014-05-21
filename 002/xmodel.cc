@@ -991,7 +991,7 @@ void XModel::assemble_system ()
     count++;
     fe_values.reinit (cell);
     cell_matrix = 0;
-    //cell_rhs = 0;		//HOMOGENOUS NEUMANN -> = 0
+    cell_rhs = 0;		//HOMOGENOUS NEUMANN -> = 0
     
     /*
     //printing Jakobi determinants, fe_values flag must be set in constructors: update_jacobians
@@ -1347,7 +1347,7 @@ void XModel::output_results (const unsigned int cycle)
   
   dist_unenriched = block_solution.block(0);
   dist_solution = dist_unenriched;
-  double tolerance = 1e-4;
+  double tolerance = 1e-6;
   
   switch(enrichment_method_)
   {

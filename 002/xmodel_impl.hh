@@ -1,5 +1,6 @@
 
 //output
+#include "xmodel.hh"
 #include <deal.II/numerics/data_out.h>
 #include <fstream>
 #include <iostream>
@@ -13,7 +14,8 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
   bool refine = false;
   unsigned int vertices_per_cell = GeometryInfo<2>::vertices_per_cell,
                dofs_per_cell = fe.dofs_per_cell,
-               n_nodes = output_grid.n_vertices();
+               n_nodes = output_grid.n_vertices(),
+               count_cells = 0;
   double max_diff = 0;
   
   //setting new size and initialize with zeros
@@ -103,20 +105,21 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       }
       //DBGMSG("q: %d\t inter: %e\t sol: %f\t jxw: %e\n",q,inter,sol,temp_fe_values.JxW(q));
       //difference += (inter - sol) * temp_fe_values.JxW(q);
-      difference += std::abs(inter - sol) * temp_fe_values.JxW(q);
-      integral += std::abs(inter) * temp_fe_values.JxW(q);
+      difference += std::abs((inter - sol)/sol) * temp_fe_values.JxW(q);
+      //integral += std::abs(inter) * temp_fe_values.JxW(q);
     }
     
-    //DBGMSG("difference: %e, integral: %e, cell: %d\n",difference, integral,cell->index());
-    difference = difference / integral; //relative
-    max_diff = std::max(max_diff, difference);
+    //DBGMSG("difference: %e, integral: %e, relative: %e, cell: %d, lev: %d\n",difference, integral, difference/integral,cell->index(), cell->level());
+    //difference = difference / integral; //relative
     if( difference > tolerance)
     {
+      count_cells++;
+      max_diff = std::max(max_diff, difference);
       cell->set_refine_flag();
       refine = true;
     }
   }
-  DBGMSG("max_diff: %e\n",max_diff);
+  DBGMSG("max_diff: %e\t\tcells_for_refinement: %d\n",max_diff, count_cells);
     
   if(refine)
   {

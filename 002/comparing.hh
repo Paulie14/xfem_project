@@ -32,7 +32,7 @@ namespace Solution
          * @param radius is radius of the circle area
          */
         
-        ExactBase(Well *well, double radius);
+        ExactBase(Well *well, double radius, double p_dirichlet = 0);
         
         ///Returns value of exact soution in given point @p p.
         ///@param p is given point
@@ -50,7 +50,7 @@ namespace Solution
     class ExactSolution : public ExactBase
     {
     public:
-      ExactSolution(Well *well, double radius) : ExactBase(well, radius) {}
+      ExactSolution(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
@@ -58,7 +58,7 @@ namespace Solution
     class ExactSolution1 : public ExactBase
     {
     public:
-      ExactSolution1(Well *well, double radius) : ExactBase(well, radius) {}
+      ExactSolution1(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };

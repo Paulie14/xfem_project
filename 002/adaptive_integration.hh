@@ -351,7 +351,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
         //assembling RHS
         if(rhs_function)
         {
-          cell_rhs(i) += rhs_function->value(xfevalues.quadrature_point(q)) * shape_val_vec[i];
+          cell_rhs(i) += rhs_function->value(xfevalues.quadrature_point(q)) * shape_val_vec[i] * xfevalues.JxW(q);
         }
       }
       //addition from SOURCES--------------------------------------------------------------- SOURCES

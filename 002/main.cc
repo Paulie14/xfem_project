@@ -718,7 +718,7 @@ void test_convergence_sin(std::string output_dir)
          perm2fer = Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
-         enrichment_radius = 4.0;
+         enrichment_radius = 6.0;
          
   unsigned int n_well_q_points = 500;
          
@@ -738,10 +738,10 @@ void test_convergence_sin(std::string output_dir)
                          well_center,
                          perm2fer, 
                          perm2tard);
-  well->set_pressure(Parameters::pressure_at_top);
+  well->set_pressure(3*Parameters::pressure_at_top);
   well->evaluate_q_points(n_well_q_points);
   
-  Function<2>* exact_solution = new Solution::ExactSolution(well, radius);
+  Function<2>* exact_solution = new Solution::ExactSolution1(well, radius, 0);
   Function<2> *dirichlet_square = exact_solution;
   Function<2> *rhs_function = new Solution::Source1();
   
@@ -1131,8 +1131,8 @@ int main ()
   //return 0;
   
   //test_circle_grid_creation(input_dir);
-  test_convergence_square(output_dir);
-  //test_convergence_sin(output_dir);
+  //test_convergence_square(output_dir);
+  test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
   //test_output(output_dir);
   return 0;
