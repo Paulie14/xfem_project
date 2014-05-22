@@ -314,9 +314,13 @@ void XModel::find_enriched_cells()
     } //for cells
   }
   
-  
-  n_enriched_dofs = n_global_enriched_dofs - dof_handler->n_dofs();
-  std::cout << "Number of enriched dofs: " << n_enriched_dofs << std::endl;
+      
+    n_enriched_dofs = n_global_enriched_dofs - dof_handler->n_dofs();
+    std::cout << "Number of unenriched dofs: "
+        << dof_handler->n_dofs()
+        << std::endl;
+    std::cout << "Number of enriched dofs: " << n_enriched_dofs << std::endl;
+    std::cout << "Total number of dofs: " << n_enriched_dofs+dof_handler->n_dofs() << std::endl;
   
   
   //printing enriched nodes and dofs
@@ -796,10 +800,6 @@ void XModel::setup_system ()
   
   
   dof_handler->initialize(*triangulation,fe);
-  
-  std::cout << "Number of unenriched degrees of freedom: "
-	    << dof_handler->n_dofs()
-	    << std::endl;
 
   //find cells which lies within the enrichment radius of the wells
   find_enriched_cells();
@@ -1347,7 +1347,7 @@ void XModel::output_results (const unsigned int cycle)
   
   dist_unenriched = block_solution.block(0);
   dist_solution = dist_unenriched;
-  double tolerance = 1e-6;
+  double tolerance = 1e-5;
   
   switch(enrichment_method_)
   {

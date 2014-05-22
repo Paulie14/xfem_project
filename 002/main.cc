@@ -8,6 +8,7 @@
 #include <deal.II/grid/tria_boundary_lib.h>
 
 #include <deal.II/base/table_handler.h>
+#include <deal.II/base/convergence_table.h>
 
 #include "system.hh"
 #include "model.hh"
@@ -544,7 +545,7 @@ void test_convergence_square(std::string output_dir)
          perm2fer = Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
-         enrichment_radius = 4.0;
+         enrichment_radius = 10.0;
          
   unsigned int n_well_q_points = 500;
          
@@ -618,10 +619,11 @@ void test_convergence_square(std::string output_dir)
 //   }
   
   
-  unsigned int n_cycles = 15;
+  unsigned int n_cycles = 10;
   double l2_norm_dif_xfem, l2_norm_dif_fem;
   
-  TableHandler table_convergence;
+  //TableHandler table_convergence;
+  ConvergenceTable table_convergence;
   
   Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
   
@@ -671,9 +673,13 @@ void test_convergence_square(std::string output_dir)
                                                   exact_solution);
       }
       
-      table_convergence.add_value("$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$",l2_norm_dif_xfem);
-      table_convergence.set_precision("$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$", 2);
-      table_convergence.set_scientific("$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$",true);
+      table_convergence.add_value("X L2",l2_norm_dif_xfem);
+      table_convergence.set_tex_caption("X L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
+      table_convergence.set_precision("X L2", 2);
+      table_convergence.set_scientific("X L2",true);
+      
+      table_convergence.evaluate_convergence_rates("X L2", ConvergenceTable::reduction_rate);
+      table_convergence.evaluate_convergence_rates("X L2", ConvergenceTable::reduction_rate_log2);
       
       table_convergence.add_value("XFEM-dofs",xmodel_simple.get_number_of_dofs().first+xmodel_simple.get_number_of_dofs().second);
       table_convergence.add_value("XFEM-enriched dofs",xmodel_simple.get_number_of_dofs().second);
@@ -681,6 +687,12 @@ void test_convergence_square(std::string output_dir)
       
       table_convergence.add_value("XFEM-time",xmodel_simple.get_last_run_time());
       table_convergence.set_precision("XFEM-time", 3);
+      
+      table_convergence.set_tex_format("XFEM-dofs", "r");
+      table_convergence.set_tex_format("XFEM-enriched dofs", "r");
+      table_convergence.set_tex_format("It_{XFEM}", "r");
+      table_convergence.set_tex_format("XFEM-time", "r");
+
       }
       
       //write the table every cycle (to have at least some results if program fails)
@@ -689,7 +701,8 @@ void test_convergence_square(std::string output_dir)
       out_file.open(output_dir + "table_convergence_circle.tex");
       table_convergence.write_tex(out_file);
       out_file.close();
-    } 
+    }
+    
     
   delete well;
   delete dirichlet_square;
@@ -1131,8 +1144,8 @@ int main ()
   //return 0;
   
   //test_circle_grid_creation(input_dir);
-  //test_convergence_square(output_dir);
-  test_convergence_sin(output_dir);
+  test_convergence_square(output_dir);
+  //test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
   //test_output(output_dir);
   return 0;
