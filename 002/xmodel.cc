@@ -321,7 +321,7 @@ void XModel::find_enriched_cells()
         << std::endl;
     std::cout << "Number of enriched dofs: " << n_enriched_dofs << std::endl;
     std::cout << "Total number of dofs: " << n_enriched_dofs+dof_handler->n_dofs() << std::endl;
-  
+  MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
   //printing enriched nodes and dofs
   /*
@@ -1337,6 +1337,7 @@ void XModel::output_results (const unsigned int cycle)
   
   output_grid.copy_triangulation(*triangulation);
   output_grid.restore();
+  output_grid.clear_user_flags();
   
   FE_Q<2> temp_fe(1);
   DoFHandler<2> temp_dof_handler;
@@ -1347,7 +1348,9 @@ void XModel::output_results (const unsigned int cycle)
   
   dist_unenriched = block_solution.block(0);
   dist_solution = dist_unenriched;
-  double tolerance = 1e-5;
+  
+  double tolerance = 1e-3;
+  unsigned int iterations = 15;
   
   switch(enrichment_method_)
   {
@@ -1356,19 +1359,19 @@ void XModel::output_results (const unsigned int cycle)
       break;
       
     case Enrichment_method::xfem_shift:
-      for(unsigned int n = 0; n < 15; n++)
+      for(unsigned int n = 0; n < iterations; n++)
       {
         DBGMSG("output [%d]:\n", n);
-        if( recursive_output<Enrichment_method::xfem_shift>(tolerance, output_grid, temp_dof_handler, temp_fe, cycle) )
+        if( recursive_output<Enrichment_method::xfem_shift>(tolerance, output_grid, temp_dof_handler, temp_fe, n) )
           break;
       }
       break;
       
     case Enrichment_method::sgfem:
-      for(unsigned int n = 0; n < 15; n++)
+      for(unsigned int n = 0; n < iterations; n++)
       {
         DBGMSG("output [%d]:\n", n);
-        if( recursive_output<Enrichment_method::sgfem>(tolerance, output_grid, temp_dof_handler, temp_fe, cycle) )
+        if( recursive_output<Enrichment_method::sgfem>(tolerance, output_grid, temp_dof_handler, temp_fe, n) )
           break;
       }
   }
@@ -1911,6 +1914,27 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
   
   //destroy persistent triangulation, release pointer to coarse triangulation
   delete dist_tria;
+}
+
+
+double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+{
+  switch(enrichment_method_)
+  {
+    case Enrichment_method::xfem_ramp: 
+        MASSERT(0,"Not implemented yet.");
+        break;
+      
+    case Enrichment_method::xfem_shift:  
+        integrate_difference<Enrichment_method::xfem_shift>(diff_vector, exact_solution);
+        break;
+      
+    case Enrichment_method::sgfem:
+        integrate_difference<Enrichment_method::sgfem>(diff_vector, exact_solution);
+        break;
+    default: 
+        MASSERT(0,"Unknown enrichment type or not implemented.");
+  }
 }
 
 

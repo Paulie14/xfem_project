@@ -23,6 +23,7 @@ Model_base::Model_base()
     
     n_aquifers(1),
     
+    cycle_(0),
     last_run_time_(0),
     solver_it(0),
     matrix_output_(false),
@@ -46,6 +47,7 @@ Model_base::Model_base(const std::string& name,
     
     n_aquifers(n_aquifers),
     
+    cycle_(0),
     last_run_time_(0),
     solver_it(0),
     matrix_output_(false),
@@ -74,6 +76,7 @@ Model_base::Model_base(const std::vector< Well* >& wells,
     
     n_aquifers(n_aquifers),
     
+    cycle_(0),
     last_run_time_(0),
     solver_it(0),
     matrix_output_(false),
@@ -103,6 +106,7 @@ Model_base::Model_base(const Model_base &model, std::string name)
   n_aquifers(model.n_aquifers),
   transmisivity(model.transmisivity),
   
+  cycle_(0),
   last_run_time_(0),
   solver_it(0),
   matrix_output_(false),
@@ -120,7 +124,7 @@ Model_base::~Model_base()
 
 
 void Model_base::run(const unsigned int cycle)
-{
+{  
   if(cycle == 0)
   {
     make_grid();
@@ -148,6 +152,7 @@ void Model_base::run(const unsigned int cycle)
   stop = clock();
   last_run_time_ = ((double) (stop-start))/CLOCKS_PER_SEC;
   std::cout << "Run time: " << last_run_time_ << " s" << std::endl;
+  cycle_++;
 }
 
 
@@ -272,4 +277,12 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
   }
   
   output.close();
+}
+
+
+
+
+double Model_base::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+{
+    DBGMSG("Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
 }

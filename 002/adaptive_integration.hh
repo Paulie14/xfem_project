@@ -5,6 +5,7 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/lac/vector.h>
+#include <deal.II/lac/block_vector.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/base/function.h>
 
@@ -114,6 +115,13 @@ class Adaptive_integration
                     const double &transmisivity
                     );
     
+    /** @brief Integrates over all squares and their quadrature points the L2 norm of difference to exact solution.
+      * @tparam EnrType is the type of enrichment method (XFEM-shifted, SGFEM sofar)
+      * @param solution is the vector of computed degrees of freedom, i.e. solution
+      * @param exact_solution is the functor representing the exact solution
+      */   
+    template<Enrichment_method::Type EnrType> 
+    double integrate_l2_diff(const BlockVector<double> &solution, const Function<2> &exact_solution);
     
     /** OBSOLETE First version of XFEM (without shift).
      * Does everything inside - no XFEValues.
@@ -482,6 +490,69 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     
 }
 
+
+template<Enrichment_method::Type EnrType> 
+double Adaptive_integration::integrate_l2_diff(const BlockVector<double> &solution, const Function<2> &exact_solution)
+{  
+    unsigned int n_wells = xdata->n_wells(),              // number of wells affecting the cell
+                 dofs_per_cell = fe->dofs_per_cell,
+                 n_vertices = GeometryInfo<2>::vertices_per_cell;  
+
+    double  value = 0, 
+            exact_value = 0, 
+            cell_norm = 0;
+    std::vector<unsigned int> local_dof_indices;
+
+    xdata->get_dof_indices(local_dof_indices, dofs_per_cell);
+
+    gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+    Quadrature<2> quad(q_points_all, jxw_all);
+    XFEValues<EnrType> xfevalues(*fe,quad, update_values 
+                                       //| update_gradients 
+                                       | update_quadrature_points 
+                                       //| update_covariant_transformation 
+                                       //| update_transformation_values 
+                                       //| update_transformation_gradients
+                                       //| update_boundary_forms 
+                                       //| update_cell_normal_vectors 
+                                       | update_JxW_values 
+                                       //| update_normal_vectors
+                                       //| update_contravariant_transformation
+                                       //| update_q_points
+                                       //| update_support_points
+                                       //| update_support_jacobians 
+                                       //| update_support_inverse_jacobians
+                                       //| update_second_derivatives
+                                       //| update_hessians
+                                       //| update_volume_elements
+                                       //| update_jacobians
+                                       //| update_jacobian_grads
+                                       //| update_inverse_jacobians
+                                                 );
+    xfevalues.reinit(xdata);
+  
+  
+    for(unsigned int q=0; q<q_points_all.size(); q++)
+    { 
+        exact_value = exact_solution.value(xfevalues.quadrature_point(q));
+        value = 0;  
+        // unenriched solution
+        for(unsigned int i=0; i < dofs_per_cell; i++)
+            value += solution(local_dof_indices[i]) * xfevalues.shape_value(i,q);
+                
+        // enriched solution
+        for(unsigned int w = 0; w < n_wells; w++) //W
+        for(unsigned int k = 0; k < n_vertices; k++) //M_w
+        { 
+            if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+         
+            value += solution(xdata->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
+        }
+        
+        value = value - exact_value;                   // u_h - u
+        cell_norm += value * value * xfevalues.JxW(q);  // (u_h-u)^2 * JxW
+    }
+}
 
 #endif  //Adaptive_integration_h
 

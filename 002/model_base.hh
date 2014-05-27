@@ -92,6 +92,8 @@ public:
                                              bool is_circle=false,
                                              const unsigned int &cycle=0, 
                                              const unsigned int &m_aquifer=0) = 0;
+                                             
+  virtual double integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
   
                                              
   /** @name Getters
@@ -260,6 +262,7 @@ protected:
 
   ///@name System
   //@{
+  unsigned int cycle_;
   ///last run time (setup, assemble, solve)
   double last_run_time_;
   

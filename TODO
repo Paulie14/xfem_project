@@ -1,1 +1,10 @@
-001:
+002:
+
+
+- MY OWN ERROR in L2 NORM !!!!!!!!!!!!
+
+
+- use ini input file and read by ParameterHandler
+- convergence rate SGFEM, XFEM, FEM on simple model and with sin(x)
+- study scaled condition number
+- template adaptive integration for xfem with ramp only

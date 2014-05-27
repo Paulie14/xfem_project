@@ -7,7 +7,8 @@ using namespace dealii;
 DataCellBase::DataCellBase(const DoFHandler<2>::active_cell_iterator &cell, 
                      Well* well, 
                      const unsigned int &well_index)
-: cell_(cell)
+: cell_(cell),
+  user_index_(0)
 {
   wells_.push_back(well);
   wells_indices_.push_back(well_index);

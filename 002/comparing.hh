@@ -70,6 +70,22 @@ namespace Solution
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
+    
+    class ExactSolution2 : public ExactBase
+    {
+    public:
+      ExactSolution2(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
+    
+    class Source2 : public Function<2>
+    {
+    public:
+      Source2(){}
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };    
 }  
 using namespace Solution;
     

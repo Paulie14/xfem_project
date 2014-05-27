@@ -216,6 +216,7 @@ class XModel : public Model_base
     //output results from another model but computed on the model mesh
     //void output_foreign_results(const unsigned int cycle,const Vector<double> &foreign_solution);
 
+    double integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution) override;
 
   protected:
     virtual void make_grid () override;
@@ -283,7 +284,14 @@ class XModel : public Model_base
                      );
     
     template<Enrichment_method::Type> 
-    int recursive_output(double tolerance, PersistentTriangulation<2> &output_grid, DoFHandler<2> &temp_dof_handler, FE_Q<2> &temp_fe, const unsigned int cycle);
+    int recursive_output(double tolerance, 
+                         PersistentTriangulation<2> &output_grid, 
+                         DoFHandler<2> &temp_dof_handler, 
+                         FE_Q<2> &temp_fe, 
+                         const unsigned int iter);
+    
+    template<Enrichment_method::Type> 
+    double integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
     
     ///Type of enrichment method
     Enrichment_method::Type enrichment_method_;

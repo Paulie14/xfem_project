@@ -4,14 +4,16 @@
 #include <deal.II/numerics/data_out.h>
 #include <fstream>
 #include <iostream>
+#include "adaptive_integration.hh"
 
 template<Enrichment_method::Type EnrType>
 int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& output_grid, 
                              DoFHandler<2> &temp_dof_handler, 
                              FE_Q<2> &temp_fe, 
-                             const unsigned int cycle)
+                             const unsigned int iter)
 { 
-  bool refine = false;
+  bool refine = false,
+       cell_refined;
   unsigned int vertices_per_cell = GeometryInfo<2>::vertices_per_cell,
                dofs_per_cell = fe.dofs_per_cell,
                n_nodes = output_grid.n_vertices(),
@@ -48,10 +50,16 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       if( (cell->level() != 0) && 
           (cell->parent()->user_pointer() != nullptr) 
         )
-        cell->parent()->recursively_set_user_pointer(cell->parent()->user_pointer());
+      {
+        cell->set_user_pointer(cell->parent()->user_pointer());
+        cell_refined = true;
+        //cell->parent()->recursively_set_user_pointer(cell->parent()->user_pointer());
+      }
       else
         continue;
     }
+    else
+        cell_refined = false;
     
     //else it is enriched and we must compute the difference
     
@@ -79,6 +87,12 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       dist_solution[temp_local_dof_indices[i]] = dist_enriched[temp_local_dof_indices[i]] + dist_unenriched[temp_local_dof_indices[i]];
     }
     
+    if( (! cell_refined) && (iter != 0))
+    {
+        //DBGMSG("continue on cell %d level %d\n",cell->index(), cell->level());
+        continue;
+    }
+    
     double difference = 0,
            integral = 0;
     //DBGMSG("n_q: %d\n",temp_fe_values.n_quadrature_points);
@@ -104,13 +118,13 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
         }
       }
       //DBGMSG("q: %d\t inter: %e\t sol: %f\t jxw: %e\n",q,inter,sol,temp_fe_values.JxW(q));
-      //difference += (inter - sol) * temp_fe_values.JxW(q);
-      difference += std::abs((inter - sol)/sol) * temp_fe_values.JxW(q);
-      //integral += std::abs(inter) * temp_fe_values.JxW(q);
+      difference += std::abs(inter - sol) * temp_fe_values.JxW(q);
+      //difference += std::abs((inter - sol)/sol) * temp_fe_values.JxW(q);
+      integral += std::abs(sol) * temp_fe_values.JxW(q);
     }
     
     //DBGMSG("difference: %e, integral: %e, relative: %e, cell: %d, lev: %d\n",difference, integral, difference/integral,cell->index(), cell->level());
-    //difference = difference / integral; //relative
+    difference = difference / integral; //relative
     if( difference > tolerance)
     {
       count_cells++;
@@ -119,26 +133,14 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       refine = true;
     }
   }
+  
   DBGMSG("max_diff: %e\t\tcells_for_refinement: %d\n",max_diff, count_cells);
-    
+  
   if(refine)
   {
     output_grid.execute_coarsening_and_refinement();
     DBGMSG("new n_vertices: %d\n",output_grid.n_vertices());
     temp_dof_handler.distribute_dofs(temp_fe);
-    
-    /*
-    Triangulation<2>::active_cell_iterator
-    c = output_grid.begin_active(),
-    ec = output_grid.end();
-    for (; c!=ec; ++c)
-    {
-      if( (c->level() != 0) && 
-          (c->parent()->user_pointer() != nullptr) 
-        )
-        c->parent()->recursively_set_user_pointer(c->parent()->user_pointer());
-    }
-    //*/
     
     dist_unenriched.reinit(temp_dof_handler.n_dofs());
     dist_solution.reinit(temp_dof_handler.n_dofs());
@@ -155,6 +157,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
                                              temp_hanging_node_constraints, 
                                              dist_unenriched);
     dist_solution = dist_unenriched;
+    
     return 0;
   }
   else
@@ -176,7 +179,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     data_out.build_patches ();
 
     std::stringstream filename;
-    filename << output_dir << "xmodel_sol_" << cycle << ".vtk";
+    filename << output_dir << "xmodel_sol_" << cycle_ << ".vtk";
    
     std::ofstream output (filename.str());
     data_out.write_vtk (output);
@@ -185,3 +188,61 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     return 1;
   }
 }
+
+
+
+
+template<Enrichment_method::Type EnrType>
+double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+{
+    std::cout << "Computing l2 norm of difference..." << std::endl;
+    unsigned int dofs_per_cell = fe.dofs_per_cell,
+                 index = 0;
+                 
+    double exact_value, value, cell_norm,
+           total_norm = 0;
+             
+    QGauss<2> temp_quad(3);
+    FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
+    std::vector<unsigned int> local_dof_indices (temp_fe_values.dofs_per_cell);   
+  
+    diff_vector.reinit(dof_handler->get_tria().n_active_cells());
+    
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+        cell_norm = 0;
+        //DBGMSG("cell: %d\n",cell->index());
+        // is there is NOT a user pointer on the cell == is not enriched?
+        temp_fe_values.reinit(cell);
+        cell->get_dof_indices(local_dof_indices);
+        
+        if (cell->user_pointer() == nullptr)
+        {
+            for(unsigned int q=0; q < temp_fe_values.n_quadrature_points; q++)
+            {
+                value = 0;
+                for(unsigned int i=0; i < dofs_per_cell; i++)
+                    value += block_solution(local_dof_indices[i]) * temp_fe_values.shape_value(i,q);
+                
+                exact_value = exact_solution.value(temp_fe_values.quadrature_point(q));
+                value = value - exact_value;                        // u_h - u
+                cell_norm += value * value * temp_fe_values.JxW(q);  // (u_h-u)^2 * JxW
+            }
+        }
+        else
+        { 
+            Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping());
+            cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
+        }
+        
+        cell_norm = std::sqrt(cell_norm);   // square root
+        diff_vector[index] = cell_norm;     // save L2 norm on cell
+        index ++;
+    }
+    
+    return diff_vector.l2_norm();
+}
+

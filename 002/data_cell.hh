@@ -42,6 +42,10 @@ public:
   inline unsigned int n_wells()
   { return n_wells_; } 
   
+  inline int user_index() const {return user_index_;}
+  inline void set_user_index(int index) {user_index_ = index;}
+  inline void clear_user_index() {user_index_ = 0;}
+  
   /// Returns pointer to one of the wells comunicating with the cell this data belong to.
   /**
    * @param local_well_index is local well index in the cell
@@ -80,6 +84,8 @@ protected:
   std::vector<unsigned int> wells_indices_;
   ///global dof indices of the wells
   std::vector<unsigned int> well_dof_indices_;
+  
+  int user_index_;                      ///< Supplements the user index of cell.
   
   unsigned int n_wells_;                ///< Number of wells that affect the cell.
   unsigned int n_vertices_;             ///< Number of vertices.

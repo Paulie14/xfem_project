@@ -251,11 +251,23 @@ double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /
     return well->pressure() + std::sin(0.5*p[0]);
 }
 
-double Solution::Source1::value(const Point< 2 >& p, const unsigned int component) const
+double Solution::Source1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   return 0.5*0.5*std::sin(0.5*p[0]);
 }
 
+double Solution::ExactSolution2::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  double distance = well->center().distance(p);
+  if(distance >= well->radius())
+    return a * std::log(distance) + b + std::sin(0.5*p[1]);
+  else
+    return well->pressure() + std::sin(0.5*p[1]);
+}
 
+double Solution::Source2::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  return 0.5*0.5*std::sin(0.5*p[1]);
+}
 
 
