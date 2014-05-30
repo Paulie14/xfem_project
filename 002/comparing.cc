@@ -226,7 +226,9 @@ double Comparing::L2_norm(const dealii::Vector< double >& input_vector, const de
 
 Solution::ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
   : Function< 2 >(),
-    well_(well)
+    well_(well),
+    radius_(radius),
+    p_dirichlet_(p_dirichlet)
 {
   a_ = (well_->pressure() - p_dirichlet) / (std::log(well_->radius() / radius));
   b_ = p_dirichlet - a_ * std::log(radius);
@@ -245,33 +247,29 @@ double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigne
 double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
-  double k = 0.5;
   if(distance >= well_->radius())
-    return a_ * std::log(distance) + b_ + std::sin(k*p[0]);
+    return a_ * std::log(distance) + b_ + amplitude_*std::sin(k_*p[0]);
   else
-    return well_->pressure() + std::sin(k*p[0]);
+    return well_->pressure() + amplitude_ * std::sin(k_*p[0]);
 }
 
 double Solution::Source1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
-  double k = 0.5;
-  return k*k*std::sin(k*p[0]);
+  return amplitude_*k_*k_*std::sin(k_*p[0]);
 }
 
 double Solution::ExactSolution2::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
-  double k = 0.5;
   if(distance >= well_->radius())
-    return a_ * std::log(distance) + b_ + std::sin(k*p[1]);
+    return a_ * std::log(distance) + b_ + std::sin(k_*p[1]);
   else
-    return well_->pressure() + std::sin(k*p[1]);
+    return well_->pressure() + std::sin(k_*p[1]);
 }
 
 double Solution::Source2::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
-  double k =0.5;
-  return k*k*std::sin(k*p[1]);
+  return k_*k_*std::sin(k_*p[1]);
 }
 
 

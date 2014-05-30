@@ -282,7 +282,7 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
 
 
 
-double Model_base::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+std::pair< double, double > Model_base::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
     DBGMSG("Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
 }

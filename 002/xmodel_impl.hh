@@ -148,6 +148,35 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     }
   DBGMSG("max_diff: %e\t\tcells_for_refinement: %d\n",max_diff, count_cells);
   
+  if( (!refine) || (iter == 0) )
+    {
+    DataOut<2> data_out;
+    data_out.attach_dof_handler (temp_dof_handler);
+    
+    temp_hanging_node_constraints.distribute(dist_unenriched);
+    temp_hanging_node_constraints.distribute(dist_enriched);
+    temp_hanging_node_constraints.distribute(dist_solution);
+    
+    if(out_decomposed_)
+    {
+      data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
+      data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
+    }
+    data_out.add_data_vector (dist_solution, "xfem_solution");
+  
+    data_out.build_patches ();
+
+    std::stringstream filename;
+    filename << output_dir << "xmodel_sol_" << cycle_;
+    if(iter == 0)  filename << "_s";
+    filename << ".vtk"; 
+   
+    std::ofstream output (filename.str());
+    data_out.write_vtk (output);
+
+    std::cout << "\nXFEM solution written in:\t" << filename.str() << std::endl;
+  }
+  
   if(refine)
   {
     output_grid.execute_coarsening_and_refinement();
@@ -173,50 +202,27 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     return 0;
   }
   else
-  {
-    DataOut<2> data_out;
-    data_out.attach_dof_handler (temp_dof_handler);
-    
-    temp_hanging_node_constraints.distribute(dist_unenriched);
-    temp_hanging_node_constraints.distribute(dist_enriched);
-    temp_hanging_node_constraints.distribute(dist_solution);
-    
-    if(out_decomposed_)
-    {
-      data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
-      data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
-    }
-    data_out.add_data_vector (dist_solution, "xfem_solution");
-  
-    data_out.build_patches ();
-
-    std::stringstream filename;
-    filename << output_dir << "xmodel_sol_" << cycle_ << ".vtk";
-   
-    std::ofstream output (filename.str());
-    data_out.write_vtk (output);
-
-    std::cout << "\nXFEM solution written in:\t" << filename.str() << std::endl;
     return 1;
-  }
+
 }
 
 
 
 
 template<Enrichment_method::Type EnrType>
-double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
-    std::cout << "Computing l2 norm of difference..." << std::endl;
+    std::cout << "Computing l2 norm of difference...";
     unsigned int dofs_per_cell = fe.dofs_per_cell,
                  index = 0;
                  
-    double exact_value, value, cell_norm;
+    double exact_value, value, cell_norm, total_norm, nodal_norm, total_nodal_norm;
              
     QGauss<2> temp_quad(3);
     FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
     std::vector<unsigned int> local_dof_indices (temp_fe_values.dofs_per_cell);   
   
+    Vector<double> diff_nodal_vector(dof_handler->n_dofs());
     diff_vector.reinit(dof_handler->get_tria().n_active_cells());
     
     DoFHandler<2>::active_cell_iterator
@@ -265,8 +271,18 @@ double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const
         cell_norm = std::sqrt(cell_norm);   // square root
         diff_vector[index] = cell_norm;     // save L2 norm on cell
         index ++;
+        
+        //node values should be exactly equal FEM dofs
+        for(unsigned int i=0; i < dofs_per_cell; i++)
+        {
+            nodal_norm = block_solution(local_dof_indices[i]) - exact_solution.value(cell->vertex(i));
+            diff_nodal_vector[local_dof_indices[i]] = std::abs(nodal_norm);
+        }
     }
     
+    total_nodal_norm = diff_nodal_vector.l2_norm();
+    total_norm = diff_vector.l2_norm();
+    std::cout << "\t" << total_norm << "\t vertex l2 norm: " << total_nodal_norm << std::endl;
     
     if(out_error_)
     {
@@ -304,6 +320,6 @@ double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const
         }
     }
     
-    return diff_vector.l2_norm();
+    return std::make_pair(total_nodal_norm, total_norm);
 }
 

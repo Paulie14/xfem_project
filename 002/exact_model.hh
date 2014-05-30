@@ -12,6 +12,7 @@
 
 
 #include "model_base.hh"
+#include "comparing.hh"
 
 using namespace dealii;
 
@@ -30,11 +31,9 @@ class ExactModel
     
     ///Constructor.
     /**
-     * @param well is pointer to a well
-     * @param radius is radius of the area.
+     * @param exact_solution is function representing exact solution
      */
-    ExactModel (Well *well,
-                double radius );
+    ExactModel (ExactBase *exact_solution);
     
     ///Destructor
     ~ExactModel();
@@ -63,21 +62,14 @@ class ExactModel
     void output_distributed_solution (const Triangulation<2> &dist_tria,
                                       const unsigned int &cycle=0);
 
-  private:
-    ///Returns value of the exact solution.
-    ///(is now reimplemented in class @p Comparing::Exact_solution)
-    double value(Point<2> point);
-    
+  private:   
+    ExactBase *exact_solution;  
+      
     ///Triangulation for distributing the solution.
     Triangulation<2> dist_coarse_tria; 
     PersistentTriangulation<2> *dist_tria; 
-  
-    
-    Well *well;
-    double radius;
-    double a, b;
+
     Vector<double> solution;
-  
 };
 
 #endif  //Exact_model_h

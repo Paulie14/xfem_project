@@ -42,12 +42,14 @@ namespace Solution
 
         inline double a() {return a_;}
         inline double b() {return b_;}
+        inline double radius() {return radius_;}
+        inline double p_dirichlet() {return p_dirichlet_;}
         inline Well* well() {return well_;}
       protected:    
         ///Pointer to @p Well object.
         Well *well_; 
         ///Constants used in computation @p value.
-        double a_,b_;
+        double radius_, p_dirichlet_, a_, b_;
     };
 
     
@@ -62,15 +64,22 @@ namespace Solution
     class ExactSolution1 : public ExactBase
     {
     public:
-      ExactSolution1(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
+      ExactSolution1(Well *well, double radius, double k, double amplitude) 
+        : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
+    protected:
+        double k_, amplitude_;
+        
+    friend class Source1;
     };
     
-    class Source1 : public Function<2>
+    class Source1 : public ExactSolution1
     {
     public:
-      Source1(){}
+      //Source1(Well *well, double radius, double k) : ExactSolution1(well, radius, k) {}
+      Source1(ExactSolution1 &ex_sol) 
+        : ExactSolution1(ex_sol.well_, ex_sol.radius_, ex_sol.k_, ex_sol.amplitude_) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
@@ -78,15 +87,20 @@ namespace Solution
     class ExactSolution2 : public ExactBase
     {
     public:
-      ExactSolution2(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
+      ExactSolution2(Well *well, double radius, double k) : ExactBase(well, radius, 0), k_(k) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
+    protected:
+        double k_;
+    
+    friend class Source2;
     };
     
-    class Source2 : public Function<2>
+    class Source2 : public ExactSolution2
     {
     public:
-      Source2(){}
+      Source2(Well *well, double radius, double k) : ExactSolution2(well, radius, k) {}
+      Source2(ExactSolution2 &ex_sol) : ExactSolution2(ex_sol.well_, ex_sol.radius_, ex_sol.k_) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };    

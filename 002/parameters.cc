@@ -12,8 +12,8 @@ double Parameters::sqr = 5.0;
 double Parameters::n_q_points = 100;
 
 double Parameters::transmisivity = 1.0;
-double Parameters::perm2fer = 1e15;
-double Parameters::perm2tard = 1e15;
+double Parameters::perm2fer = 1e12;
+double Parameters::perm2tard = 1e12;
        
 //GRID
 //starting refinement of the grid

@@ -1298,7 +1298,7 @@ void XModel::solve ()
   }
   
   for (unsigned int w=0; w < wells.size(); ++w)
-      std::cout << setprecision(4) << "value of H" << w << " = " << block_solution.block(2)[w] << std::endl;
+      std::cout << setprecision(12) << "value of H" << w << " = " << block_solution.block(2)[w] << std::endl;
   
   //DBGMSG("Printing solution:\n");
   //block_solution.print(std::cout);;
@@ -1405,7 +1405,7 @@ void XModel::output_results (const unsigned int cycle)
   dist_solution = dist_unenriched;
   
   double tolerance = 1e-3;
-  unsigned int iterations = 15;
+  unsigned int iterations = 30;
   
   switch(enrichment_method_)
   {
@@ -1972,9 +1972,9 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
 }
 
 
-double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
-  double l2_norm = 0;
+  std::pair<double,double> norms;
   switch(enrichment_method_)
   {
     case Enrichment_method::xfem_ramp: 
@@ -1982,16 +1982,16 @@ double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const
         break;
       
     case Enrichment_method::xfem_shift:  
-        l2_norm = integrate_difference<Enrichment_method::xfem_shift>(diff_vector, exact_solution);
+        norms = integrate_difference<Enrichment_method::xfem_shift>(diff_vector, exact_solution);
         break;
       
     case Enrichment_method::sgfem:
-        l2_norm = integrate_difference<Enrichment_method::sgfem>(diff_vector, exact_solution);
+        norms = integrate_difference<Enrichment_method::sgfem>(diff_vector, exact_solution);
         break;
     default: 
         MASSERT(0,"Unknown enrichment type or not implemented.");
   }
-  return l2_norm;
+  return norms;
 }
 
 
@@ -2018,26 +2018,26 @@ void XModel::compute_interpolated_exact(ExactBase *exact_solution)
         cell_xdata = static_cast<XDataCell*>(cell->user_pointer());
         cell_xdata->get_dof_indices(local_dof_indices ,fe.dofs_per_cell);
       }
-      std::cout << "at boundary: " << cell->at_boundary() << std::endl;
+//      std::cout << "at boundary: " << cell->at_boundary() << std::endl;
       for(unsigned int i=0; i<fe.dofs_per_cell; i++)
       {
         unenriched[local_dof_indices[i]] = exact_solution->value(cell->vertex(i));
         enriched[local_dof_indices[i]] = exact_solution->a();
         //solution[local_dof_indices[i]] = unenriched[local_dof_indices[i]] + enriched[local_dof_indices[i]];
         
-        std::cout << "exact a = " << unenriched[local_dof_indices[i]] 
-            << "\t computed a = " << block_solution[local_dof_indices[i]] 
-            << "\t diff = " << unenriched[local_dof_indices[i]] - block_solution[local_dof_indices[i]];
-         
-        if(cell->user_pointer() != nullptr)
-        {
-            if(i+fe.dofs_per_cell < local_dof_indices.size())
-            std::cout << "\t exact b = " << enriched[local_dof_indices[i]]
-                << "\t computed b = " << block_solution[local_dof_indices[i+fe.dofs_per_cell]]  
-                << "\t diff = " << enriched[local_dof_indices[i]] - block_solution[local_dof_indices[i+fe.dofs_per_cell]] << std::endl;
-            else std::cout << std::endl;
-        }
-        else std::cout << std::endl;
+//         std::cout << "exact a = " << unenriched[local_dof_indices[i]] 
+//             << "\t computed a = " << block_solution[local_dof_indices[i]] 
+//             << "\t diff = " << unenriched[local_dof_indices[i]] - block_solution[local_dof_indices[i]];
+//          
+//         if(cell->user_pointer() != nullptr)
+//         {
+//             if(i+fe.dofs_per_cell < local_dof_indices.size())
+//             std::cout << "\t exact b = " << enriched[local_dof_indices[i]]
+//                 << "\t computed b = " << block_solution[local_dof_indices[i+fe.dofs_per_cell]]  
+//                 << "\t diff = " << enriched[local_dof_indices[i]] - block_solution[local_dof_indices[i+fe.dofs_per_cell]] << std::endl;
+//             else std::cout << std::endl;
+//         }
+//         else std::cout << std::endl;
       }
       
     }

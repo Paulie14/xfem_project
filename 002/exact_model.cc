@@ -29,32 +29,16 @@ ExactModel::ExactModel()
 
 }
 
-ExactModel::ExactModel(Well* well, double radius)
+ExactModel::ExactModel(ExactBase* exact_solution)
 : dist_tria(NULL),
-  well(well),
-  radius(radius)
-{
-  a = well->pressure() / (std::log(well->radius() / radius));
-  b = - a * std::log(radius);
-}
+  exact_solution(exact_solution)
+{}
 
 ExactModel::~ExactModel()
 {
   if(dist_tria != NULL)
     delete dist_tria;
 }
-
-
-double ExactModel::value(Point< 2 > point)
-{
-  double distance = well->center().distance(point);
-  if(distance >= well->radius())
-    return a * std::log(distance) + b;
-  else
-    return well->pressure();
-}
-
-
 
 
 void ExactModel::output_distributed_solution(const std::string &flag_file,
@@ -66,8 +50,8 @@ void ExactModel::output_distributed_solution(const std::string &flag_file,
     dist_coarse_tria.clear();
   }
   
-  GridGenerator::hyper_ball<2>(dist_coarse_tria,well->center(),radius);
-  static const HyperBallBoundary<2> boundary(well->center(),radius);
+  GridGenerator::hyper_ball<2>(dist_coarse_tria,exact_solution->well()->center(),exact_solution->radius());
+  static const HyperBallBoundary<2> boundary(exact_solution->well()->center(),exact_solution->radius());
   dist_coarse_tria.set_boundary(0, boundary);
       
   dist_tria = new PersistentTriangulation<2>(dist_coarse_tria);
@@ -117,7 +101,7 @@ void ExactModel::output_distributed_solution(const dealii::Triangulation< 2 >& d
   
   for(unsigned int p=0; p < support_points.size(); p++)
   {
-    solution[p] = value(support_points[p]);
+    solution[p] = exact_solution->value(support_points[p]);
   }
   
   hanging_node_constraints.distribute(solution);

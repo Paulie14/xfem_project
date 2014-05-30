@@ -220,7 +220,7 @@ class XModel : public Model_base
     //output results from another model but computed on the model mesh
     //void output_foreign_results(const unsigned int cycle,const Vector<double> &foreign_solution);
 
-    double integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution) override;
+    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution) override;
 
   protected:
     virtual void make_grid () override;
@@ -295,7 +295,7 @@ class XModel : public Model_base
                          const unsigned int iter);
     
     template<Enrichment_method::Type> 
-    double integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
+    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
     
     ///Type of enrichment method
     Enrichment_method::Type enrichment_method_;

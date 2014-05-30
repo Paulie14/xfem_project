@@ -93,7 +93,7 @@ public:
                                              const unsigned int &cycle=0, 
                                              const unsigned int &m_aquifer=0) = 0;
                                              
-  virtual double integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
+  virtual std::pair<double,double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
   
                                              
   /** @name Getters
