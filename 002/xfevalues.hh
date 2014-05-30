@@ -12,9 +12,9 @@
    */
 struct Enrichment_method
 {
-  typedef enum {xfem_ramp,   ///< means that the values at the boundary points will be used outside the interval_miss_a
-                xfem_shift,  ///< means that the linear approximation on the first and last subintervals will be used outside the interval 
-                sgfem        ///< means that the original functor will be called outside interpolation interval
+  typedef enum {xfem_ramp,   ///< XFEM method with ramp function only
+                xfem_shift,  ///< XFEM method with ramp funciton and shift
+                sgfem        ///< SGFEM method
   } Type;
 };
 

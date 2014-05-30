@@ -22,6 +22,7 @@
 
 #include "model_base.hh"
 #include "xfevalues.hh"
+#include "comparing.hh"
 
 using namespace dealii;
 
@@ -146,6 +147,8 @@ class XModel : public Model_base
                                       const unsigned int &m_aquifer=0);
     
     
+    void compute_interpolated_exact(ExactBase *exact_solution);
+    
     /** Computes decomposed (enriched, unenriched and complete) solution at specified points.
      * It is called by @p output_distributed_solution with the nodes of the output triangulation.
      * @param points is the vector of points where we want to evaluate
@@ -186,9 +189,10 @@ class XModel : public Model_base
     inline void set_enrichment_radius(double r_enr)
     { this->rad_enr = r_enr; }
     
-    inline void set_output_features(bool decomposed = true, bool shape_functions = false)
-    { this->out_decomposed = decomposed;
-      this->out_shape_functions = shape_functions;
+    inline void set_output_features(bool decomposed = true, bool shape_functions = false, bool error = false)
+    { this->out_decomposed_ = decomposed;
+      this->out_shape_functions_ = shape_functions;
+      this->out_error_ = error;
     }
    
     /**Sets file path to a mesh file. 
@@ -371,8 +375,9 @@ class XModel : public Model_base
     Vector<double> dist_solution;
     
     //output
-    bool out_decomposed;
-    bool out_shape_functions;
+    bool out_decomposed_;
+    bool out_shape_functions_;
+    bool out_error_;
     PersistentTriangulation<2>* output_triangulation;
 };
 

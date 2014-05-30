@@ -226,48 +226,52 @@ double Comparing::L2_norm(const dealii::Vector< double >& input_vector, const de
 
 Solution::ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
   : Function< 2 >(),
-    well(well)
+    well_(well)
 {
-  a = (well->pressure() - p_dirichlet) / (std::log(well->radius() / radius));
-  b = p_dirichlet - a * std::log(radius);
+  a_ = (well_->pressure() - p_dirichlet) / (std::log(well_->radius() / radius));
+  b_ = p_dirichlet - a_ * std::log(radius);
 }
 
 
 double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigned int /*component*/) const
 {
-  double distance = well->center().distance(p);
-  if(distance >= well->radius())
-    return a * std::log(distance) + b;
+  double distance = well_->center().distance(p);
+  if(distance >= well_->radius())
+    return a_ * std::log(distance) + b_;
   else
-    return well->pressure();
+    return well_->pressure();
 }
 
 double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
-  double distance = well->center().distance(p);
-  if(distance >= well->radius())
-    return a * std::log(distance) + b + std::sin(0.5*p[0]);
+  double distance = well_->center().distance(p);
+  double k = 0.5;
+  if(distance >= well_->radius())
+    return a_ * std::log(distance) + b_ + std::sin(k*p[0]);
   else
-    return well->pressure() + std::sin(0.5*p[0]);
+    return well_->pressure() + std::sin(k*p[0]);
 }
 
 double Solution::Source1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
-  return 0.5*0.5*std::sin(0.5*p[0]);
+  double k = 0.5;
+  return k*k*std::sin(k*p[0]);
 }
 
 double Solution::ExactSolution2::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
-  double distance = well->center().distance(p);
-  if(distance >= well->radius())
-    return a * std::log(distance) + b + std::sin(0.5*p[1]);
+  double distance = well_->center().distance(p);
+  double k = 0.5;
+  if(distance >= well_->radius())
+    return a_ * std::log(distance) + b_ + std::sin(k*p[1]);
   else
-    return well->pressure() + std::sin(0.5*p[1]);
+    return well_->pressure() + std::sin(k*p[1]);
 }
 
 double Solution::Source2::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
-  return 0.5*0.5*std::sin(0.5*p[1]);
+  double k =0.5;
+  return k*k*std::sin(k*p[1]);
 }
 
 

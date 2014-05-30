@@ -1,10 +1,13 @@
 
 //output
 #include "xmodel.hh"
-#include <deal.II/numerics/data_out.h>
+
 #include <fstream>
 #include <iostream>
 #include "adaptive_integration.hh"
+
+#include <deal.II/numerics/data_out.h>
+#include <deal.II/fe/fe_dgq.h>
 
 template<Enrichment_method::Type EnrType>
 int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& output_grid, 
@@ -87,6 +90,8 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       dist_solution[temp_local_dof_indices[i]] = dist_enriched[temp_local_dof_indices[i]] + dist_unenriched[temp_local_dof_indices[i]];
     }
     
+    if(iter > 0)
+    {
     if( (! cell_refined) && (iter != 0))
     {
         //DBGMSG("continue on cell %d level %d\n",cell->index(), cell->level());
@@ -95,6 +100,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     
     double difference = 0,
            integral = 0;
+           
     //DBGMSG("n_q: %d\n",temp_fe_values.n_quadrature_points);
     //Integrate difference between interpolation and xfem solution
     for(unsigned int q=0; q < temp_fe_values.n_quadrature_points; q++)
@@ -119,8 +125,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       }
       //DBGMSG("q: %d\t inter: %e\t sol: %f\t jxw: %e\n",q,inter,sol,temp_fe_values.JxW(q));
       difference += std::abs(inter - sol) * temp_fe_values.JxW(q);
-      //difference += std::abs((inter - sol)/sol) * temp_fe_values.JxW(q);
-      integral += std::abs(sol) * temp_fe_values.JxW(q);
+      integral += temp_fe_values.JxW(q);//std::abs(sol) * temp_fe_values.JxW(q);
     }
     
     //DBGMSG("difference: %e, integral: %e, relative: %e, cell: %d, lev: %d\n",difference, integral, difference/integral,cell->index(), cell->level());
@@ -132,8 +137,15 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       cell->set_refine_flag();
       refine = true;
     }
+    }
   }
   
+    if(iter == 0)
+    {
+        refine = true;
+        output_grid.set_all_refine_flags();
+        count_cells = output_grid.n_active_cells();
+    }
   DBGMSG("max_diff: %e\t\tcells_for_refinement: %d\n",max_diff, count_cells);
   
   if(refine)
@@ -169,7 +181,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     temp_hanging_node_constraints.distribute(dist_enriched);
     temp_hanging_node_constraints.distribute(dist_solution);
     
-    if(out_decomposed)
+    if(out_decomposed_)
     {
       data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
       data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
@@ -199,8 +211,7 @@ double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const
     unsigned int dofs_per_cell = fe.dofs_per_cell,
                  index = 0;
                  
-    double exact_value, value, cell_norm,
-           total_norm = 0;
+    double exact_value, value, cell_norm;
              
     QGauss<2> temp_quad(3);
     FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
@@ -235,12 +246,62 @@ double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const
         else
         { 
             Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping());
+            
+            unsigned int refinement_level = 8;
+            for(unsigned int t=0; t < refinement_level; t++)
+            {
+                //if(t>0) DBGMSG("refinement level: %d\n", t);
+                if ( ! adaptive_integration.refine_edge())
+                break;
+                if (t == refinement_level-1)
+                {
+                    // (output_dir, false, true) must be set to unit coordinates and to show on screen 
+                    //adaptive_integration.gnuplot_refinement(output_dir);
+                }
+            }
             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
         }
         
         cell_norm = std::sqrt(cell_norm);   // square root
         diff_vector[index] = cell_norm;     // save L2 norm on cell
         index ++;
+    }
+    
+    
+    if(out_error_)
+    {
+        FE_DGQ<2> temp_fe(0);
+        DoFHandler<2>    temp_dof_handler;
+        ConstraintMatrix hanging_node_constraints;
+  
+        temp_dof_handler.initialize(*triangulation,temp_fe);
+  
+        DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+        hanging_node_constraints.close();
+  
+        //====================vtk output
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (temp_dof_handler);
+  
+        hanging_node_constraints.distribute(diff_vector);
+  
+        data_out.add_data_vector (diff_vector, "xfem_error");
+        data_out.build_patches ();
+
+        std::stringstream filename;
+        filename << output_dir << "xmodel_error_" << cycle_ << ".vtk";
+   
+        std::ofstream output (filename.str());
+        if(output.is_open())
+        {
+            data_out.write_vtk (output);
+            data_out.clear();
+            std::cout << "\noutput(error) written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+        }
     }
     
     return diff_vector.l2_norm();

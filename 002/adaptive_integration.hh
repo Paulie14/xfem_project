@@ -552,6 +552,8 @@ double Adaptive_integration::integrate_l2_diff(const BlockVector<double> &soluti
         value = value - exact_value;                   // u_h - u
         cell_norm += value * value * xfevalues.JxW(q);  // (u_h-u)^2 * JxW
     }
+    
+    return cell_norm;
 }
 
 #endif  //Adaptive_integration_h

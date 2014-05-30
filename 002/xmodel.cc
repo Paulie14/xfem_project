@@ -68,8 +68,9 @@ XModel::XModel ()
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed(true),
-    out_shape_functions(false),
+    out_decomposed_(true),
+    out_shape_functions_(false),
+    out_error_(false),
     output_triangulation(nullptr)
 {
   name = "Default_XFEM_Model";
@@ -90,8 +91,9 @@ XModel::XModel (const std::string &name,
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed(true),
-    out_shape_functions(false),
+    out_decomposed_(true),
+    out_shape_functions_(false),
+    out_error_(false),
     output_triangulation(nullptr)
     
 {
@@ -113,8 +115,9 @@ XModel::XModel (const std::vector<Well*> &wells,
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed(true),
-    out_shape_functions(false),
+    out_decomposed_(true),
+    out_shape_functions_(false),
+    out_error_(false),
     output_triangulation(nullptr)
     
 {
@@ -275,6 +278,7 @@ void XModel::find_enriched_cells()
     enriched_dof_indices.resize(dof_handler->n_dofs(),0); 
     enriched_weights.resize(dof_handler->n_dofs(),0); //0 is for unenriched dof
   
+    //TODO: use deal ii search algorithm for point in cell
     //finding the cell in which the center lies
     //adding first quadrature points (circle integration)
     cell = dof_handler->begin_active();
@@ -300,6 +304,8 @@ void XModel::find_enriched_cells()
         }  
         r_enr[w] = std::max(dist, r_enr[w]);
           
+        std::cout << "enrichment radius: wanted: " << rad_enr << "  finally set: " << r_enr[w] << std::endl;
+        
         triangulation->clear_user_flags();
         
         if(enrichment_method_ == Enrichment_method::sgfem)
@@ -307,12 +313,10 @@ void XModel::find_enriched_cells()
         else
           enrich_cell(cell, w, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
         
-        std::cout << "enrichment radius: wanted: " << rad_enr << "  finally set: " << r_enr[w] << std::endl;
-        
         break;
       }
     } //for cells
-  }
+  } //for wells
   
       
     n_enriched_dofs = n_global_enriched_dofs - dof_handler->n_dofs();
@@ -341,7 +345,8 @@ void XModel::find_enriched_cells()
         std::cout << std::setw(4) << xdata[i]->weights(xw)[j] << "  ";
       std::cout << "]";
       
-      std::cout << "  n_qpoints=" <<  xdata[i]->q_points(xw).size() << std::endl;
+      std::cout << "  n_qpoints=" <<  xdata[i]->q_points(xw).size() << 
+      "  boundary: " << xdata[i]->get_cell()->at_boundary() << std::endl;
     }
   }
   //*/
@@ -370,6 +375,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
   //flag is true if no node is to be enriched (is not in the enrichment radius )
   bool cell_not_enriching = true;
   
+  //TODO: compute the distance only once
   for(unsigned int i=0; i < fe.dofs_per_cell; i++)
   {
     if(cell->vertex(i).distance(wells[well_index]->center()) <= r_enr[well_index])
@@ -394,9 +400,41 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
   //temporary space for enriched dofs
   std::vector<unsigned int> local_enriched_dofs(fe.dofs_per_cell,0);
   std::vector<unsigned int> local_enriched_node_weights(fe.dofs_per_cell,0);
+  
+    
+    const unsigned int weigth_boundary = 2;
+    if(cell->at_boundary())
+    {
+        for (unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; ++face_no)
+        {
+            //std::cout << "\tface(" << face_no << "): ";
+            //typename DoFHandler<2>::face_iterator face = cell->face(face_no);
+   
+            //if the face is at the boundary, we do not enrich nodes
+            if (cell->at_boundary(face_no)) 
+            {
+                //DBGMSG("dofs_per_cell: %d\n", fe.dofs_per_face);
+                //DBGMSG("cell: %d, face: %d\n", cell->index(),face_no);
+                for(unsigned int i=0; i < GeometryInfo<2>::vertices_per_face; i++)    
+                    enriched_weights[cell->face(face_no)->vertex_dof_index(i,0)] = weigth_boundary;
+//                 for(unsigned int i=0; i < fe.dofs_per_face; i++)    
+//                 enriched_weights[cell->face(face_no)->dof_index(i)] = weigth_boundary;
+            }   
+        }
+    }
+  //*/
+  
+  
   //enriching dofs
   for(unsigned int i=0; i < fe.dofs_per_cell; i++)
   {
+    //if the dof is on the boundary
+    if(enriched_weights[local_dof_indices[i]] == weigth_boundary) 
+    {
+        enriched_weights[local_dof_indices[i]] = 0;
+        continue;
+    }
+    
     //if the node was previously enriched
     if (enriched_dof_indices[local_dof_indices[i]] != 0)
     {
@@ -418,6 +456,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
       enriched_dof_indices[local_dof_indices[i]] = n_global_enriched_dofs;
       local_enriched_dofs[i] = n_global_enriched_dofs;
       n_global_enriched_dofs ++;
+      
     }
     //std::cout << enriched_dof_indices[local_dof_indices[i]] << " ";
   }
@@ -611,9 +650,43 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
   //temporary space for enriched dofs
   std::vector<unsigned int> local_enriched_dofs(fe.dofs_per_cell,0);
   std::vector<unsigned int> local_enriched_node_weights(fe.dofs_per_cell,0);    //not needed - is input to XDataCell::add(...)
+  
   //enriching dofs
+  
+  const unsigned int weigth_boundary = -1;
+    if(cell->at_boundary())
+    {
+        for (unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; ++face_no)
+        {
+            //std::cout << "\tface(" << face_no << "): ";
+            //typename DoFHandler<2>::face_iterator face = cell->face(face_no);
+   
+            //if the face is at the boundary, we do not enrich nodes
+            if (cell->at_boundary(face_no)) 
+            {
+                //DBGMSG("dofs_per_cell: %d\n", fe.dofs_per_face);
+                //DBGMSG("cell: %d, face: %d\n", cell->index(),face_no);
+                for(unsigned int i=0; i < GeometryInfo<2>::vertices_per_face; i++)    
+                    enriched_dof_indices[cell->face(face_no)->vertex_dof_index(i,0)] = weigth_boundary;
+//                 for(unsigned int i=0; i < fe.dofs_per_face; i++)    
+//                 enriched_weights[cell->face(face_no)->dof_index(i)] = weigth_boundary;
+            }   
+        }
+    }
+  //*/
+  
+  
+  //enriching dofs
+
   for(unsigned int i=0; i < fe.dofs_per_cell; i++)
   {
+    //if the dof is on the boundary
+    if(enriched_dof_indices[local_dof_indices[i]] == weigth_boundary) 
+    {
+        enriched_dof_indices[local_dof_indices[i]] = 0;
+        continue;
+    }
+    
     //if the node was previously enriched
     if (enriched_dof_indices[local_dof_indices[i]] != 0)
     {
@@ -1018,12 +1091,7 @@ void XModel::assemble_system ()
                                   fe_values.JxW (q_point)
                                 );
       //FILLING MATRIX BLOCK A
-      for (unsigned int i=0; i < dofs_per_cell; ++i)
-        for (unsigned int j=0; j < dofs_per_cell; ++j)
-          block_matrix.add( local_dof_indices[i],
-                            local_dof_indices[j],
-                            cell_matrix(i,j)
-                            );
+      block_matrix.add(local_dof_indices, cell_matrix);
           
       if(rhs_function != nullptr)
       {
@@ -1034,11 +1102,10 @@ void XModel::assemble_system ()
           cell_rhs(i) += (fe_values.shape_value (i, q_point) *
             rhs_function->value(fe_values.quadrature_point(q_point)) *   // 0 for homohenous neumann
             fe_values.JxW (q_point));
-        }
-        //assembling RHS
-        for (unsigned int i=0; i<dofs_per_cell; ++i)
-          block_system_rhs(local_dof_indices[i]) += cell_rhs(i);
+        } 
+        block_system_rhs.add(local_dof_indices, cell_rhs);
       }
+      
     }    
     else
     {
@@ -1055,7 +1122,7 @@ void XModel::assemble_system ()
       
       for(unsigned int t=0; t < refinement_level; t++)
       {
-        //DBGMSG("refinement level: %d", t);
+        //DBGMSG("refinement level: %d\n", t);
         if ( ! adaptive_integration.refine_edge())
           break;
         if (t == refinement_level-1)
@@ -1089,20 +1156,8 @@ void XModel::assemble_system ()
 //       std::cout << "]" << std::endl;
       
       //FILLING MATRIX BLOCKs
-      
-      for (unsigned int i=0; i < enrich_dof_indices.size(); ++i)
-      {
-        
-        for (unsigned int j=0; j < enrich_dof_indices.size(); ++j)
-        {
-          block_matrix.add( enrich_dof_indices[i],
-                            enrich_dof_indices[j],
-                            enrich_cell_matrix(i,j)
-                            );
-        }
-        
-        block_system_rhs( enrich_dof_indices[i]) += enrich_cell_rhs[i];
-      }
+      block_matrix.add(enrich_dof_indices,enrich_cell_matrix);
+      block_system_rhs.add(enrich_dof_indices,enrich_cell_rhs);
     } //end for(cells)
   }
   
@@ -1797,7 +1852,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   dist_hanging_node_constraints.distribute(dist_enriched);
   dist_hanging_node_constraints.distribute(dist_solution);
   
-  if(out_decomposed)
+  if(out_decomposed_)
   {
     data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
     data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
@@ -1817,7 +1872,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   std::cout << "\noutput written in:\t" << filename.str() << std::endl;
   
   
-  if(out_shape_functions)
+  if(out_shape_functions_)
   {
     unsigned int n_dofs = dof_handler->n_dofs();
     data_out.attach_dof_handler (dist_dof_handler);
@@ -1919,6 +1974,7 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
 
 double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
+  double l2_norm = 0;
   switch(enrichment_method_)
   {
     case Enrichment_method::xfem_ramp: 
@@ -1926,18 +1982,97 @@ double XModel::integrate_difference(dealii::Vector< double >& diff_vector, const
         break;
       
     case Enrichment_method::xfem_shift:  
-        integrate_difference<Enrichment_method::xfem_shift>(diff_vector, exact_solution);
+        l2_norm = integrate_difference<Enrichment_method::xfem_shift>(diff_vector, exact_solution);
         break;
       
     case Enrichment_method::sgfem:
-        integrate_difference<Enrichment_method::sgfem>(diff_vector, exact_solution);
+        l2_norm = integrate_difference<Enrichment_method::sgfem>(diff_vector, exact_solution);
         break;
     default: 
         MASSERT(0,"Unknown enrichment type or not implemented.");
   }
+  return l2_norm;
 }
 
 
+
+void XModel::compute_interpolated_exact(ExactBase *exact_solution)
+{
+    Vector<double> unenriched(dof_handler->n_dofs());
+    Vector<double> enriched(dof_handler->n_dofs());
+    //Vector<double> solution(dof_handler->n_dofs());
+    
+    std::vector<unsigned int> local_dof_indices (fe.dofs_per_cell);   
+    XDataCell *cell_xdata;
+    
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+      local_dof_indices.resize(fe.dofs_per_cell);
+      if(cell->user_pointer() == nullptr)
+        cell->get_dof_indices(local_dof_indices);
+      else
+      {
+        cell_xdata = static_cast<XDataCell*>(cell->user_pointer());
+        cell_xdata->get_dof_indices(local_dof_indices ,fe.dofs_per_cell);
+      }
+      std::cout << "at boundary: " << cell->at_boundary() << std::endl;
+      for(unsigned int i=0; i<fe.dofs_per_cell; i++)
+      {
+        unenriched[local_dof_indices[i]] = exact_solution->value(cell->vertex(i));
+        enriched[local_dof_indices[i]] = exact_solution->a();
+        //solution[local_dof_indices[i]] = unenriched[local_dof_indices[i]] + enriched[local_dof_indices[i]];
+        
+        std::cout << "exact a = " << unenriched[local_dof_indices[i]] 
+            << "\t computed a = " << block_solution[local_dof_indices[i]] 
+            << "\t diff = " << unenriched[local_dof_indices[i]] - block_solution[local_dof_indices[i]];
+         
+        if(cell->user_pointer() != nullptr)
+        {
+            if(i+fe.dofs_per_cell < local_dof_indices.size())
+            std::cout << "\t exact b = " << enriched[local_dof_indices[i]]
+                << "\t computed b = " << block_solution[local_dof_indices[i+fe.dofs_per_cell]]  
+                << "\t diff = " << enriched[local_dof_indices[i]] - block_solution[local_dof_indices[i+fe.dofs_per_cell]] << std::endl;
+            else std::cout << std::endl;
+        }
+        else std::cout << std::endl;
+      }
+      
+    }
+    
+    
+    
+    //====================vtk output
+    DataOut<2> data_out;
+    data_out.attach_dof_handler (*dof_handler);
+  
+    hanging_node_constraints.distribute(unenriched);
+    //hanging_node_constraints.distribute(enriched);
+    //hanging_node_constraints.distribute(solution);
+  
+    //data_out.add_data_vector (unenriched, "exact_unenriched");
+    //data_out.add_data_vector (enriched, "exact_enriched");
+    data_out.add_data_vector (unenriched, "exact_solution");
+    data_out.build_patches ();
+
+    std::stringstream filename;
+    filename << output_dir << "exact_solution_" << cycle_ << ".vtk";
+   
+    std::ofstream output (filename.str());
+    if(output.is_open())
+        {
+            data_out.write_vtk (output);
+            data_out.clear();
+            std::cout << "\noutput(error) written in:\t" << filename.str() << std::endl;
+        }
+    else
+        {
+            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+        }
+    //*/
+}
 
 
 

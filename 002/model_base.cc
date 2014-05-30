@@ -23,7 +23,7 @@ Model_base::Model_base()
     
     n_aquifers(1),
     
-    cycle_(0),
+    cycle_(-1),
     last_run_time_(0),
     solver_it(0),
     matrix_output_(false),
@@ -47,7 +47,7 @@ Model_base::Model_base(const std::string& name,
     
     n_aquifers(n_aquifers),
     
-    cycle_(0),
+    cycle_(-1),
     last_run_time_(0),
     solver_it(0),
     matrix_output_(false),
@@ -76,7 +76,7 @@ Model_base::Model_base(const std::vector< Well* >& wells,
     
     n_aquifers(n_aquifers),
     
-    cycle_(0),
+    cycle_(-1),
     last_run_time_(0),
     solver_it(0),
     matrix_output_(false),
@@ -106,7 +106,7 @@ Model_base::Model_base(const Model_base &model, std::string name)
   n_aquifers(model.n_aquifers),
   transmisivity(model.transmisivity),
   
-  cycle_(0),
+  cycle_(-1),
   last_run_time_(0),
   solver_it(0),
   matrix_output_(false),
@@ -125,6 +125,7 @@ Model_base::~Model_base()
 
 void Model_base::run(const unsigned int cycle)
 {  
+  cycle_++;
   if(cycle == 0)
   {
     make_grid();
@@ -152,7 +153,6 @@ void Model_base::run(const unsigned int cycle)
   stop = clock();
   last_run_time_ = ((double) (stop-start))/CLOCKS_PER_SEC;
   std::cout << "Run time: " << last_run_time_ << " s" << std::endl;
-  cycle_++;
 }
 
 

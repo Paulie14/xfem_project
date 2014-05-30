@@ -39,11 +39,15 @@ namespace Solution
         ///@param component is set to 0 cause it is a scalar function
         virtual double value (const Point<2>   &p,
                               const unsigned int  component = 0) const = 0;    
+
+        inline double a() {return a_;}
+        inline double b() {return b_;}
+        inline Well* well() {return well_;}
       protected:    
         ///Pointer to @p Well object.
-        Well *well; 
+        Well *well_; 
         ///Constants used in computation @p value.
-        double a,b;
+        double a_,b_;
     };
 
     
