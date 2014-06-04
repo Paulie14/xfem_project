@@ -258,6 +258,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                                       std::vector<unsigned int> &local_dof_indices,
                                       const double &transmisivity)
 {  
+  DBGMSG("Adaptive integration on cell %d. Center: [%f,%f].\n", cell->index(), cell->center()[0], cell->center()[1]);
   unsigned int n_wells_inside = 0,                      // number of wells with q_points inside the cell, zero initialized
                n_wells = xdata->n_wells(),              // number of wells affecting the cell
                dofs_per_cell = fe->dofs_per_cell,
@@ -328,7 +329,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       for(unsigned int k = 0; k < n_vertices; k++) //M_w
       { 
         if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
-        
+
         if(n_wells_inside > 0 || rhs_function)
           shape_val_vec[index] = xfevalues.enrichment_value(k,w,q);
           
@@ -344,7 +345,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
         shape_val_vec[index] = -1.0;  //testing function of the well
 #endif
     } //for w
-      
+
     //filling cell matrix now
     //additions to matrix A,R,S from LAPLACE---------------------------------------------- LAPLACE  
       for(unsigned int i = 0; i < n_dofs; i++)
@@ -395,22 +396,23 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   FullMatrix<double> well_cell_matrix;
   unsigned int n_w_dofs=0;
   double jxw = 0;
-  
-  for(unsigned int w = 0; w < n_wells; w++)
+  //DBGMSG("error n_w:%d\n",n_wells_inside);  
+  for(unsigned int w = 0; w < n_wells_inside; w++)
   {
     if(xdata->q_points(w).size() > 0)
     {
       //TODO : map the points somewhere before (in node enrichment routines..)
+      DBGMSG("Cell (%d), mapping well points.\n",cell->index());
       std::vector<Point<2> > points(xdata->q_points(w).size());
       for (unsigned int p =0; p < points.size(); p++)
       {
-        
+        DBGMSG("well point [%d].\n",p);
         points[p] = mapping->transform_real_to_unit_cell(cell,*(xdata->q_points(w)[p]));
       }
       Quadrature<2> quad2 (points);
       XFEValues<EnrType> xfevalues2(*fe,quad2, update_values | update_quadrature_points);
       xfevalues2.reinit(xdata);
-  
+      DBGMSG("xfevalues ready\n");
       //DBGMSG("well number: %d\n",w);
       Well * well = xdata->get_well(w);
       //jacobian = radius of the well; weights are the same all around
@@ -436,21 +438,23 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       shape_val_vec.resize(n_w_dofs,0);  //unenriched, enriched, well
     
       //cycle over quadrature points inside the cell
+      //DBGMSG("n_q:%d\n",xdata->q_points(w).size());
       for (unsigned int q=0; q < xdata->q_points(w).size(); ++q)
       {
         // filling shape values at first
         for(unsigned int i = 0; i < dofs_per_cell; i++)
-          shape_val_vec[i] = xfevalues2.shape_value(i,q);
-        
+          shape_val_vec[i] = xfevalues2.shape_value(i,q); 
         // filling enrichment shape values
+        unsigned int index = dofs_per_cell; //TODO: will not work with more wells on partially enriched cells
         for(unsigned int k = 0; k < n_vertices; k++)
         {
           if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node
-            shape_val_vec[dofs_per_cell + k] = xfevalues2.enrichment_value(k,w,q);
+          
+          shape_val_vec[index] = xfevalues2.enrichment_value(k,w,q);
+          index++;
         }
         
-        shape_val_vec[n_w_dofs-1] = -1.0;  //testing function of the well
-        
+        shape_val_vec[index] = -1.0;  //testing function of the well
         //printing enriched nodes and dofs
 //         DBGMSG("Printing shape_val_vec:  [");
 //         for(unsigned int a=0; a < shape_val_vec.size(); a++)
@@ -477,7 +481,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     } //if
   } // for w
 #endif
-    
+ 
 //     std::cout << "cell_matrix" << std::endl;
 //     cell_matrix.print_formatted(std::cout);
 //     std::cout << std::endl;
@@ -549,6 +553,8 @@ double Adaptive_integration::integrate_l2_diff(const BlockVector<double> &soluti
             value += solution(xdata->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
         }
         
+//         if(std::abs(value-exact_value) > 1e-15)
+//             DBGMSG("cell: %d \tvalue: %e \t exact: %e \t diff: %e\n",cell->index(),value, exact_value, value-exact_value);
         value = value - exact_value;                   // u_h - u
         cell_norm += value * value * xfevalues.JxW(q);  // (u_h-u)^2 * JxW
     }

@@ -154,6 +154,7 @@ void XDataCell::initialize_node_values(std::vector<std::map<unsigned int, double
                                        std::vector<XDataCell*> xdata, 
                                        unsigned int n_wells)
 {
+  data_vector.clear();
   data_vector.resize(n_wells);
   for(unsigned int k=0; k < xdata.size(); k++)
   {
@@ -168,6 +169,7 @@ void XDataCell::initialize_node_values(std::vector<std::map<unsigned int, double
       }
     }
   }
+  DBGMSG("Number of node values: %d.\n", n_wells*data_vector[0].size());
 }
 
 void XDataCell::get_dof_indices(std::vector< unsigned int >& local_dof_indices, unsigned int fe_dofs_per_cell)

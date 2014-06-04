@@ -325,14 +325,18 @@ void XModel::find_enriched_cells()
         << std::endl;
     std::cout << "Number of enriched dofs: " << n_enriched_dofs << std::endl;
     std::cout << "Total number of dofs: " << n_enriched_dofs+dof_handler->n_dofs() << std::endl;
-  MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
+  //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
+  DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata.size(), triangulation->n_active_cells());
+  //print_xdata();
+}
+
+void XModel::print_xdata()
+{
   //printing enriched nodes and dofs
-  /*
-  DBGMSG("Printing xdata:\n");
   for(unsigned int i=0; i < xdata.size(); i++)
   {
-    std::cout << "(" << setw(4) << i << ") ";
+    std::cout << "(" << setw(5) << xdata[i]->get_cell()->index() << ") ";
     for(unsigned int xw=0; xw < xdata[i]->n_wells(); xw++)
     {
       std::cout << " w=" << setw(3) << xw << " well center: " << setw(7) << xdata[i]->get_well(xw)->center() << "\tglobal_enrich_dofs: [";
@@ -349,7 +353,6 @@ void XModel::find_enriched_cells()
       "  boundary: " << xdata[i]->get_cell()->at_boundary() << std::endl;
     }
   }
-  //*/
 }
 
 
@@ -401,7 +404,22 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
   std::vector<unsigned int> local_enriched_dofs(fe.dofs_per_cell,0);
   std::vector<unsigned int> local_enriched_node_weights(fe.dofs_per_cell,0);
   
-    
+  //not enriching conrner, wrong
+//   unsigned int bounds = 0;
+//   if(cell->at_boundary())
+//     {
+//         for (unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; ++face_no)
+//         {
+//             //std::cout << "\tface(" << face_no << "): ";
+//             //typename DoFHandler<2>::face_iterator face = cell->face(face_no);
+//    
+//             //if the face is at the boundary, we do not enrich nodes
+//             if (cell->at_boundary(face_no)) 
+//                 bounds++;
+//         }
+//     }
+//   if(bounds > 1) return;
+  /*
     const unsigned int weigth_boundary = 2;
     if(cell->at_boundary())
     {
@@ -428,13 +446,11 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
   //enriching dofs
   for(unsigned int i=0; i < fe.dofs_per_cell; i++)
   {
-    //if the dof is on the boundary
-    if(enriched_weights[local_dof_indices[i]] == weigth_boundary) 
-    {
-        enriched_weights[local_dof_indices[i]] = 0;
-        continue;
-    }
-    
+//     //if the dof is on the boundary
+//     if(enriched_weights[local_dof_indices[i]] == weigth_boundary) 
+//     {
+//         enriched_weights[local_dof_indices[i]] = 0;
+//     }
     //if the node was previously enriched
     if (enriched_dof_indices[local_dof_indices[i]] != 0)
     {
@@ -652,7 +668,7 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
   std::vector<unsigned int> local_enriched_node_weights(fe.dofs_per_cell,0);    //not needed - is input to XDataCell::add(...)
   
   //enriching dofs
-  
+  /*
   const unsigned int weigth_boundary = -1;
     if(cell->at_boundary())
     {
@@ -681,11 +697,11 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
   for(unsigned int i=0; i < fe.dofs_per_cell; i++)
   {
     //if the dof is on the boundary
-    if(enriched_dof_indices[local_dof_indices[i]] == weigth_boundary) 
-    {
-        enriched_dof_indices[local_dof_indices[i]] = 0;
-        continue;
-    }
+//     if(enriched_dof_indices[local_dof_indices[i]] == weigth_boundary) 
+//     {
+//         enriched_dof_indices[local_dof_indices[i]] = 0;
+//         continue;
+//     }
     
     //if the node was previously enriched
     if (enriched_dof_indices[local_dof_indices[i]] != 0)
@@ -1044,7 +1060,7 @@ void XModel::setup_system ()
 void XModel::assemble_system ()
 {
   XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
-  DBGMSG("XData inicialization done - node values computed\n");
+  DBGMSG("XData inicialization done - node values computed.\n");
   
   const unsigned int dofs_per_cell = fe.dofs_per_cell;
   const unsigned int n_q_points    = quadrature_formula.size();
@@ -1147,7 +1163,7 @@ void XModel::assemble_system ()
         case Enrichment_method::sgfem:
           adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
       }
-//       //printing enriched nodes and dofs
+      //printing enriched nodes and dofs
 //       DBGMSG("Printing dof_indices:  [");
 //       for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
 //       {
@@ -2071,6 +2087,113 @@ void XModel::compute_interpolated_exact(ExactBase *exact_solution)
         {
             std::cout << "Could not write the output in file: " << filename.str() << std::endl;
         }
+    //*/
+}
+
+
+
+
+
+void XModel::test_method(ExactBase* exact_solution)
+{
+    // Setup part of run() method
+    cycle_++;
+    if(cycle_ == 0)
+    {
+        make_grid();
+        //if initial refinement is set
+        /*
+        if(grid_create == load || grid_create == load_circle)
+        for(unsigned int r=0; r < init_refinement; r++)
+            refine_grid();*/
+    }
+    else if (is_adaptive)
+        refine_grid();
+
+
+    if (triangulation_changed == true)
+        setup_system();
+    
+    XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
+    
+    
+    // Set the solution - dofs
+    
+    unsigned int dofs_per_cell = fe.dofs_per_cell,
+                 index = 0;
+                 
+    XDataCell * local_xdata;
+             
+    //QGauss<2> temp_quad(3);
+    //FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
+    std::vector<unsigned int> local_dof_indices (dofs_per_cell);   
+    
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+        //DBGMSG("cell: %d\n",cell->index());
+        // is there is NOT a user pointer on the cell == is not enriched?
+        cell->get_dof_indices(local_dof_indices);
+        
+        for(unsigned int i=0; i < dofs_per_cell; i++)
+        {
+            block_solution(local_dof_indices[i]) = exact_solution->value(cell->vertex(i));
+//             if(cell->index() == 0)
+//                 DBGMSG("cell %d, dof %d, value: %f\n",cell->index(), local_dof_indices[i], block_solution(local_dof_indices[i]));
+        }
+        
+        if (cell->user_pointer() != nullptr)
+        {   
+            local_xdata = static_cast<XDataCell*>( cell->user_pointer() );
+            for(unsigned int w = 0; w < local_xdata->n_wells(); w++) //W
+            for(unsigned int k = 0; k < dofs_per_cell; k++) //M_w
+            { 
+                if(local_xdata->global_enriched_dofs(w)[k] != 0)
+                    block_solution(local_xdata->global_enriched_dofs(w)[k]) = exact_solution->a();
+//                 if(cell->index() == 0)
+//                     DBGMSG("cell %d, dof %d, value: %f\n",cell->index(), local_xdata->global_enriched_dofs(w)[k], block_solution(local_xdata->global_enriched_dofs(w)[k]));
+            }
+        }
+    }
+    
+    /*
+    if(out_error_)
+    {
+        FE_DGQ<2> temp_fe(0);
+        DoFHandler<2>    temp_dof_handler;
+        ConstraintMatrix hanging_node_constraints;
+  
+        temp_dof_handler.initialize(*triangulation,temp_fe);
+  
+        DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+        hanging_node_constraints.close();
+  
+        //====================vtk output
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (temp_dof_handler);
+  
+        hanging_node_constraints.distribute(diff_vector);
+  
+        data_out.add_data_vector (diff_vector, "xfem_error");
+        data_out.build_patches ();
+
+        std::stringstream filename;
+        filename << output_dir << "xmodel_error_" << cycle_ << ".vtk";
+   
+        std::ofstream output (filename.str());
+        if(output.is_open())
+        {
+            data_out.write_vtk (output);
+            data_out.clear();
+            std::cout << "\noutput(error) written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+        }
+    }
     //*/
 }
 

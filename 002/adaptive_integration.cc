@@ -98,7 +98,9 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
       for(unsigned int w = 0; w < xdata->n_wells(); w++)
       {
         //m_well_center[w] = cell_mapping.map_real_to_unit(xdata->get_well(w)->center());
+        DBGMSG("Map well center:\n");
         m_well_center[w] = mapping.transform_real_to_unit_cell(cell, xdata->get_well(w)->center());
+        DBGMSG("%f %f\n", m_well_center[w][0], m_well_center[w][1]);
         well_radius[0] = xdata->get_well(w)->radius();
         well_radius = cell_mapping.scale_inverse(well_radius);
         m_well_radius[w] = well_radius[0];
@@ -314,24 +316,33 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
 
 void Adaptive_integration::gather_w_points()
 {
-  q_points_all.reserve(squares.size()*gauss_3.size());
-  jxw_all.reserve(squares.size()*gauss_3.size());
+    q_points_all.reserve(squares.size()*gauss_3.size());
+    jxw_all.reserve(squares.size()*gauss_3.size());
 
-  for(unsigned int i = 0; i < squares.size(); i++)
-  {
-    std::vector<Point<2> > temp(squares[i].gauss->get_points());
-    //temp = squares[i].gauss->get_points(); 
-    squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
-    
-    for(unsigned int j = 0; j < temp.size(); j++)
+    if(squares.size() == 1)
     {
-      q_points_all.push_back(temp[j]);
-      jxw_all.push_back( squares[i].gauss->weight(j) *
-                         squares[i].mapping.jakobian() );
+        //DBGMSG("q_points: %d\n",squares[0].gauss->get_points().size());
+        q_points_all = squares[0].gauss->get_points();
+        jxw_all = squares[0].gauss->get_weights();
     }
-  }
-  q_points_all.shrink_to_fit();
-  jxw_all.shrink_to_fit();
+    else
+    {
+        for(unsigned int i = 0; i < squares.size(); i++)
+        {
+            std::vector<Point<2> > temp(squares[i].gauss->get_points());
+            //temp = squares[i].gauss->get_points(); 
+            squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+    
+            for(unsigned int j = 0; j < temp.size(); j++)
+            {
+                q_points_all.push_back(temp[j]);
+                jxw_all.push_back( squares[i].gauss->weight(j) *
+                                   squares[i].mapping.jakobian() );
+            }
+        }
+    }
+    q_points_all.shrink_to_fit();
+    jxw_all.shrink_to_fit();
 }
 
 

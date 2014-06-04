@@ -222,6 +222,9 @@ class XModel : public Model_base
 
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution) override;
 
+    /// Set the solution vector (dofs) accurately according to the exact solution and test XFEValues etc.
+    void test_method(ExactBase *exact_solution);
+    
   protected:
     virtual void make_grid () override;
     virtual void refine_grid() override;
@@ -229,6 +232,9 @@ class XModel : public Model_base
     void assemble_system () override;
     void solve ();
    
+    
+    // Print the list of Xdata
+    void print_xdata();
     
     //Computes error in comparision to another solution
     //void compute_solution_error();
@@ -294,7 +300,7 @@ class XModel : public Model_base
                          FE_Q<2> &temp_fe, 
                          const unsigned int iter);
     
-    template<Enrichment_method::Type> 
+    template<Enrichment_method::Type EnrType>
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
     
     ///Type of enrichment method

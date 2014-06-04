@@ -180,7 +180,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
   if(refine)
   {
     output_grid.execute_coarsening_and_refinement();
-    DBGMSG("new n_vertices: %d\n",output_grid.n_vertices());
+  // DBGMSG("new n_vertices: %d\n",output_grid.n_vertices());
     temp_dof_handler.distribute_dofs(temp_fe);
     
     dist_unenriched.reinit(temp_dof_handler.n_dofs());
@@ -189,9 +189,8 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     DoFTools::make_hanging_node_constraints (temp_dof_handler, temp_hanging_node_constraints);  
     temp_hanging_node_constraints.close();
   
-    DBGMSG("refining..\n");
     DBGMSG("dofn1: %d\t dofn2: %d\t\n",dof_handler->n_dofs(), temp_dof_handler.n_dofs());
-    DBGMSG("n1: %d\t n2: %d\t\n",block_solution.block(0).size(), dist_unenriched.size());
+  //  DBGMSG("n1: %d\t n2: %d\t\n",block_solution.block(0).size(), dist_unenriched.size());
     VectorTools::interpolate_to_different_mesh(*dof_handler, 
                                              block_solution.block(0), 
                                              temp_dof_handler, 

@@ -56,6 +56,7 @@ template<>
 double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int function_no, const unsigned int w, const unsigned int q)
 {
   MASSERT(update_quadrature_points && this->get_update_flags(), "'update_quadrature_points' flag was not set!");
+  MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape function for this node undefined.");
   return  this->shape_value(function_no,q) *    //FE shape function
           q_enrich_values_[w][q];               //already substracted interpolation in prepare()
 }

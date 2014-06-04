@@ -307,10 +307,13 @@ void XModel_simple::assemble_dirichlet()
       }
     }
   */
+   DBGMSG("boundary_values size = %d\n",boundary_values.size());
    MatrixTools::apply_boundary_values (boundary_values,
                                        block_matrix,
                                        block_solution,
-                                       block_system_rhs);
+                                       block_system_rhs,
+                                       true
+                                      );
    
    std::cout << "Dirichlet BC assembled succesfully." << std::endl;
 }
