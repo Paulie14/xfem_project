@@ -20,10 +20,14 @@
 #include "parameters.hh"
 #include "exact_model.hh"
 
+#include "adaptive_integration.hh"
+
 #include <fstream>
 #include <iostream>
 
 using namespace std;
+
+
 
 class Dirichlet_pressure : public Function<2>
     {
@@ -72,38 +76,32 @@ class Dirichlet_piezo_const : public Function<2>
       private:  
     };
     
-/** Class derived from Function<dim>, is equal to the exact solution of the circle problem in 2D, 
- * where the well is placed in the center and in the 'radius' is zero pressure.
- */
-class Dirichlet_exact_square : public Function< 2 >
+
+
+void test_squares()
 {
-public:
-  
-  Dirichlet_exact_square(Well* well, double radius) 
-    : Function< 2 >(), 
-      well_(well),
-      radius_(radius)
-  {
-    a = well->pressure() / (std::log(well->radius() / radius_));
-    b = - a * std::log(radius_);
-  }
-  
-  ///Returns the value of pressure at the boundary.
-  virtual double value (const Point<2>   &p,
-                        const unsigned int  component = 0) const
-  {
-    double distance = well_->center().distance(p);
-    if(distance >= well_->radius())
-      return a * std::log(distance) + b;
-    else
-      return well_->pressure();
-  }
-      
-  private:
-    Well* well_;
-    double a, b, radius_;
-}; 
-  
+    Point<2> a(2, 3),
+             b(5, 7);
+    
+    Square square(a,b);
+    
+    for(Point<2> &p:  square.vertices)
+    {
+        std::cout << p[0] << "   " << p[1] << std::endl;
+    }
+    square.mapping.print(std::cout);
+    std::cout << "jacobian = " << square.mapping.jakobian() << std::endl;
+    std::cout << "inverse jacobian = " << square.mapping.jakobian_inv() << std::endl;
+    
+    Point<2> test_point1(4,5),
+             test_point2(0,0);
+    std::cout << "test_point: " << test_point1 << std::endl;
+    test_point2 = square.mapping.map_real_to_unit(test_point1);
+    std::cout << test_point2 << std::endl;
+    test_point2 = square.mapping.map_unit_to_real(test_point2);
+    std::cout << test_point2 << std::endl;
+}
+
     
 void bedrichov_tunnel()
 {
@@ -548,7 +546,7 @@ void test_convergence_square(std::string output_dir)
          enrichment_radius = 15.0,
          well_pressure = Parameters::pressure_at_top;
          
-  unsigned int n_well_q_points = 300,
+  unsigned int n_well_q_points = 200,
                initial_refinement = 3;
          
   Point<2> well_center(0+excenter,0+excenter);
@@ -613,7 +611,7 @@ void test_convergence_square(std::string output_dir)
 //   if(ex)
 //   {
 //     std::cout << "computing exact solution on fine mesh..." << std::endl;
-     ExactModel exact(exact_solution);
+     
 //     exact.output_distributed_solution(*fine_triangulation);
 //     ExactBase* exact_solution = new ExactSolution(well, radius);
 //     double exact_norm = Comparing::L2_norm_exact(*fine_triangulation,exact_solution);
@@ -664,8 +662,8 @@ void test_convergence_square(std::string output_dir)
 //       }
       
       
-      if(xfem)
-      {
+//       if(xfem)
+//       {
       std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
       
       xmodel.run (cycle);  
@@ -680,8 +678,13 @@ void test_convergence_square(std::string output_dir)
 //       l2_norm_dif_xfem = Comparing::L2_norm_diff( xmodel.get_distributed_solution(),
 //                                                   xmodel.get_output_triangulation(),
 //                                                   exact_solution);
+      //test solution
+      Well *test_well = new Well(well);
+      test_well->set_pressure(1.99834);
+      Solution::ExactBase* test_exact_solution = new Solution::ExactSolution(test_well, radius);
+  
       Vector<double> diff_vector;
-      l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
+      l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *test_exact_solution);
       
       table_convergence.add_value("X L2",l2_norm_dif_xfem.second);
       table_convergence.set_tex_caption("X L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
@@ -711,7 +714,7 @@ void test_convergence_square(std::string output_dir)
       table_convergence.set_tex_format("It_{XFEM}", "r");
       table_convergence.set_tex_format("XFEM-time", "r");
 
-      }
+//       }
       
       //write the table every cycle (to have at least some results if program fails)
       table_convergence.write_text(std::cout);
@@ -724,11 +727,16 @@ void test_convergence_square(std::string output_dir)
       {
         xmodel.compute_interpolated_exact(exact_solution);
         xmodel.output_results(cycle);
-        exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+        ExactModel* exact = new ExactModel(exact_solution);
+        exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+        delete exact;
+//         xmodel.compute_interpolated_exact(test_exact_solution);
+//         xmodel.output_results(cycle);
+//         ExactModel exact(test_exact_solution);
+//         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
       }
     }
-    
-    
+      
   delete well;
   delete exact_solution;
   
@@ -1151,7 +1159,7 @@ void test_output(std::string output_dir)
   well->evaluate_q_points(n_well_q_points);
   
   //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-  Function<2> *dirichlet = new Dirichlet_exact_square(well,radius);
+  Function<2> *dirichlet = new ExactSolution(well,radius);
   
   XModel_simple xmodel(well);  
   
@@ -1292,6 +1300,7 @@ int main ()
   //bedrichov_tunnel(); 
   //return 0;
   
+  //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
   test_convergence_square(output_dir);
