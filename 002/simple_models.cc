@@ -223,7 +223,8 @@ void XModel_simple::assemble_dirichlet()
 {
   MASSERT(dirichlet_function != NULL, "Dirichlet BC function has not been set.\n");
   MASSERT(dof_handler != NULL, "DoF Handler object does not exist.\n");
-  /* //Definition of diferent types of BC
+  /*
+   //Definition of diferent types of BC
     typename Triangulation<2>::cell_iterator
              cell = triangulation->begin (),
              endc = triangulation->end();
@@ -231,17 +232,30 @@ void XModel_simple::assemble_dirichlet()
              for (; cell!=endc; ++cell)
              {
                //if (!cell->at_boundary() ) continue;
+               unsigned int n_boundaries = 0;
                for (unsigned int face=0;
                     face<GeometryInfo<2>::faces_per_cell;
                     ++face)
                {
-                
-                if ( (cell->face(face)->center()(1) - down_left[1] < 1e-10) 
-                   )
-                  cell->face(face)->set_boundary_indicator (1);
+                   if(cell->face(face)->at_boundary()) n_boundaries++;
+                       
+//                 if ( (cell->face(face)->center()(1) - down_left[1] < 1e-10) 
+//                    )
+//                   cell->face(face)->set_boundary_indicator (1);
+               }
+               
+               if(n_boundaries > 1) 
+               {
+                   for (unsigned int face=0;
+                    face<GeometryInfo<2>::faces_per_cell;
+                    ++face)
+                    {
+                        if(cell->face(face)->at_boundary())
+                            cell->face(face)->set_boundary_indicator (1);
+                    }
                }
              }
-  */
+  //*/
 
   std::map<unsigned int,double> boundary_values;
   VectorTools::interpolate_boundary_values (*dof_handler,
@@ -249,7 +263,47 @@ void XModel_simple::assemble_dirichlet()
                                             //XModel_simple::Dirichlet_pressure(wells[0]),
                                             *dirichlet_function,
                                             boundary_values);
-   
+  
+    /*
+    // Setting the enriched part boundary condition
+    ExactBase * exact_solution = static_cast<ExactSolution*>( dirichlet_function );
+  
+    XDataCell * local_xdata;
+    unsigned int dofs_per_cell = fe.dofs_per_cell;
+    std::vector<unsigned int> local_dof_indices (dofs_per_cell);   
+    
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+        //DBGMSG("cell: %d\n",cell->index());
+        // is there is NOT a user pointer on the cell == is not enriched?
+        
+        if(cell->at_boundary())
+        if (cell->user_pointer() != nullptr)
+        {   
+            local_xdata = static_cast<XDataCell*>( cell->user_pointer() );
+            
+            for(unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; face_no++)
+            {
+                if(cell->face(face_no)->at_boundary())
+                {
+                    for(unsigned int j = 0; j < GeometryInfo<2>::vertices_per_face; j++) //M_w
+                    {
+                        unsigned int k = GeometryInfo<2>::face_to_cell_vertices(face_no,j); //cell vertex index
+                        for(unsigned int w = 0; w < local_xdata->n_wells(); w++) //W
+                        {
+                            if(local_xdata->global_enriched_dofs(w)[k] != 0)
+                                boundary_values[local_xdata->global_enriched_dofs(w)[k]] = exact_solution->a();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //*/
+    
    /*
    //if boundary elements are enriched, we must set the enrichment dofs
    //iterator over cells
