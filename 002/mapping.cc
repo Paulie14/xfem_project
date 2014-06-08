@@ -80,6 +80,10 @@ void MyMapping::map_real_to_unit( const std::vector< Point< 2 > >& points, std::
 
 void MyMapping::print(std::ostream &output)
 {
-  output << "mapping: scale: " << scale_matrix << "\t translation: " << translation_vec
-         << "\t jakobian: " << jakobian() << "\n";
+  output << "MAPPING:\n scale: " << scale_matrix
+         << "\nscale_inverse: " << scale_inv_matrix 
+         << "\n translation: " << translation_vec
+         << "\n jacobian: " << jakobian()
+         << "\n jacobian_inverse: " << jakobian_inv()
+         << "\n";
 }

@@ -240,6 +240,7 @@ class Adaptive_integration
     
     void gather_w_points();
   
+    
     ///TODO: Get rid of these
     ///helpful temporary data
     ///mapped well centers to unit cell
@@ -259,11 +260,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                                       const double &transmisivity)
 {  
   DBGMSG("Adaptive integration on cell %d. Center: [%f,%f].\n", cell->index(), cell->center()[0], cell->center()[1]);
-  unsigned int n_wells_inside = 0,                      // number of wells with q_points inside the cell, zero initialized
-               n_wells = xdata->n_wells(),              // number of wells affecting the cell
-               dofs_per_cell = fe->dofs_per_cell,
-               n_vertices = GeometryInfo<2>::vertices_per_cell,
-               n_dofs = 0;   
+ 
                
   /*getting dof's indices : 
    * [ FEM(dofs_per_cell), 
@@ -271,8 +268,14 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
    *              well_dof)]_w 
    * ]
    */
-  xdata->get_dof_indices(local_dof_indices, dofs_per_cell);
-  n_wells_inside = xdata->n_wells_inside();
+  xdata->get_dof_indices(local_dof_indices, fe->dofs_per_cell); //dof initialization
+  
+  unsigned int n_wells_inside = xdata->n_wells_inside(),  // number of wells with q_points inside the cell
+               n_wells = xdata->n_wells(),                // number of wells affecting the cell
+               dofs_per_cell = fe->dofs_per_cell,
+               n_vertices = GeometryInfo<2>::vertices_per_cell,
+               n_dofs = 0;  
+               
   n_dofs = dofs_per_cell + xdata->n_enriched_dofs();
   
   cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
@@ -318,7 +321,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     {   
       shape_grad_vec[i] = xfevalues.shape_grad(i,q);
         
-      if(n_wells_inside > 0 || rhs_function)
+      //if(n_wells_inside > 0 || rhs_function)  //with SOURCES
+      if(rhs_function)
           shape_val_vec[i] = xfevalues.shape_value(i,q);
     }
 
@@ -330,7 +334,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       { 
         if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
 
-        if(n_wells_inside > 0 || rhs_function)
+        //if(n_wells_inside > 0 || rhs_function)    //with SOURCES
+        if(rhs_function)
           shape_val_vec[index] = xfevalues.enrichment_value(k,w,q);
           
         //shape_grad_vec[index] = xfevalues.enrichment_grad(k,w,mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
@@ -360,6 +365,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
         //assembling RHS
         if(rhs_function)
         {
+            DBGMSG("sources\n");
           cell_rhs(i) += rhs_function->value(xfevalues.quadrature_point(q)) * shape_val_vec[i] * xfevalues.JxW(q);
         }
       }
@@ -393,7 +399,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   
   //------------------------------------------------------------------------------ BOUNDARY INTEGRAL
 #ifdef BC_NEWTON //------------------------------------------------------------------------bc_newton
-  FullMatrix<double> well_cell_matrix;
+  //FullMatrix<double> well_cell_matrix;
   unsigned int n_w_dofs=0;
   double jxw = 0;
   //DBGMSG("error n_w:%d\n",n_wells_inside);  
@@ -402,39 +408,28 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     if(xdata->q_points(w).size() > 0)
     {
       //TODO : map the points somewhere before (in node enrichment routines..)
-      DBGMSG("Cell (%d), mapping well points.\n",cell->index());
+      //DBGMSG("Cell (%d), mapping well points.\n",cell->index());
       std::vector<Point<2> > points(xdata->q_points(w).size());
       for (unsigned int p =0; p < points.size(); p++)
       {
-        DBGMSG("well point [%d].\n",p);
+        //DBGMSG("well point [%d].\n",p);
         points[p] = mapping->transform_real_to_unit_cell(cell,*(xdata->q_points(w)[p]));
       }
       Quadrature<2> quad2 (points);
       XFEValues<EnrType> xfevalues2(*fe,quad2, update_values | update_quadrature_points);
       xfevalues2.reinit(xdata);
-      DBGMSG("xfevalues ready\n");
-      //DBGMSG("well number: %d\n",w);
+      
       Well * well = xdata->get_well(w);
       //jacobian = radius of the well; weights are the same all around
       jxw = 2 * M_PI * well->radius() / well->q_points().size();
-      
-      //how many enriched node on the cell from the well w?
-      unsigned int n_enriched_dofs=0;
-      for(unsigned int l = 0; l < dofs_per_cell; l++)
-      {
-        if(xdata->global_enriched_dofs(w)[l] != 0)
-        {
-          n_enriched_dofs ++;
-        }
-      }  
     
       shape_val_vec.clear();
       
       // FEM dofs, XFEM dofs, well dof
       //n_w_dofs = dofs_per_cell+n_enriched_dofs+1;
-      n_w_dofs = dofs_per_cell + n_enriched_dofs + 1;
+      n_w_dofs = dofs_per_cell + xdata->n_enriched_dofs(w) + 1;
       
-      well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
+      //well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
       shape_val_vec.resize(n_w_dofs,0);  //unenriched, enriched, well
     
       //cycle over quadrature points inside the cell
@@ -469,7 +464,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
               cell_matrix(i,j) += ( well->perm2aquifer() *
                                     shape_val_vec[i] *
                                     shape_val_vec[j] *
-                                    jxw );
+                                    jxw);
 //               // for debugging
 //               well_cell_matrix(i,j) += ( well->perm2aquifer() *
 //                                     shape_val_vec[i] *
