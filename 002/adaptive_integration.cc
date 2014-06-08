@@ -95,15 +95,50 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
       m_well_center.resize(xdata->n_wells());
       m_well_radius.resize(xdata->n_wells());
       Tensor<1,2> well_radius;
+      
       for(unsigned int w = 0; w < xdata->n_wells(); w++)
       {
-        //m_well_center[w] = cell_mapping.map_real_to_unit(xdata->get_well(w)->center());
-        DBGMSG("Map well center:\n");
-        m_well_center[w] = mapping.transform_real_to_unit_cell(cell, xdata->get_well(w)->center());
-        DBGMSG("%f %f\n", m_well_center[w][0], m_well_center[w][1]);
-        well_radius[0] = xdata->get_well(w)->radius();
-        well_radius = cell_mapping.scale_inverse(well_radius);
-        m_well_radius[w] = well_radius[0];
+//         //testing if the well is inside
+//         Triangulation<2>::active_face_iterator face;
+//         for(unsigned int face_no = 0; face_no < xdata->n_wells(); face_no++)
+//         {
+//             face = cell->face(face_no);
+//             Point<2> a = face->vertex(0),
+//                      b = face->vertex(1);
+//             Tensor<1,2> direction_vector; 
+//             direction_vector[0] = b[0] - a[0];  //x coordinate
+//             direction_vector[1] = b[1] - a[1]; //y coordinate
+//             
+//             double t1,t2;   //line parameter
+//             double aa = direction_vector[0] * direction_vector[0]
+//                         + direction_vector[1] * direction_vector[1],
+//                    bb = 2 * (direction_vector[0]*a[0] + direction_vector[1]*a[1]),
+//                    cc = a[0]*a[0] + a[1]*a[1] - xdata->get_well(w)->radius()*xdata->get_well(w)->radius();
+//                    
+//             double discriminant = bb*bb - 4*aa*cc;
+//             
+//             if(discriminant >= 0)
+//             {
+//                 t1 = (-bb - std::sqrt(discriminant)) / (2*aa);
+//                 t2 = (-bb + std::sqrt(discriminant)) / (2*aa);
+//                 DBGMSG("well_inside: t1=%f \t t2=%f\n",t1, t2);
+//                 if( (t1 >= 0) && (t1 <= 1) ) well_inside[w] = true;
+//                 if( (t2 >= 0) && (t2 <= 1) ) well_inside[w] = true;
+//             }
+//             
+//         }
+//         
+//         if( well_inside[w] )
+          if( xdata->q_points(w).size() > 0)    // is the well inside ?
+        {
+            //m_well_center[w] = cell_mapping.map_real_to_unit(xdata->get_well(w)->center());
+            //DBGMSG("Map well center:\n");
+            m_well_center[w] = mapping.transform_real_to_unit_cell(cell, xdata->get_well(w)->center());
+            //DBGMSG("%f %f\n", m_well_center[w][0], m_well_center[w][1]);
+            well_radius[0] = xdata->get_well(w)->radius();
+            well_radius = cell_mapping.scale_inverse(well_radius);
+            m_well_radius[w] = well_radius[0];
+        }
       }
       
       //DBGMSG("Printing cell mapping:\n");
@@ -135,6 +170,10 @@ bool Adaptive_integration::refine_edge()
   //DBGMSG("wells.size(): %d", xdata->wells().size());
   for(unsigned int w = 0; w < xdata->n_wells(); w++)
   {
+    if( xdata->q_points(w).size() == 0)    // is the well not inside ? )
+    {
+        continue;
+    }
     //DBGMSG("well center: %f %f\tradius: %f", m_well_center[w][0], m_well_center[w][1], m_well_radius[w]);
     
     for(unsigned int i = 0; i < squares.size(); i++)
@@ -343,6 +382,18 @@ void Adaptive_integration::gather_w_points()
     }
     q_points_all.shrink_to_fit();
     jxw_all.shrink_to_fit();
+    
+    //control sum
+    #ifdef DEBUG    //----------------------
+    double sum = 0;
+    for(unsigned int i = 0; i < q_points_all.size(); i++)
+    {
+        sum += jxw_all[i];
+    }
+    sum = std::abs(sum-1.0);
+    if(sum > 1e-15) DBGMSG("Control sum of weights: %e\n",sum);
+    MASSERT(sum < 1e-12, "Sum of weights of quadrature points must be 1.0.\n");
+    #endif          //----------------------
 }
 
 
