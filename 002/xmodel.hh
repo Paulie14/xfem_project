@@ -225,6 +225,8 @@ class XModel : public Model_base
     /// Set the solution vector (dofs) accurately according to the exact solution and test XFEValues etc.
     void test_method(ExactBase *exact_solution);
     
+    double well_pressure();
+    
   protected:
     virtual void make_grid () override;
     virtual void refine_grid() override;
@@ -235,6 +237,9 @@ class XModel : public Model_base
     
     // Print the list of Xdata
     void print_xdata();
+    
+    // Sets known dofs. For testing only.
+    void assemble_reduce_known();
     
     //Computes error in comparision to another solution
     //void compute_solution_error();
@@ -385,6 +390,7 @@ class XModel : public Model_base
     bool out_shape_functions_;
     bool out_error_;
     PersistentTriangulation<2>* output_triangulation;
+    
 };
 
 #include "xmodel_impl.hh"

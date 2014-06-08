@@ -17,6 +17,7 @@
 #include <deal.II/lac/iterative_inverse.h>
 #include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/eigen.h>
+#include <deal.II/numerics/matrix_tools.h>
 
 #include <deal.II/lac/sparse_matrix.h>
 
@@ -328,7 +329,7 @@ void XModel::find_enriched_cells()
   //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
   DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata.size(), triangulation->n_active_cells());
-  //print_xdata();
+  print_xdata();
 }
 
 void XModel::print_xdata()
@@ -1197,6 +1198,7 @@ void XModel::assemble_system ()
   //block_matrix.block(2,2).print_formatted(std::cout);
   
   assemble_dirichlet();
+  //assemble_reduce_known();
   
   if(hanging_nodes)
   {
@@ -1206,6 +1208,32 @@ void XModel::assemble_system ()
     
 }
 
+
+
+void XModel::assemble_reduce_known()
+{
+    std::map<unsigned int,double> known_values;
+    
+//     for(XDataCell *loc_xdata: xdata)
+//     {
+//         if(loc_xdata->q_points().size() > 0)
+//         {
+//             
+//         }
+//     }
+    unsigned int offset = dof_handler->n_dofs() + n_enriched_dofs;
+    for(unsigned int w=0; w < wells.size(); w++)
+    {
+        known_values[offset+w] = wells[w]->pressure();
+    }
+    
+    MatrixTools::apply_boundary_values(known_values,
+                                       block_matrix,
+                                       block_solution, 
+                                       block_system_rhs,
+                                       true
+                                      );
+}
                                
     
 void XModel::solve ()
@@ -2054,11 +2082,14 @@ void XModel::compute_interpolated_exact(ExactBase *exact_solution)
 //             else std::cout << std::endl;
 //         }
 //         else std::cout << std::endl;
-      }
-      
+      }   
     }
     
-    
+//     std::cout << exact_solution->a() << std::endl;
+//     for(unsigned int i=0; i<n_enriched_dofs; i++)
+//     {
+//         std::cout << setprecision(10) << block_solution.block(1)[i] << std::endl;
+//     }
     
     //====================vtk output
     DataOut<2> data_out;
@@ -2199,6 +2230,12 @@ void XModel::test_method(ExactBase* exact_solution)
 
 
 
+double XModel::well_pressure()
+{
+    MASSERT(block_solution.size() > 0, "Solution not computed.");
+    
+    return block_solution.block(2)[0];
+}
 
 
 

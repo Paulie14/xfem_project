@@ -261,7 +261,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
                 if (t == refinement_level-1)
                 {
                     // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-                    //adaptive_integration.gnuplot_refinement(output_dir);
+                    adaptive_integration.gnuplot_refinement(output_dir);
                 }
             }
             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
