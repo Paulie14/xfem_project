@@ -264,7 +264,7 @@ void XModel_simple::assemble_dirichlet()
                                             *dirichlet_function,
                                             boundary_values);
   
-    /*
+    
     // Setting the enriched part boundary condition
     ExactBase * exact_solution = static_cast<ExactSolution*>( dirichlet_function );
   

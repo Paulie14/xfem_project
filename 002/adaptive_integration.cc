@@ -391,7 +391,7 @@ void Adaptive_integration::gather_w_points()
         sum += jxw_all[i];
     }
     sum = std::abs(sum-1.0);
-    if(sum > 1e-15) DBGMSG("Control sum of weights: %e\n",sum);
+    if(sum > 1e-15) DBGMSG("Control sum of weights minus 1: %e\n",sum);
     MASSERT(sum < 1e-12, "Sum of weights of quadrature points must be 1.0.\n");
     #endif          //----------------------
 }

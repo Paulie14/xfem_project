@@ -1241,7 +1241,7 @@ void XModel::solve ()
   //how to do things for BLOCK objects
   //http://www.dealii.org/archive/dealii/msg02097.html
   
-  SolverControl	solver_control(4000, 1e-10);
+  SolverControl	solver_control(10000, 1e-10);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
  
   

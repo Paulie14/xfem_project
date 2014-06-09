@@ -537,7 +537,7 @@ void test_convergence_square(std::string output_dir)
   
   double p_a = 10.0,    //area of the model
          p_b = 10.0,
-         excenter = 0.61, //0.05,
+         excenter = 0,//0.61, //0.05,
          radius = p_a*std::sqrt(2),
          well_radius = 0.02,
          perm2fer = Parameters::perm2fer, 
@@ -590,6 +590,10 @@ void test_convergence_square(std::string output_dir)
   model_simple.set_matrix_output(false);
   
   XModel_simple xmodel(well);  
+  std::string input_file = "../input/input_files/square_simple_01.ini";
+    
+  xmodel.set_input_file(input_file);
+  xmodel.read_input_file();
 //   xmodel.set_name(test_name + "sgfem_model"); 
 //   xmodel.set_enrichment_method(Enrichment_method::sgfem);
   xmodel.set_name(test_name + "xfem_shift_model");

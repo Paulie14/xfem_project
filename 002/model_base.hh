@@ -1,10 +1,14 @@
 #ifndef Model_base_h
 #define Model_base_h
 
+#include <fstream>
+#include <iostream>
+
 #include <deal.II/grid/tria.h>
 #include <deal.II/base/function.h>
 #include <deal.II/lac/block_sparse_matrix.h>
 
+#include <deal.II/base/parameter_handler.h>
 
 using namespace dealii;
 
@@ -164,6 +168,11 @@ public:
     set_output_dir(main_output_dir); //reseting output directory
   }
   
+  ///Sets the name of the model and creates individual output directory. Default is 'model_base'.
+  ///@param name is the name to be set
+  inline void set_input_file(const std::string &path)
+  { input_file_ = path; }
+  
   ///Sets how the grid should be created. Default is 'rect'.
   void set_grid_create_type(grid_create_type type)
   { grid_create = type; }
@@ -200,7 +209,11 @@ public:
   { sparsity_pattern_output_ = sparsity_pattern_output;}
   //@}
     
+  inline void print_parameters(std::ostream &stream)
+  { parameter_handler_.print_parameters(stream,ParameterHandler::OutputStyle::Text); }  
     
+  void read_input_file();
+  
 protected:
     
   /** @name Run methods 
@@ -229,6 +242,14 @@ protected:
   
   //Writes matrix in matlab .m file.
   void write_block_sparse_matrix(const BlockSparseMatrix<double> &matrix, const std::string &filename);
+  
+  void prm_declare();
+  void prm_read_inputfile(std::ifstream &in);
+  
+  ///Parameter handler.
+  ParameterHandler parameter_handler_;
+  
+  std::string input_file_;
   
   ///Vector of wells.
   std::vector<Well*> wells;

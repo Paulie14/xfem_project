@@ -1,8 +1,11 @@
 002:
 
 
-- MY OWN ERROR in L2 NORM !!!!!!!!!!!!
-
+- MY OWN ERROR in L2 NORM - done
+- sin(x) model - done
+- dirichlet boundary condition - done
+- possible prescribe values of chosen DoFs - done
+- bug in adaptive integration when mapping well onto unit cell - done
 
 - use ini input file and read by ParameterHandler
 - convergence rate SGFEM, XFEM, FEM on simple model and with sin(x)
