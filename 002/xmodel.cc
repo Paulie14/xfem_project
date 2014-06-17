@@ -55,6 +55,7 @@
 #include "system.hh"
 #include "xfevalues.hh"
 
+const unsigned int XModel::refinement_level_ = 12;
 
 XModel::XModel () 
   : Model_base(),
@@ -329,7 +330,7 @@ void XModel::find_enriched_cells()
   //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
   DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata.size(), triangulation->n_active_cells());
-  print_xdata();
+  //print_xdata();
 }
 
 void XModel::print_xdata()
@@ -1135,14 +1136,14 @@ void XModel::assemble_system ()
       Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
       
       //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
-      unsigned int refinement_level = 12;
+      //unsigned int refinement_level = 12;
       
-      for(unsigned int t=0; t < refinement_level; t++)
+      for(unsigned int t=0; t < refinement_level_; t++)
       {
         //DBGMSG("refinement level: %d\n", t);
         if ( ! adaptive_integration.refine_edge())
           break;
-        if (t == refinement_level-1)
+        if (t == refinement_level_-1)
         {
           // (output_dir, false, true) must be set to unit coordinates and to show on screen 
           //adaptive_integration.gnuplot_refinement(output_dir);
@@ -1241,7 +1242,7 @@ void XModel::solve ()
   //how to do things for BLOCK objects
   //http://www.dealii.org/archive/dealii/msg02097.html
   
-  SolverControl	solver_control(4000, 1e-10);
+  SolverControl	solver_control(4000, 1e-12);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
  
   
@@ -2145,8 +2146,9 @@ void XModel::test_method(ExactBase* exact_solution)
     if (triangulation_changed == true)
         setup_system();
     
-    XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
+    //XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
     
+    assemble_system();
     
     // Set the solution - dofs
     
@@ -2188,6 +2190,69 @@ void XModel::test_method(ExactBase* exact_solution)
             }
         }
     }
+    block_solution.block(2)[0] = wells[0]->pressure();
+    
+    //BlockVector<double> temp_solution = block_solution;
+    
+    const unsigned int blocks_dimension = 3;
+    unsigned int n[blocks_dimension] = 
+                      { dof_handler->n_dofs(), //n1-block(0) unenriched dofs
+                        n_enriched_dofs,      //n2-block(1) enriched dofs
+                        wells.size()          //n3-block(2) average pressures on wells
+                      };
+    BlockVector<double> residuum;
+    residuum.reinit(blocks_dimension);
+    //reinitialization of residuum
+    //(N,fast=false) .. vector is filled with zeros
+    for(unsigned int i=0; i < blocks_dimension; i++)
+        residuum.block(i).reinit(n[i]);
+    residuum.collect_sizes();
+    
+    // A*x
+    block_matrix.vmult(residuum,block_solution);
+    residuum.add(-1,block_system_rhs);
+    
+    std::stringstream filename;
+        filename << output_dir << "residuum.txt";
+    std::ofstream output (filename.str());
+   
+    if(output.is_open())
+        {
+            residuum.print(output,10,true, false);
+            std::cout << "\nresiduum written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the residuum in file: " << filename.str() << std::endl;
+        }
+    
+    
+    DataOut<2> data_out;
+    data_out.attach_dof_handler (*dof_handler);
+    
+//     temp_hanging_node_constraints.distribute(dist_unenriched);
+//     temp_hanging_node_constraints.distribute(dist_enriched);
+//     temp_hanging_node_constraints.distribute(dist_solution);
+    
+    data_out.add_data_vector (residuum.block(0), "fem_res");
+    data_out.add_data_vector (residuum.block(1), "xfem_res");
+  
+    data_out.build_patches ();
+
+    
+    std::stringstream res_filename;
+    res_filename << output_dir << "residuum.vtk"; 
+   
+    std::ofstream res_output (res_filename.str());
+    if(output.is_open())
+        {
+            data_out.write_vtk (res_output);
+            std::cout << "\noutput(error) written in:\t" << res_filename.str() << std::endl;
+        }
+    else
+        {
+            std::cout << "Could not write the output in file: " << res_filename.str() << std::endl;
+        }
     
     /*
     if(out_error_)

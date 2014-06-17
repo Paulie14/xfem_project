@@ -196,6 +196,8 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
                                              temp_dof_handler, 
                                              temp_hanging_node_constraints, 
                                              dist_unenriched);
+    
+    //temp_hanging_node_constraints.distribute(dist_unenriched);
     dist_solution = dist_unenriched;
     
     return 0;
@@ -252,16 +254,16 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
         { 
             Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping());
             
-            unsigned int refinement_level = 8;
-            for(unsigned int t=0; t < refinement_level; t++)
+            //unsigned int refinement_level = 15;
+            for(unsigned int t=0; t < refinement_level_; t++)
             {
                 //if(t>0) DBGMSG("refinement level: %d\n", t);
                 if ( ! adaptive_integration.refine_edge())
                 break;
-                if (t == refinement_level-1)
+                if (t == refinement_level_-1)
                 {
                     // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-                    adaptive_integration.gnuplot_refinement(output_dir);
+                    //adaptive_integration.gnuplot_refinement(output_dir);
                 }
             }
             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);

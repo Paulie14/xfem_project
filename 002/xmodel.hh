@@ -391,6 +391,8 @@ class XModel : public Model_base
     bool out_error_;
     PersistentTriangulation<2>* output_triangulation;
     
+    static const unsigned int refinement_level_;
+    
 };
 
 #include "xmodel_impl.hh"
