@@ -199,6 +199,7 @@ bool Adaptive_integration::refine_edge()
         //std::cout << i << " addded(node)\n";
         n_squares_to_refine++;
         squares[i].refine_flag = true;
+        squares[i].on_well_edge = true;
         continue;
       }
       //if the whole square is inside the well              ------------------------------------[2]
@@ -265,6 +266,7 @@ bool Adaptive_integration::refine_edge()
             //std::cout << i << " addded(line)\n";
             n_squares_to_refine++;
             squares[i].refine_flag = true;
+            squares[i].on_well_edge = true;
             break;
           }
         }
@@ -355,6 +357,8 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
 
 void Adaptive_integration::gather_w_points()
 {
+    if(q_points_all.size() > 0) return; //do not do it again
+    
     q_points_all.reserve(squares.size()*gauss_3.size());
     jxw_all.reserve(squares.size()*gauss_3.size());
 
@@ -367,33 +371,57 @@ void Adaptive_integration::gather_w_points()
     else
     {
         for(unsigned int i = 0; i < squares.size(); i++)
-        {
-            std::vector<Point<2> > temp(squares[i].gauss->get_points());
-            //temp = squares[i].gauss->get_points(); 
-            squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
-    
-            for(unsigned int j = 0; j < temp.size(); j++)
+        {   
+            //all the squares on the edge of the well
+            if(squares[i].on_well_edge)
             {
-                q_points_all.push_back(temp[j]);
-                jxw_all.push_back( squares[i].gauss->weight(j) *
+                std::vector<Point<2> > temp(squares[i].gauss->get_points());
+                //temp = squares[i].gauss->get_points(); 
+                squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+
+                for(unsigned int w=0; w < xdata->n_wells(); w++)
+                for(unsigned int j = 0; j < temp.size(); j++)
+                {
+                    //include only points outside the well
+                    //TODO: this will not work on non-square mesh
+                    if(m_well_center[w].distance(temp[j]) >= m_well_radius[w])
+                    {
+                    q_points_all.push_back(temp[j]);
+                    jxw_all.push_back( squares[i].gauss->weight(j) *
                                    squares[i].mapping.jakobian() );
+                    }
+                }
+            }
+            //all the squares around the well
+            else if( squares[i].gauss->size() > 1 )
+            {
+                std::vector<Point<2> > temp(squares[i].gauss->get_points());
+                //temp = squares[i].gauss->get_points(); 
+                squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+    
+                for(unsigned int j = 0; j < temp.size(); j++)
+                {
+                    q_points_all.push_back(temp[j]);
+                    jxw_all.push_back( squares[i].gauss->weight(j) *
+                                   squares[i].mapping.jakobian() );
+                }
             }
         }
     }
     q_points_all.shrink_to_fit();
     jxw_all.shrink_to_fit();
     
-    //control sum
-    #ifdef DEBUG    //----------------------
-    double sum = 0;
-    for(unsigned int i = 0; i < q_points_all.size(); i++)
-    {
-        sum += jxw_all[i];
-    }
-    sum = std::abs(sum-1.0);
-    if(sum > 1e-15) DBGMSG("Control sum of weights: %e\n",sum);
-    MASSERT(sum < 1e-12, "Sum of weights of quadrature points must be 1.0.\n");
-    #endif          //----------------------
+//     //control sum
+//     #ifdef DEBUG    //----------------------
+//     double sum = 0;
+//     for(unsigned int i = 0; i < q_points_all.size(); i++)
+//     {
+//         sum += jxw_all[i];
+//     }
+//     sum = std::abs(sum-1.0);
+//     if(sum > 1e-15) DBGMSG("Control sum of weights: %e\n",sum);
+//     MASSERT(sum < 1e-12, "Sum of weights of quadrature points must be 1.0.\n");
+//     #endif          //----------------------
 }
 
 
@@ -856,10 +884,14 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
 void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, bool real, bool show)
 {
   //DBGMSG("gnuplotting\n");
-  std::string fgnuplot_ref = "adaptive_integration_refinement.dat",
-              fgnuplot_qpoints = "adaptive_integration_qpoints.dat",
-              script_file = "g_script_adapt.p";
+  gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+  std::string fgnuplot_ref = "adaptive_integration_refinement_",
+              fgnuplot_qpoints = "adaptive_integration_qpoints_",
+              script_file = "g_script_adapt_";
   
+              fgnuplot_ref += std::to_string(cell->index()) + ".dat";
+              fgnuplot_qpoints += std::to_string(cell->index()) + ".dat";
+              script_file += std::to_string(cell->index()) + ".p";
   try
     {
         Gnuplot g1("adaptive_integration");
@@ -919,21 +951,30 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
         if (myfile2.is_open()) 
         {
        
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < squares[i].gauss->get_points().size(); j++) 
-          {
-            if(real)
-              myfile2 << mapping->transform_unit_to_real_cell(cell, squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-              //myfile2 << cell_mapping.map_unit_to_real(squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-            else
-              myfile2 << squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]);
-             
+            for (unsigned int q = 0; q < q_points_all.size(); q++)
+            {
+                if(real)
+                    myfile2 << mapping->transform_unit_to_real_cell(cell, q_points_all[q]);
+                else
+                    myfile2 << q_points_all[q];
             myfile2 << "\n";
-          }
-        }
+            }
         
-        std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
+//         for (unsigned int i = 0; i < squares.size(); i++)
+//         {
+//           for (unsigned int j = 0; j < squares[i].gauss->get_points().size(); j++) 
+//           {
+//             if(real)
+//               myfile2 << mapping->transform_unit_to_real_cell(cell, squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
+//               //myfile2 << cell_mapping.map_unit_to_real(squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
+//             else
+//               myfile2 << squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]);
+//              
+//             myfile2 << "\n";
+//           }
+//         }
+        
+            std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
         }
         else 
         { 
@@ -979,8 +1020,8 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
           }
         }
         
-        strs << "plot \"" << "adaptive_integration_refinement.dat\" using 1:2 with lines,\\\n"
-             << "\"" << "adaptive_integration_qpoints.dat\" using 1:2 with points lc rgb \"light-blue\",\\\n";
+        strs << "plot \"" << fgnuplot_ref << "\" using 1:2 with lines,\\\n"
+             << "\"" << fgnuplot_qpoints << "\" using 1:2 with points lc rgb \"light-blue\",\\\n";
         for(unsigned int w = 0; w < xdata->n_wells(); w++)
         {
           strs << "fx" << w << "(t),fy" << w << "(t)";
@@ -1042,6 +1083,44 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
     {
       std::cout << ge.what() << std::endl;
     }
+}
+
+
+
+double Adaptive_integration::test_integration(Function< 2 >* func)
+{
+    double integral = 0;
+    gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+    Quadrature<2> quad(q_points_all, jxw_all);
+    XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,quad, update_values 
+                                       | update_gradients 
+                                       | update_quadrature_points 
+                                       //| update_covariant_transformation 
+                                       //| update_transformation_values 
+                                       //| update_transformation_gradients
+                                       //| update_boundary_forms 
+                                       //| update_cell_normal_vectors 
+                                       | update_JxW_values 
+                                       //| update_normal_vectors
+                                       //| update_contravariant_transformation
+                                       //| update_q_points
+                                       //| update_support_points
+                                       //| update_support_jacobians 
+                                       //| update_support_inverse_jacobians
+                                       //| update_second_derivatives
+                                       //| update_hessians
+                                       //| update_volume_elements
+                                       //| update_jacobians
+                                       //| update_jacobian_grads
+                                       //| update_inverse_jacobians
+                                                 );
+    xfevalues.reinit(xdata);
+  
+    for(unsigned int q=0; q<q_points_all.size(); q++)
+    {
+        integral += func->value(xfevalues.quadrature_point(q)) * xfevalues.JxW(q);
+    }
+    return integral;
 }
 
 
