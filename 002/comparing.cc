@@ -230,27 +230,29 @@ Solution::ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
     radius_(radius),
     p_dirichlet_(p_dirichlet)
 {
-  a_ = (well_->pressure() - p_dirichlet) / (std::log(well_->radius() / radius));
-  b_ = p_dirichlet - a_ * std::log(radius);
+//   a_ = (well_->pressure() - p_dirichlet) / (std::log(well_->radius() / radius));
+//   b_ = p_dirichlet - a_ * std::log(radius);
+    a_ = (well_->radius()*well_->perm2aquifer()*(p_dirichlet_-well_->pressure())) / (1.0 - well_->radius()*well_->perm2aquifer()*std::log(well_->radius()/radius_));
+    b_ = p_dirichlet - a_ * std::log(radius);
 }
 
 
 double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
-  if(distance >= well_->radius())
+  if(distance > well_->radius())
     return a_ * std::log(distance) + b_;
   else
-    return well_->pressure();
+    return a_ * std::log(well_->radius()) + b_;//well_->pressure();
 }
 
 double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
-  if(distance >= well_->radius())
+  if(distance > well_->radius())
     return a_ * std::log(distance) + b_ + amplitude_*std::sin(k_*p[0]);
   else
-    return well_->pressure() + amplitude_ * std::sin(k_*p[0]);
+    return a_ * std::log(well_->radius()) + b_ + amplitude_ * std::sin(k_*p[0]);
 }
 
 double Solution::Source1::value(const Point< 2 >& p, const unsigned int /*component*/) const
@@ -264,7 +266,7 @@ double Solution::ExactSolution2::value(const Point< 2 >& p, const unsigned int /
   if(distance >= well_->radius())
     return a_ * std::log(distance) + b_ + std::sin(k_*p[1]);
   else
-    return well_->pressure() + std::sin(k_*p[1]);
+    return a_ * std::log(well_->radius()) + b_ + std::sin(k_*p[1]);
 }
 
 double Solution::Source2::value(const Point< 2 >& p, const unsigned int /*component*/) const
