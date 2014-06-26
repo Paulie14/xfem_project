@@ -24,6 +24,28 @@ void XFEValues<Enrichment_method::xfem_shift>::prepare()
 }
 
 template<>
+void XFEValues<Enrichment_method::xfem_ramp>::prepare()
+{
+  //ramp function
+  double ramp;
+  q_ramp_values_.resize(n_wells_);
+  
+  for(unsigned int w=0; w < n_wells_; w++)
+  {
+    q_ramp_values_[w].resize(this->n_quadrature_points);
+    for(unsigned int q=0; q < this->n_quadrature_points; q++)
+    {
+      ramp = 0;
+      for(unsigned int i=0; i < n_vertices_; i++)
+      {
+        ramp += this->shape_value(i,q) * xdata_->weights(w)[i];
+      }
+      q_ramp_values_[w][q] = ramp;
+    }
+  }
+}
+
+template<>
 void XFEValues<Enrichment_method::sgfem>::prepare()
 {
   //FE interpolation
@@ -42,6 +64,14 @@ void XFEValues<Enrichment_method::sgfem>::prepare()
   }
 }
 
+template<>
+double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned int function_no, const unsigned int w, const unsigned int q)
+{ 
+  MASSERT(update_quadrature_points && this->get_update_flags(), "'update_quadrature_points' flag was not set!");
+  return  this->shape_value(function_no,q) *                                    //FE shape function
+          q_ramp_values_[w][q] *                                                //ramp function
+          q_enrich_values_[w][q];                                               //NOT shifted
+}
 
 template<>
 double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned int function_no, const unsigned int w, const unsigned int q)
@@ -61,6 +91,21 @@ double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int 
           q_enrich_values_[w][q];               //already substracted interpolation in prepare()
 }
 
+
+template<>
+double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned int function_no, const unsigned int w, const Point<2> p)
+{
+  Point<2> unit_point = this->get_mapping().transform_real_to_unit_cell(cell_,p);
+  
+  //ramp function
+  double ramp = 0;
+  for(unsigned int i=0; i < n_vertices_; i++)
+    ramp += this->get_fe().shape_value(i,unit_point) * xdata_->weights(w)[i];
+    
+  return  this->get_fe().shape_value(function_no,unit_point) *
+          ramp *
+          xdata_->get_well(w)->global_enrich_value(p);
+}
 
 template<>
 double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned int function_no, const unsigned int w, const Point<2> p)
@@ -93,6 +138,28 @@ double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int 
           (xdata_->get_well(w)->global_enrich_value(p) - interpolation);
 }
 
+
+template<>
+Tensor<1,2> XFEValues<Enrichment_method::xfem_ramp>::enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q)
+{
+  double xshape = q_enrich_values_[w][q];
+  Tensor<1,2> ramp_grad;
+  
+  for(unsigned int i=0; i < n_vertices_; i++)
+  {
+    ramp_grad += shape_grad(i,q) * xdata_->weights(w)[i];
+  }
+  
+  return  shape_value(function_no,q) *
+          ( ramp_grad * xshape
+            + 
+            q_ramp_values_[w][q] * xdata_->get_well(w)->global_enrich_grad(this->quadrature_point(q)) 
+          )
+          +
+          shape_grad(function_no,q) *
+          q_ramp_values_[w][q] * xshape
+          ;
+}
 
 
 template<>
