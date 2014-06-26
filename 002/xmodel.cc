@@ -56,6 +56,9 @@
 #include "xfevalues.hh"
 
 const unsigned int XModel::refinement_level_ = 12;
+const unsigned int XModel::solver_max_iter_ = 4000;
+const double XModel::solver_tolerance_ = 1e-12;
+const double XModel::output_element_tolerance_ = 1e-3;
 
 XModel::XModel () 
   : Model_base(),
@@ -1157,7 +1160,8 @@ void XModel::assemble_system ()
       switch(enrichment_method_)
       {
         case Enrichment_method::xfem_ramp: 
-          adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+            adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           break;
         case Enrichment_method::xfem_shift:
           adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
@@ -1242,7 +1246,7 @@ void XModel::solve ()
   //how to do things for BLOCK objects
   //http://www.dealii.org/archive/dealii/msg02097.html
   
-  SolverControl	solver_control(4000, 1e-12);
+  SolverControl	solver_control(solver_max_iter_, solver_tolerance_);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
  
   
@@ -1449,13 +1453,19 @@ void XModel::output_results (const unsigned int cycle)
   dist_unenriched = block_solution.block(0);
   dist_solution = dist_unenriched;
   
-  double tolerance = 1e-3;
+  double tolerance = output_element_tolerance_;
   unsigned int iterations = 30;
   
   switch(enrichment_method_)
   {
     case Enrichment_method::xfem_ramp: 
-      MASSERT(0,"Not implemented yet.");
+      //MASSERT(0,"Not implemented yet.");
+      for(unsigned int n = 0; n < iterations; n++)
+      {
+        DBGMSG("output [%d]:\n", n);
+        if( recursive_output<Enrichment_method::xfem_ramp>(tolerance, output_grid, temp_dof_handler, temp_fe, n) )
+          break;
+      }
       break;
       
     case Enrichment_method::xfem_shift:
@@ -2023,7 +2033,8 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
   switch(enrichment_method_)
   {
     case Enrichment_method::xfem_ramp: 
-        MASSERT(0,"Not implemented yet.");
+        //MASSERT(0,"Not implemented yet.");
+        norms = integrate_difference<Enrichment_method::xfem_ramp>(diff_vector, exact_solution);
         break;
       
     case Enrichment_method::xfem_shift:  
