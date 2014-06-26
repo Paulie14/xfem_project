@@ -1,10 +1,27 @@
 002:
 
 
-- MY OWN ERROR in L2 NORM !!!!!!!!!!!!
+- MY OWN ERROR in L2 NORM - done
+- collect numeric parameters at some place, or at least set them there (N adaptive refinements, tolerances etc..) - done in XModel
 
 
 - use ini input file and read by ParameterHandler
+- rename convergence table according to test name
+- XFEM with only ramp function - template adaptive integration for xfem with ramp only
+- sources in FEM
+- actualize FEM model (some virtual methods added etc..)
+- pdf print in adaptive refinement script
+- gnuplot script to print the convergence graph 
+(collect the data in one file from different runs, then call script and print all)
+- clean output methods
+- flags for output features
+
 - convergence rate SGFEM, XFEM, FEM on simple model and with sin(x)
-- study scaled condition number
-- template adaptive integration for xfem with ramp only
+- study scaled condition number - SGFEM is not better
+
+- check the behaviour with more wells / more wells in one element
+- what about that BEM model? 
+
+- automatic enrichment radius choice
+- think of precomputed quadrature points for adaptive interpolation and mapping them onto cells
+

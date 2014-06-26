@@ -573,7 +573,7 @@ void test_convergence_square(std::string output_dir)
          perm2fer = Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
-         enrichment_radius = 15.0,
+         enrichment_radius = 2.0,
          well_pressure = Parameters::pressure_at_top;
          
   unsigned int n_well_q_points = 200,
@@ -622,8 +622,10 @@ void test_convergence_square(std::string output_dir)
   XModel_simple xmodel(well);  
 //   xmodel.set_name(test_name + "sgfem_model"); 
 //   xmodel.set_enrichment_method(Enrichment_method::sgfem);
-  xmodel.set_name(test_name + "xfem_shift_model");
-  xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//   xmodel.set_name(test_name + "xfem_shift_model");
+//   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+    xmodel.set_name(test_name + "xfem_ramp_model");
+    xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
   
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
