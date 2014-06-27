@@ -68,9 +68,6 @@ XModel::XModel ()
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed_(true),
-    out_shape_functions_(false),
-    out_error_(false),
     output_triangulation(nullptr)
 {
   name = "Default_XFEM_Model";
@@ -91,9 +88,6 @@ XModel::XModel (const std::string &name,
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed_(true),
-    out_shape_functions_(false),
-    out_error_(false),
     output_triangulation(nullptr)
     
 {
@@ -115,9 +109,6 @@ XModel::XModel (const std::vector<Well*> &wells,
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed_(true),
-    out_shape_functions_(false),
-    out_error_(false),
     output_triangulation(nullptr)
     
 {
@@ -1038,7 +1029,7 @@ void XModel::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  if(sparsity_pattern_output_)
+  if(output_options_ && OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
     std::ofstream out1 (output_dir+"block_sp_pattern.1");
@@ -1355,35 +1346,39 @@ void XModel::solve ()
 
 void XModel::output_results (const unsigned int cycle)
 { 
-  //TODO: output flags - to set what should be output
+    // MATRIX OUTPUT
+    if(output_options_ && OutputOptions::output_matrix)
+    {
+        std::stringstream matrix_name;
+        matrix_name << "matrix_" << cycle;
+        write_block_sparse_matrix(block_matrix,matrix_name.str());
+    }
   
-  // MATRIX OUTPUT
-  if(matrix_output_)
-  {
-    std::stringstream matrix_name;
-    matrix_name << "matrix_" << cycle;
-    write_block_sparse_matrix(block_matrix,matrix_name.str());
-  }
-  
-  // MESH OUTPUT
-  std::stringstream filename1; 
-  filename1 << output_dir << "xfem_mesh_" << cycle;
-  std::ofstream output1 (filename1.str() + ".msh");
-  GridOut grid_out;
-  grid_out.write_msh<2> (*triangulation, output1);
+    
+    // MESH OUTPUT
+    std::stringstream filename; 
+    filename << output_dir << "xfem_mesh_" << cycle;
+    
+    if(output_options_ && OutputOptions::output_gmsh_mesh)
+    {
+        std::ofstream output (filename.str() + ".msh");
+        GridOut grid_out;
+        grid_out.write_msh<2> (*triangulation, output);
+        std::cout << "\nXFEM  gmsh mesh written in:\t" << filename.str() << ".msh" << std::endl;
+    }
    
-
-  // dummy solution for displaying mesh in Paraview
-  DataOut<2> data_out;
-  data_out.attach_dof_handler (*dof_handler);
-  Vector<double> dummys_solution(block_solution.block(0).size());
-  data_out.add_data_vector (dummys_solution, "xfem_grid");
-  data_out.build_patches (0);
-  std::ofstream output2 (filename1.str()+".vtk");
-  data_out.write_vtu (output2); 
-
-  std::cout << "\nXFEM mesh written in:\t" << filename1.str() << ".msh \n\t\tand " << filename1.str() << ".vtk" << std::endl;
-  
+    // dummy solution for displaying mesh in Paraview
+    if(output_options_ && OutputOptions::output_matrix)
+    {
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (*dof_handler);
+        Vector<double> dummys_solution(block_solution.block(0).size());
+        data_out.add_data_vector (dummys_solution, "xfem_grid");
+        data_out.build_patches (0);
+        std::ofstream output (filename.str()+".vtk");
+        data_out.write_vtu (output); 
+        std::cout << "\nXFEM vtk mesh written in:\t" << filename.str() << ".vtk" << std::endl;
+    }
   
   /*
   //computing solution on the computational mesh
@@ -1828,41 +1823,49 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
 
 void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_tria, const unsigned int& cycle, const unsigned int& m_aquifer)
 {
-  // MATRIX OUTPUT
-  if(matrix_output_)
-  {
-    std::stringstream matrix_name;
-    matrix_name << "matrix_" << cycle;
-    write_block_sparse_matrix(block_matrix,matrix_name.str());
-  }
+    // MATRIX OUTPUT
+    if(output_options_ && OutputOptions::output_matrix)
+    {
+        std::stringstream matrix_name;
+        matrix_name << "matrix_" << cycle;
+        write_block_sparse_matrix(block_matrix,matrix_name.str());
+    }
+      // MESH OUTPUT
+    if(output_options_ && OutputOptions::output_gmsh_mesh)
+    {
+        std::stringstream filename; 
+        filename << output_dir << "xfem_mesh_" << cycle;
+        std::ofstream output (filename.str() + ".msh");
+        GridOut grid_out;
+        grid_out.write_msh<2> (*triangulation, output);
+        std::cout << "\nXFEM  gmsh mesh written in:\t" << filename.str() << ".msh" << std::endl;
+        
+        //output of refinement flags of persistent triangulation
+        std::stringstream filename_flags;
+        filename_flags << output_dir << "ref_flags_" << cycle << ".ptf";
+        output.close();
+        output.clear();
+        output.open(filename_flags.str());
+        triangulation->write_flags(output);
+    }
+   
+    // dummy solution for displaying mesh in Paraview
+    if(output_options_ && OutputOptions::output_matrix)
+    {
+        std::stringstream filename; 
+        filename << output_dir << "xfem_mesh_" << cycle;
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (*dof_handler);
+        Vector<double> dummys_solution(block_solution.block(0).size());
+        data_out.add_data_vector (dummys_solution, "xfem_grid");
+        data_out.build_patches (0);
+        std::ofstream output (filename.str()+".vtk");
+        data_out.write_vtu (output); 
+        std::cout << "\nXFEM vtk mesh written in:\t" << filename.str() << ".vtk" << std::endl;
+    }
+    
   
-  // MESH OUTPUT
-  std::stringstream filename1;
-  filename1 << output_dir << "xfem_mesh_" << cycle;
-  std::ofstream output1 (filename1.str() + ".msh");
-  GridOut grid_out;
-  grid_out.write_msh<2> (*triangulation, output1);
-  
-  //output of refinement flags of persistent triangulation
-  std::stringstream filename_flags;
-  filename_flags << output_dir << "ref_flags_" << cycle << ".ptf";
-  output1.close();
-  output1.clear();
-  output1.open(filename_flags.str());
-  triangulation->write_flags(output1);
-  
-  
-  //dummy solution for displaying mesh int Paraview
   DataOut<2> data_out;
-  data_out.attach_dof_handler (*dof_handler);
-  Vector<double> dummys_solution(block_solution.block(0).size());
-  data_out.add_data_vector (dummys_solution, "xfem_grid");
-  data_out.build_patches (0);
-  std::ofstream output2 (filename1.str() + ".vtk");
-  data_out.write_vtu (output2); 
-  std::cout << "\nXFEM mesh written in:\t" << filename1.str() << ".msh \n\t\tand " << filename1.str() << ".vtk" << std::endl;
-  data_out.clear();
-
   
   QGauss<2>        dist_quadrature(2);
   FE_Q<2>          dist_fe(1);                    
@@ -1902,7 +1905,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   dist_hanging_node_constraints.distribute(dist_enriched);
   dist_hanging_node_constraints.distribute(dist_solution);
   
-  if(out_decomposed_)
+  if(output_options_ && OutputOptions::output_decomposed)
   {
     data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
     data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
@@ -1922,7 +1925,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   std::cout << "\noutput written in:\t" << filename.str() << std::endl;
   
   
-  if(out_shape_functions_)
+  if(output_options_ && OutputOptions::output_shape_functions)
   {
     unsigned int n_dofs = dof_handler->n_dofs();
     data_out.attach_dof_handler (dist_dof_handler);
@@ -1958,13 +1961,13 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
 
 void XModel::output_distributed_solution(const std::string& mesh_file, const std::string &flag_file, bool is_circle, const unsigned int& cycle, const unsigned int &m_aquifer)
 {
-  // MATRIX OUTPUT
-  if(matrix_output_)
-  {
-    std::stringstream matrix_name;
-    matrix_name << "matrix_" << cycle;
-    write_block_sparse_matrix(block_matrix,matrix_name.str());
-  }
+    // MATRIX OUTPUT
+    if(output_options_ && OutputOptions::output_matrix)
+    {
+        std::stringstream matrix_name;
+        matrix_name << "matrix_" << cycle;
+        write_block_sparse_matrix(block_matrix,matrix_name.str());
+    }
   
   //triangulation for distributing solution onto domain
   Triangulation<2> dist_coarse_tria;  

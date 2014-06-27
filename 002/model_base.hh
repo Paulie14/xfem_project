@@ -38,6 +38,7 @@ public:
     output_gmsh_mesh = 0x020,
     output_vtk_mesh = 0x040,
     output_sparsity_pattern = 0x080,
+    output_shape_functions = 0x100,
     //other free ...
     output_all = 0x800
   }; 
@@ -207,14 +208,6 @@ public:
     rhs_function = func;
   }
   
-  ///Sets output of the system matrix on/off. Default is false.
-  inline void set_matrix_output(bool matrix_output)
-  { matrix_output_ = matrix_output;}
-  
-  ///Sets output of the sparsity pattern on/off. Default is false.
-  inline void set_sparsity_pattern_output(bool sparsity_pattern_output)
-  { sparsity_pattern_output_ = sparsity_pattern_output;}
-  
   inline void set_output_options(OutputOptionsType output_options)
   { output_options_ = output_options;}
   //@}
@@ -286,8 +279,6 @@ protected:
   double last_run_time_;
   
   unsigned int solver_it;
-  bool matrix_output_,
-       sparsity_pattern_output_;
   
   /** @brief Path to output directory.
    * Name should be defined before, else name="Model".

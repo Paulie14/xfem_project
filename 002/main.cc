@@ -187,7 +187,6 @@ void bedrichov_tunnel()
   tunnel_xfem.set_transmisivity(bulk_transmisivity,0);
   tunnel_xfem.set_refinement(4);                                     
   tunnel_xfem.set_enrichment_radius(50);
-  tunnel_xfem.set_output_features();
   tunnel_xfem.set_dirichlet_function(dirichlet_piezo_const);
   
   tunnel_xfem.run();     
@@ -562,7 +561,7 @@ void test_convergence_square(std::string output_dir)
   std::string test_name = "square_convergence_";
   bool fem_create = false,
        fem = true,
-       xfem = false,
+       xfem = true,
        ex = false;
   
   double p_a = 100.0,    //area of the model
@@ -617,7 +616,9 @@ void test_convergence_square(std::string output_dir)
   //model_simple.set_computational_mesh(coarse_file);
   model_simple.set_dirichlet_function(exact_solution);
   model_simple.set_adaptivity(true);
-  model_simple.set_matrix_output(false);
+  model_simple.set_output_options(Model_base::output_gmsh_mesh
+                                | Model_base::output_solution
+                                | Model_base::output_error);
   
   XModel_simple xmodel(well);  
   xmodel.set_name(test_name + "sgfem_model"); 
@@ -636,8 +637,10 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_dirichlet_function(exact_solution);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  xmodel.set_output_features(1,0,1); //decomposed, shape_func, error
-  //xmodel.set_matrix_output(true);
+  xmodel.set_output_options(Model_base::output_gmsh_mesh
+                          | Model_base::output_solution
+                          | Model_base::output_decomposed
+                          | Model_base::output_error);
 
 //   // Exact model
 //   if(ex)
@@ -834,7 +837,6 @@ void test_convergence_sin(std::string output_dir)
   //model_simple.set_computational_mesh(coarse_file);
   model_simple.set_dirichlet_function(dirichlet_square);
   model_simple.set_adaptivity(true);
-  model_simple.set_matrix_output(false);
   
   XModel_simple xmodel(well);  
   xmodel.set_name(test_name + "sgfem_model");
@@ -852,8 +854,10 @@ void test_convergence_sin(std::string output_dir)
   xmodel.set_rhs_function(rhs_function);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  xmodel.set_output_features(1,0,1); //decomposed, shape_func, error
-  //xmodel.set_matrix_output(true);
+  xmodel.set_output_options(Model_base::output_gmsh_mesh
+                          | Model_base::output_solution
+                          | Model_base::output_decomposed
+                          | Model_base::output_error);
   
 //   // Exact model
 //   if(ex)
@@ -1054,7 +1058,6 @@ void test_multiple_wells(std::string output_dir)
   model_fem.set_output_dir(output_dir);
   model_fem.set_transmisivity(transmisivity,0); 
   //model_fem.set_dirichlet_function(dirichlet);
-  model_fem.set_matrix_output(false);
   
   XModel xmodel(wells);  
 //   xmodel.set_name(test_name + "sgfem");
@@ -1071,8 +1074,7 @@ void test_multiple_wells(std::string output_dir)
   //xmodel.set_dirichlet_function(dirichlet);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  //xmodel.set_output_features(true, true);
-  xmodel.set_matrix_output(true);
+
   
   
   if(fem_create)
@@ -1208,8 +1210,6 @@ void test_output(std::string output_dir)
   xmodel.set_dirichlet_function(dirichlet);
   //xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  //xmodel.set_output_features(true, true);
-  //xmodel.set_matrix_output(true);
   
   xmodel.run();
   xmodel.output_results();
@@ -1277,8 +1277,10 @@ void test_solution(std::string output_dir)
   xmodel.set_dirichlet_function(exact_solution);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  xmodel.set_output_features(1,0,1); //decomposed, shape_func, error
-  //xmodel.set_matrix_output(true);
+  xmodel.set_output_options(Model_base::output_gmsh_mesh
+                          | Model_base::output_solution
+                          | Model_base::output_decomposed
+                          | Model_base::output_error);
   
 //   // Exact model
 //   if(ex)

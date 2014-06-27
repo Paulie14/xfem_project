@@ -389,7 +389,7 @@ void Model::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  if(sparsity_pattern_output_)
+  if(output_options_ && OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
     std::ofstream out1 (output_dir + "block_sp_pattern.1");
@@ -818,28 +818,31 @@ void Model::solve ()
 
 void Model::output_results (const unsigned int cycle)
 {
-  // MATRIX OUTPUT
-  if(matrix_output_)
-    write_block_sparse_matrix(block_matrix,"fem_matrix");
+    // MATRIX OUTPUT
+    if(output_options_ && OutputOptions::output_matrix)
+        write_block_sparse_matrix(block_matrix,"fem_matrix");
   
-   //MESH OUTPUT
-   std::stringstream filename;
+    //MESH OUTPUT
+  
+    if(output_options_ && OutputOptions::output_matrix)
+    {
+        std::stringstream filename;
+        filename << output_dir << "real_grid_" << cycle;
+        std::ofstream output (filename.str() + ".msh");
+        GridOut grid_out;
+        grid_out.write_msh<2> (*triangulation, output);
+        
+            //output of refinement flags of persistent triangulation
+        std::stringstream filename1;
+        filename1 << output_dir << "ref_flags_" << cycle << ".ptf";
+        output.close();
+        output.clear();
+        output.open(filename1.str());
+        //std::ofstream output1 (filename1.str());
+        triangulation->write_flags(output);
+    }
    
-   //output of real grid
-   filename << output_dir << "real_grid_" << cycle << ".msh";
-   std::ofstream output (filename.str());
-   GridOut grid_out;
-   grid_out.write_msh<2> (*triangulation, output);
-   
-   //output of refinement flags of persistent triangulation
-   std::stringstream filename1;
-   filename1 << output_dir << "ref_flags_" << cycle << ".ptf";
-   output.close();
-   output.clear();
-   output.open(filename1.str());
-   //std::ofstream output1 (filename1.str());
-   //triangulation->write_flags(output1);
-   triangulation->write_flags(output);
+
    
    
    //SOLUTION OUTPUT
@@ -865,29 +868,6 @@ void Model::output_results (const unsigned int cycle)
 }
 
 
-/*                              
-void Model::run (const unsigned int cycle)
-{
-  if (cycle == 0)
-    make_grid ();
-  else if (is_adaptive)
-    refine_grid();
-  std::cout << "Number of active cells:       "
-            << triangulation->n_active_cells()
-            << std::endl;
-  
-  std::cout << "Total number of cells: "
-            << triangulation->n_cells()
-            << std::endl;
-  
-  if(triangulation_changed)
-    setup_system ();
-  
-  assemble_system ();
-  solve ();
-}
-*/
-
 const dealii::Vector< double >& Model::get_distributed_solution()
 {
   //MASSERT(0,"Is not implemented in class Model.");
@@ -910,7 +890,7 @@ void Model::output_distributed_solution(const std::string& mesh_file, const std:
 void Model::output_distributed_solution(const dealii::Triangulation< 2 >& dist_tria, const unsigned int& cycle)
 {
   // MATRIX OUTPUT
-  if(matrix_output_)
+  if(output_options_ && OutputOptions::output_matrix)
   {
     std::stringstream matrix_name;
     matrix_name << "matrix_" << cycle;
@@ -1057,7 +1037,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
     total_norm = diff_vector.l2_norm();
     std::cout << "\t" << total_norm << "\t vertex l2 norm: " << total_nodal_norm << std::endl;
     
-    if(true)//out_error_)
+    if(output_options_ && OutputOptions::output_error)
     {
         FE_DGQ<2> temp_fe(0);
         DoFHandler<2>    temp_dof_handler;
