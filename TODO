@@ -2,12 +2,11 @@
 
 
 - MY OWN ERROR in L2 NORM - done
-- collect numeric parameters at some place, or at least set them there (N adaptive refinements, tolerances etc..) - done in XModel
-
+- collect numeric parameters at some place, or at least set them there (N adaptive refinements, tolerances etc..) - moved to Model_base
+- XFEM with only ramp function - template adaptive integration for xfem with ramp only - done
 
 - use ini input file and read by ParameterHandler
 - rename convergence table according to test name
-- XFEM with only ramp function - template adaptive integration for xfem with ramp only
 - sources in FEM
 - actualize FEM model (some virtual methods added etc..)
 - pdf print in adaptive refinement script

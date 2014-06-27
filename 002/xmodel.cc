@@ -55,11 +55,6 @@
 #include "system.hh"
 #include "xfevalues.hh"
 
-const unsigned int XModel::refinement_level_ = 12;
-const unsigned int XModel::solver_max_iter_ = 4000;
-const double XModel::solver_tolerance_ = 1e-12;
-const double XModel::output_element_tolerance_ = 1e-3;
-
 XModel::XModel () 
   : Model_base(),
     enrichment_method_(Enrichment_method::xfem_shift),
@@ -304,8 +299,8 @@ void XModel::find_enriched_cells()
         for(unsigned int i=1; i < fe.dofs_per_cell; i++)
         {
           //assumming that the well radius is smaller than the cell
-          dist = std::min(cell->vertex(i).distance(wells[w]->center()), r_enr[w]);
-          //dist = std::max(cell->vertex(i).distance(wells[w]->center()), dist);
+          //dist = std::min(cell->vertex(i).distance(wells[w]->center()), r_enr[w]);
+          dist = std::max(cell->vertex(i).distance(wells[w]->center()), dist);
         }  
         r_enr[w] = std::max(dist, r_enr[w]);
           
@@ -1141,12 +1136,12 @@ void XModel::assemble_system ()
       //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
       //unsigned int refinement_level = 12;
       
-      for(unsigned int t=0; t < refinement_level_; t++)
+      for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
       {
         //DBGMSG("refinement level: %d\n", t);
         if ( ! adaptive_integration.refine_edge())
           break;
-        if (t == refinement_level_-1)
+        if (t == adaptive_integration_refinement_level_-1)
         {
           // (output_dir, false, true) must be set to unit coordinates and to show on screen 
           //adaptive_integration.gnuplot_refinement(output_dir);
@@ -2029,6 +2024,7 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
 
 std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
+  MASSERT(triangulation != nullptr, "No triangulation in model.");
   std::pair<double,double> norms;
   switch(enrichment_method_)
   {

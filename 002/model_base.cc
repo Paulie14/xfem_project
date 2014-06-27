@@ -11,6 +11,15 @@
 #include <fstream>
 #include <iostream>
 
+const Model_base::OutputOptionsType Model_base::default_output_options_ = Model_base::output_solution 
+                                                                          | Model_base::output_decomposed 
+                                                                          | Model_base::output_gmsh_mesh;
+const unsigned int Model_base::adaptive_integration_refinement_level_ = 12;
+const unsigned int Model_base::solver_max_iter_ = 4000;
+const double Model_base::solver_tolerance_ = 1e-12;
+const double Model_base::output_element_tolerance_ = 1e-3;
+
+
 Model_base::Model_base()
 :   grid_create(Model_base::rect),
     down_left(Point<2>(0.0,0.0)),
@@ -284,5 +293,6 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
 
 std::pair< double, double > Model_base::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
-    DBGMSG("Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
+    MASSERT(0,"Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
+    return std::make_pair<double, double>(0,0);
 }

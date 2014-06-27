@@ -255,12 +255,12 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
             Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping());
             
             //unsigned int refinement_level = 15;
-            for(unsigned int t=0; t < refinement_level_; t++)
+            for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
             {
                 //if(t>0) DBGMSG("refinement level: %d\n", t);
                 if ( ! adaptive_integration.refine_edge())
                 break;
-                if (t == refinement_level_-1)
+                if (t == adaptive_integration_refinement_level_-1)
                 {
                     // (output_dir, false, true) must be set to unit coordinates and to show on screen 
                     //adaptive_integration.gnuplot_refinement(output_dir);

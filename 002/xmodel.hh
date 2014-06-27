@@ -390,12 +390,7 @@ class XModel : public Model_base
     bool out_shape_functions_;
     bool out_error_;
     PersistentTriangulation<2>* output_triangulation;
-    
-    static const unsigned int refinement_level_;
-    static const unsigned int solver_max_iter_;
-    static const double solver_tolerance_;
-    static const double output_element_tolerance_;
-    
+      
 };
 
 #include "xmodel_impl.hh"

@@ -27,6 +27,21 @@ public:
     load_circle //for loading flags and recreating circle mesh
   } grid_create_type;
   
+  typedef unsigned int OutputOptionsType;
+  ///type of grid creation
+  enum OutputOptions {
+    output_solution = 0x001,
+    output_decomposed = 0x002,
+    output_error = 0x004,
+    output_matrix = 0x008,
+    output_adaptive_plot = 0x010,
+    output_gmsh_mesh = 0x020,
+    output_vtk_mesh = 0x040,
+    output_sparsity_pattern = 0x080,
+    //other free ...
+    output_all = 0x800
+  }; 
+  
   ///Default constructor.
   Model_base();
   
@@ -93,7 +108,8 @@ public:
                                              const unsigned int &cycle=0, 
                                              const unsigned int &m_aquifer=0) = 0;
                                              
-  virtual std::pair<double,double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
+  virtual std::pair<double,double> integrate_difference(Vector<double>& diff_vector, 
+                                                        const Function<2> &exact_solution);
   
                                              
   /** @name Getters
@@ -198,6 +214,9 @@ public:
   ///Sets output of the sparsity pattern on/off. Default is false.
   inline void set_sparsity_pattern_output(bool sparsity_pattern_output)
   { sparsity_pattern_output_ = sparsity_pattern_output;}
+  
+  inline void set_output_options(OutputOptionsType output_options)
+  { output_options_ = output_options;}
   //@}
     
     
@@ -281,7 +300,14 @@ protected:
   ///name of model (name of created output directory)
   std::string name;
   //@}
-           
+  
+    OutputOptionsType output_options_;
+  
+    static const OutputOptionsType default_output_options_;
+    static const unsigned int adaptive_integration_refinement_level_;
+    static const unsigned int solver_max_iter_;
+    static const double solver_tolerance_;
+    static const double output_element_tolerance_;
 };
 
 #endif  //Model_base_h
