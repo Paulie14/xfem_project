@@ -35,6 +35,7 @@
 #include <deal.II/numerics/vector_tools.h>
 
 //output
+#include <deal.II/fe/fe_dgq.h>
 #include <deal.II/numerics/data_out.h>
 #include <fstream>
 #include <iostream>
@@ -47,7 +48,6 @@
 #include "comparing.hh"
 #include "well.hh"
 #include "data_cell.hh"
-
 
 Model::Model ():
     Model_base::Model_base(),
@@ -798,7 +798,7 @@ void Model::solve ()
 {
   //block_matrix.print_formatted(std::cout);
   //block_system_rhs.print(std::cout);
-  SolverControl	solver_control(4000, 1e-10);
+  SolverControl	solver_control(solver_max_iter_, solver_tolerance_);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
   //this solver is used for block matrices and vectors
   SolverCG<BlockVector<double> > solver(solver_control, vector_memory);
@@ -979,6 +979,122 @@ void Model::output_foreign_results(const unsigned int cycle, const Vector<double
 
 
 
+std::pair< double, double > Model::integrate_difference(dealii::Vector< double >& diff_vector, 
+                                                        const Function< 2 >& exact_solution)
+{
+    std::pair<double,double> norms;
+
+    std::cout << "Computing l2 norm of difference...";
+    unsigned int dofs_per_cell = fe.dofs_per_cell,
+                 index = 0;
+                 
+    double exact_value, value, cell_norm, total_norm, nodal_norm, total_nodal_norm;
+             
+    QGauss<2> temp_quad(3);
+    FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
+    std::vector<unsigned int> local_dof_indices (temp_fe_values.dofs_per_cell);   
+  
+    Vector<double> diff_nodal_vector(dof_handler->n_dofs());
+    diff_vector.reinit(dof_handler->get_tria().n_active_cells());
+    
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+        cell_norm = 0;
+        //DBGMSG("cell: %d\n",cell->index());
+        // is there is NOT a user pointer on the cell == is not enriched?
+        temp_fe_values.reinit(cell);
+        cell->get_dof_indices(local_dof_indices);
+        
+//         if (cell->user_pointer() == nullptr)
+        {
+            for(unsigned int q=0; q < temp_fe_values.n_quadrature_points; q++)
+            {
+                value = 0;
+                for(unsigned int i=0; i < dofs_per_cell; i++)
+                    value += block_solution(local_dof_indices[i]) * temp_fe_values.shape_value(i,q);
+                
+                exact_value = exact_solution.value(temp_fe_values.quadrature_point(q));
+                value = value - exact_value;                         // u_h - u
+                cell_norm += value * value * temp_fe_values.JxW(q);  // (u_h-u)^2 * JxW
+            }
+        }
+        //TODO: use also adaptive integration
+//         else
+//         { 
+//             Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping());
+//             
+//             //unsigned int refinement_level = 15;
+//             for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
+//             {
+//                 //if(t>0) DBGMSG("refinement level: %d\n", t);
+//                 if ( ! adaptive_integration.refine_edge())
+//                 break;
+//                 if (t == adaptive_integration_refinement_level_-1)
+//                 {
+//                     // (output_dir, false, true) must be set to unit coordinates and to show on screen 
+//                     //adaptive_integration.gnuplot_refinement(output_dir);
+//                 }
+//             }
+//             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
+//         }
+        
+        cell_norm = std::sqrt(cell_norm);   // square root
+        diff_vector[index] = cell_norm;     // save L2 norm on cell
+        index ++;
+        
+        //node values should be exactly equal FEM dofs
+        for(unsigned int i=0; i < dofs_per_cell; i++)
+        {
+            nodal_norm = block_solution(local_dof_indices[i]) - exact_solution.value(cell->vertex(i));
+            diff_nodal_vector[local_dof_indices[i]] = std::abs(nodal_norm);
+        }
+    }
+    
+    total_nodal_norm = diff_nodal_vector.l2_norm();
+    total_norm = diff_vector.l2_norm();
+    std::cout << "\t" << total_norm << "\t vertex l2 norm: " << total_nodal_norm << std::endl;
+    
+    if(true)//out_error_)
+    {
+        FE_DGQ<2> temp_fe(0);
+        DoFHandler<2>    temp_dof_handler;
+        ConstraintMatrix hanging_node_constraints;
+  
+        temp_dof_handler.initialize(*triangulation,temp_fe);
+  
+        DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+        hanging_node_constraints.close();
+  
+        //====================vtk output
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (temp_dof_handler);
+  
+        hanging_node_constraints.distribute(diff_vector);
+  
+        data_out.add_data_vector (diff_vector, "fem_error");
+        data_out.build_patches ();
+
+        std::stringstream filename;
+        filename << output_dir << "model_error_" << cycle_ << ".vtk";
+   
+        std::ofstream output (filename.str());
+        if(output.is_open())
+        {
+            data_out.write_vtk (output);
+            data_out.clear();
+            std::cout << "\noutput(error) written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+        }
+    }
+    
+    return std::make_pair(total_nodal_norm, total_norm);
+}
 
 
 

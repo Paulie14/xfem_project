@@ -69,6 +69,9 @@ class Model : public Model_base
     void output_distributed_solution(const dealii::Triangulation< 2 >& dist_tria, 
                                      const unsigned int& cycle);
     
+    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
+                                                   const Function<2> &exact_solution) override;
+    
     ///@name Getters
     //@{
     /** Returns constant reference to distributed solution.
@@ -194,7 +197,6 @@ class Model : public Model_base
     
     ///Quadrature for integrating on elements
     QGauss<2>  quadrature_formula;
-    
     
     
     ///matrix containing constraints coming from hanging nodes
