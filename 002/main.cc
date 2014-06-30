@@ -325,9 +325,9 @@ void test_convergence_square(std::string output_dir)
   model_simple.set_initial_refinement(1);  
   model_simple.set_ref_coarse_percentage(0.95,0.05);
   //model_simple.set_ref_coarse_percentage(0.3,0.05);
-  //model_simple.set_grid_create_type(Model_base::rect);
+  //model_simple.set_grid_create_type(ModelBase::rect);
   
-  model_simple.set_grid_create_type(Model_base::load);
+  model_simple.set_grid_create_type(ModelBase::load);
   model_simple.set_computational_mesh(coarse_file);
   model_simple.set_dirichlet_function(dirichlet_square);
   model_simple.set_adaptivity(true);
@@ -344,7 +344,7 @@ void test_convergence_square(std::string output_dir)
   xmodel_simple.set_transmisivity(transmisivity,0);
   xmodel_simple.set_initial_refinement(1);                                     
   xmodel_simple.set_enrichment_radius(enrichment_radius);
-  xmodel_simple.set_grid_create_type(Model_base::rect);
+  xmodel_simple.set_grid_create_type(ModelBase::rect);
   //xmodel_simple.set_computational_mesh(coarse_file, ref_flags_coarse);
   xmodel_simple.set_dirichlet_function(dirichlet_square);
   xmodel_simple.set_adaptivity(true);
@@ -358,7 +358,7 @@ void test_convergence_square(std::string output_dir)
 //   if(fem_create)
 //     
 //   {
-//     model_simple.set_grid_create_type(Model_base::rect);
+//     model_simple.set_grid_create_type(ModelBase::rect);
 //     model_simple.set_initial_refinement(7);
 //     model_simple.set_ref_coarse_percentage(0.2,0.0);
 //     for (unsigned int cycle=0; cycle < 15; ++cycle)
@@ -414,7 +414,7 @@ void test_convergence_square(std::string output_dir)
 //   // uncomment if you want to create the fine mesh, e.g. for exact solution and comparision
 //   
 //     model_simple.set_name(test_name + "fem_model_mesh_creation");
-//     model_simple.set_grid_create_type(Model_base::load);
+//     model_simple.set_grid_create_type(ModelBase::load);
 //     model_simple.set_computational_mesh(coarse_file, ref_flags_start_file.str());
 //     model_simple.set_ref_coarse_percentage(0.2,0.0);
 //     for (unsigned int cycle=0; cycle < 15; ++cycle)
@@ -610,15 +610,15 @@ void test_convergence_square(std::string output_dir)
   model_simple.set_initial_refinement(initial_refinement);  
   model_simple.set_ref_coarse_percentage(0.95,0.05);
   //model_simple.set_ref_coarse_percentage(0.3,0.05);
-  //model_simple.set_grid_create_type(Model_base::rect);
+  //model_simple.set_grid_create_type(ModelBase::rect);
   
-  model_simple.set_grid_create_type(Model_base::rect);
+  model_simple.set_grid_create_type(ModelBase::rect);
   //model_simple.set_computational_mesh(coarse_file);
   model_simple.set_dirichlet_function(exact_solution);
   model_simple.set_adaptivity(true);
-  model_simple.set_output_options(Model_base::output_gmsh_mesh
-                                | Model_base::output_solution
-                                | Model_base::output_error);
+  model_simple.set_output_options(ModelBase::output_gmsh_mesh
+                                | ModelBase::output_solution
+                                | ModelBase::output_error);
   
   XModel_simple xmodel(well);  
   xmodel.set_name(test_name + "sgfem_model"); 
@@ -633,14 +633,14 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_transmisivity(transmisivity,0);
   xmodel.set_initial_refinement(initial_refinement);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
-  xmodel.set_grid_create_type(Model_base::rect);
+  xmodel.set_grid_create_type(ModelBase::rect);
   xmodel.set_dirichlet_function(exact_solution);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  xmodel.set_output_options(Model_base::output_gmsh_mesh
-                          | Model_base::output_solution
-                          | Model_base::output_decomposed
-                          | Model_base::output_error);
+  xmodel.set_output_options(ModelBase::output_gmsh_mesh
+                          | ModelBase::output_solution
+                          | ModelBase::output_decomposed
+                          | ModelBase::output_error);
 
 //   // Exact model
 //   if(ex)
@@ -831,9 +831,9 @@ void test_convergence_sin(std::string output_dir)
   model_simple.set_transmisivity(transmisivity,0);
   model_simple.set_initial_refinement(2);  
   model_simple.set_ref_coarse_percentage(0.95,0.05);
-  //model_simple.set_grid_create_type(Model_base::rect);
+  //model_simple.set_grid_create_type(ModelBase::rect);
   
-  model_simple.set_grid_create_type(Model_base::rect);
+  model_simple.set_grid_create_type(ModelBase::rect);
   //model_simple.set_computational_mesh(coarse_file);
   model_simple.set_dirichlet_function(dirichlet_square);
   model_simple.set_adaptivity(true);
@@ -849,15 +849,15 @@ void test_convergence_sin(std::string output_dir)
   xmodel.set_transmisivity(transmisivity,0);
   xmodel.set_initial_refinement(3);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
-  xmodel.set_grid_create_type(Model_base::rect);
+  xmodel.set_grid_create_type(ModelBase::rect);
   xmodel.set_dirichlet_function(dirichlet_square);
   xmodel.set_rhs_function(rhs_function);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  xmodel.set_output_options(Model_base::output_gmsh_mesh
-                          | Model_base::output_solution
-                          | Model_base::output_decomposed
-                          | Model_base::output_error);
+  xmodel.set_output_options(ModelBase::output_gmsh_mesh
+                          | ModelBase::output_solution
+                          | ModelBase::output_decomposed
+                          | ModelBase::output_error);
   
 //   // Exact model
 //   if(ex)
@@ -1070,7 +1070,7 @@ void test_multiple_wells(std::string output_dir)
   xmodel.set_transmisivity(transmisivity,0);
   xmodel.set_initial_refinement(3);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
-  xmodel.set_grid_create_type(Model_base::rect);
+  xmodel.set_grid_create_type(ModelBase::rect);
   //xmodel.set_dirichlet_function(dirichlet);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
@@ -1081,7 +1081,7 @@ void test_multiple_wells(std::string output_dir)
   {
     model_fem.set_area(down_left,up_right);
     model_fem.set_initial_refinement(5); 
-    model_fem.set_grid_create_type(Model_base::rect);
+    model_fem.set_grid_create_type(ModelBase::rect);
     model_fem.set_ref_coarse_percentage(0.3,0.05);
     model_fem.set_adaptivity(true);
     for (unsigned int cycle=0; cycle < 15; ++cycle)
@@ -1095,7 +1095,7 @@ void test_multiple_wells(std::string output_dir)
   }
   
   
-  model_fem.set_grid_create_type(Model_base::load);
+  model_fem.set_grid_create_type(ModelBase::load);
   //model_fem.set_computational_mesh(coarse_file, ref_flags_fine);
   model_fem.set_computational_mesh(coarse_file);
   model_fem.run();
@@ -1206,7 +1206,7 @@ void test_output(std::string output_dir)
   xmodel.set_transmisivity(transmisivity,0);
   xmodel.set_initial_refinement(4);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
-  xmodel.set_grid_create_type(Model_base::rect);
+  xmodel.set_grid_create_type(ModelBase::rect);
   xmodel.set_dirichlet_function(dirichlet);
   //xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
@@ -1273,14 +1273,14 @@ void test_solution(std::string output_dir)
   xmodel.set_transmisivity(transmisivity,0);
   xmodel.set_initial_refinement(3);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
-  xmodel.set_grid_create_type(Model_base::rect);
+  xmodel.set_grid_create_type(ModelBase::rect);
   xmodel.set_dirichlet_function(exact_solution);
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
-  xmodel.set_output_options(Model_base::output_gmsh_mesh
-                          | Model_base::output_solution
-                          | Model_base::output_decomposed
-                          | Model_base::output_error);
+  xmodel.set_output_options(ModelBase::output_gmsh_mesh
+                          | ModelBase::output_solution
+                          | ModelBase::output_decomposed
+                          | ModelBase::output_error);
   
 //   // Exact model
 //   if(ex)
