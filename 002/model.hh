@@ -137,12 +137,6 @@ class Model : public ModelBase
     void setup_system () override;
     void assemble_system () override;
     void solve () override;
-    
-    
-    ///Computes error in comparision to analytic solution
-    ///Obsolote and unused (have no analytic solution)
-    void compute_solution_error();
-    
 
     ///Function finding the cells through which the well boundary goes.
     ///Uses recusively add_points_to_cell() inside.

@@ -561,14 +561,14 @@ void test_convergence_square(std::string output_dir)
   std::string test_name = "square_convergence_";
   bool fem_create = false,
        fem = true,
-       xfem = true,
+       xfem = false,
        ex = false;
   
   double p_a = 100.0,    //area of the model
          p_b = 100.0,
-         excenter = 5.43, //0.05,
+         excenter = 0,//5.43, //0.05,
          radius = p_a*std::sqrt(2),
-         well_radius = 0.02,
+         well_radius = 0.2,
          perm2fer = Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
@@ -608,7 +608,7 @@ void test_convergence_square(std::string output_dir)
   model_simple.set_area(down_left,up_right);
   model_simple.set_transmisivity(transmisivity,0);
   model_simple.set_initial_refinement(initial_refinement);  
-  model_simple.set_ref_coarse_percentage(0.95,0.05);
+  model_simple.set_ref_coarse_percentage(0.3,0.0);
   //model_simple.set_ref_coarse_percentage(0.3,0.05);
   //model_simple.set_grid_create_type(ModelBase::rect);
   
@@ -621,12 +621,12 @@ void test_convergence_square(std::string output_dir)
                                 | ModelBase::output_error);
   
   XModel_simple xmodel(well);  
-  xmodel.set_name(test_name + "sgfem_model"); 
-  xmodel.set_enrichment_method(Enrichment_method::sgfem);
+//   xmodel.set_name(test_name + "sgfem_model"); 
+//   xmodel.set_enrichment_method(Enrichment_method::sgfem);
 //   xmodel.set_name(test_name + "xfem_shift_model");
 //   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
-//     xmodel.set_name(test_name + "xfem_ramp_model");
-//     xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
+    xmodel.set_name(test_name + "xfem_ramp_model");
+    xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
   
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
@@ -655,7 +655,7 @@ void test_convergence_square(std::string output_dir)
 //   }
   
   
-  unsigned int n_cycles = 10;
+  unsigned int n_cycles = 15;
   std::cout << "Cycles: " << n_cycles << std::endl;
   std::pair<double,double> l2_norm_dif_fem, l2_norm_dif_xfem;
   

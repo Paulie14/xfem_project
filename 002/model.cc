@@ -389,7 +389,7 @@ void Model::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  if(output_options_ && OutputOptions::output_sparsity_pattern)
+  if(output_options_ & OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
     std::ofstream out1 (output_dir_ + "block_sp_pattern.1");
@@ -819,12 +819,12 @@ void Model::solve ()
 void Model::output_results (const unsigned int cycle)
 {
     // MATRIX OUTPUT
-    if(output_options_ && OutputOptions::output_matrix)
+    if(output_options_ & OutputOptions::output_matrix)
         write_block_sparse_matrix(block_matrix,"fem_matrix");
   
     //MESH OUTPUT
   
-    if(output_options_ && OutputOptions::output_matrix)
+    if(output_options_ & OutputOptions::output_gmsh_mesh)
     {
         std::stringstream filename;
         filename << output_dir_ << "real_grid_" << cycle;
@@ -890,7 +890,7 @@ void Model::output_distributed_solution(const std::string& mesh_file, const std:
 void Model::output_distributed_solution(const dealii::Triangulation< 2 >& dist_tria, const unsigned int& cycle)
 {
   // MATRIX OUTPUT
-  if(output_options_ && OutputOptions::output_matrix)
+  if(output_options_ & OutputOptions::output_matrix)
   {
     std::stringstream matrix_name;
     matrix_name << "matrix_" << cycle;
@@ -974,6 +974,17 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
     FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
     std::vector<unsigned int> local_dof_indices (temp_fe_values.dofs_per_cell);   
   
+    //Check if the dofs of FE_DGQ are corresponding.
+//         FE_DGQ<2> temp_fe(0);
+//         DoFHandler<2>    temp_dof_handler;
+//         ConstraintMatrix hanging_node_constraints;
+//         temp_dof_handler.initialize(*triangulation,temp_fe);
+//         DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+//         hanging_node_constraints.close();
+//         Vector<double> my_vector(dof_handler->get_tria().n_active_cells());
+//         DoFHandler<2>::active_cell_iterator my_cell = temp_dof_handler.begin_active();
+//         std::vector<unsigned int> my_local_dof_indices (temp_fe.dofs_per_cell);  
+        
     Vector<double> diff_nodal_vector(dof_handler->n_dofs());
     diff_vector.reinit(dof_handler->get_tria().n_active_cells());
     
@@ -1021,8 +1032,14 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
 //             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
 //         }
         
-        cell_norm = std::sqrt(cell_norm);   // square root
+        cell_norm = std::sqrt(cell_norm);// / cell->measure());   // square root
         diff_vector[index] = cell_norm;     // save L2 norm on cell
+        
+    //Check if the dofs of FE_DGQ are corresponding.
+//         my_cell->get_dof_indices(my_local_dof_indices);
+//         my_vector[index] = my_local_dof_indices[0];
+//         ++my_cell;
+        
         index ++;
         
         //node values should be exactly equal FEM dofs
@@ -1037,7 +1054,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
     total_norm = diff_vector.l2_norm();
     std::cout << "\t" << total_norm << "\t vertex l2 norm: " << total_nodal_norm << std::endl;
     
-    if(output_options_ && OutputOptions::output_error)
+    if(output_options_ & OutputOptions::output_error)
     {
         FE_DGQ<2> temp_fe(0);
         DoFHandler<2>    temp_dof_handler;
@@ -1055,6 +1072,8 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
         hanging_node_constraints.distribute(diff_vector);
   
         data_out.add_data_vector (diff_vector, "fem_error");
+        //Check if the dofs of FE_DGQ are corresponding.
+        //data_out.add_data_vector (my_vector, "my_vector");
         data_out.build_patches ();
 
         std::stringstream filename;
@@ -1088,31 +1107,6 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
  *                                OBSOLETE        
  * *******************************************************************
  */
-/*
-///OBSOLETE, UNUSED
-void Model::compute_solution_error()
-{
-  //std::vector<Point<2> > v;
-  //v = dof_handler->get_fe().get_generalized_support_points();
-  //std::vector<Point<2> > cell_support_points (fe.dofs_per_cell);  
-  std::vector<Point<2> > support_points (dof_handler->n_dofs()); 
-  solution_error.reinit(dof_handler->n_dofs());
-  solution_exact.reinit(dof_handler->n_dofs());
-  
-  Exact_solution exact_solution(wells[0].get_radius(),wells[0].GetPressureAtTop(),
-                                wells[0].GetPosition()(0));
-   
-  DoFTools::map_dofs_to_support_points<2>(fe_values.get_mapping(), dof_handler, support_points);
-  
-  for(unsigned int i=0; i < support_points.size(); i++)
-  {
-    solution_exact(i) = exact_solution.Value(support_points[i]);;
-    solution_error(i) = solution_exact(i) - block_solution.block(0)(i);
-    //std::cout << support_points[i] << "....." << solution_error(i)<< std::endl;
-  }
-  //std::cout << "error (L2norm):   " << solution_exact.l2_norm() << std::endl;
-}
-//*/
 
 ///OBSOLETE - finding cells in which the centers of the wells lie.
 /*

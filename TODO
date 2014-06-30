@@ -5,12 +5,11 @@
 - collect numeric parameters at some place, or at least set them there (N adaptive refinements, tolerances etc..) - moved to Model_base
 - XFEM with only ramp function - template adaptive integration for xfem with ramp only - done
 - flags for output features - done
+- rename convergence table according to test name - done
 
 - use ini input file and read by ParameterHandler
-- rename convergence table according to test name
 - sources in FEM
 - actualize FEM model (some virtual methods added etc..)
-- pdf print in adaptive refinement script
 - gnuplot script to print the convergence graph 
 (collect the data in one file from different runs, then call script and print all)
 - clean output methods
@@ -23,4 +22,8 @@
 
 - automatic enrichment radius choice
 - think of precomputed quadrature points for adaptive interpolation and mapping them onto cells
+
+BUGs:
+- pdf print in adaptive refinement script - "set terminal pdf; set output "out.pdf"; replot;" provides broken pdf
+(to ps and then call from unix ps2pdf works, but without colors)
 

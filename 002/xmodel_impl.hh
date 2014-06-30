@@ -157,7 +157,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     temp_hanging_node_constraints.distribute(dist_enriched);
     temp_hanging_node_constraints.distribute(dist_solution);
     
-    if(output_options_ && OutputOptions::output_decomposed)
+    if(output_options_ & OutputOptions::output_decomposed)
     {
       data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
       data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
@@ -285,7 +285,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
     total_norm = diff_vector.l2_norm();
     std::cout << "\t" << total_norm << "\t vertex l2 norm: " << total_nodal_norm << std::endl;
     
-    if(output_options_ && OutputOptions::output_error)
+    if(output_options_ & OutputOptions::output_error)
     {
         FE_DGQ<2> temp_fe(0);
         DoFHandler<2>    temp_dof_handler;

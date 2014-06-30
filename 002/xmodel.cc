@@ -1029,7 +1029,7 @@ void XModel::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  if(output_options_ && OutputOptions::output_sparsity_pattern)
+  if(output_options_ & OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
     std::ofstream out1 (output_dir_+"block_sp_pattern.1");
@@ -1132,10 +1132,12 @@ void XModel::assemble_system ()
         //DBGMSG("refinement level: %d\n", t);
         if ( ! adaptive_integration.refine_edge())
           break;
-        if (t == adaptive_integration_refinement_level_-1)
+        if ( (output_options_ & OutputOptions::output_adaptive_plot) &&
+             (t == adaptive_integration_refinement_level_-1)
+           )
         {
           // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-          //adaptive_integration.gnuplot_refinement(output_dir_);
+          adaptive_integration.gnuplot_refinement(output_dir_);
         }
       }
       
@@ -1347,7 +1349,7 @@ void XModel::solve ()
 void XModel::output_results (const unsigned int cycle)
 { 
     // MATRIX OUTPUT
-    if(output_options_ && OutputOptions::output_matrix)
+    if(output_options_ & OutputOptions::output_matrix)
     {
         std::stringstream matrix_name;
         matrix_name << "matrix_" << cycle;
@@ -1359,7 +1361,7 @@ void XModel::output_results (const unsigned int cycle)
     std::stringstream filename; 
     filename << output_dir_ << "xfem_mesh_" << cycle;
     
-    if(output_options_ && OutputOptions::output_gmsh_mesh)
+    if(output_options_ & OutputOptions::output_gmsh_mesh)
     {
         std::ofstream output (filename.str() + ".msh");
         GridOut grid_out;
@@ -1368,7 +1370,7 @@ void XModel::output_results (const unsigned int cycle)
     }
    
     // dummy solution for displaying mesh in Paraview
-    if(output_options_ && OutputOptions::output_matrix)
+    if(output_options_ & OutputOptions::output_vtk_mesh)
     {
         DataOut<2> data_out;
         data_out.attach_dof_handler (*dof_handler);
@@ -1824,14 +1826,14 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
 void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_tria, const unsigned int& cycle, const unsigned int& m_aquifer)
 {
     // MATRIX OUTPUT
-    if(output_options_ && OutputOptions::output_matrix)
+    if(output_options_ & OutputOptions::output_matrix)
     {
         std::stringstream matrix_name;
         matrix_name << "matrix_" << cycle;
         write_block_sparse_matrix(block_matrix,matrix_name.str());
     }
       // MESH OUTPUT
-    if(output_options_ && OutputOptions::output_gmsh_mesh)
+    if(output_options_ & OutputOptions::output_gmsh_mesh)
     {
         std::stringstream filename; 
         filename << output_dir_ << "xfem_mesh_" << cycle;
@@ -1850,7 +1852,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     }
    
     // dummy solution for displaying mesh in Paraview
-    if(output_options_ && OutputOptions::output_matrix)
+    if(output_options_ & OutputOptions::output_vtk_mesh)
     {
         std::stringstream filename; 
         filename << output_dir_ << "xfem_mesh_" << cycle;
@@ -1905,7 +1907,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   dist_hanging_node_constraints.distribute(dist_enriched);
   dist_hanging_node_constraints.distribute(dist_solution);
   
-  if(output_options_ && OutputOptions::output_decomposed)
+  if(output_options_ & OutputOptions::output_decomposed)
   {
     data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
     data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
@@ -1925,7 +1927,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   std::cout << "\noutput written in:\t" << filename.str() << std::endl;
   
   
-  if(output_options_ && OutputOptions::output_shape_functions)
+  if(output_options_ & OutputOptions::output_shape_functions)
   {
     unsigned int n_dofs = dof_handler->n_dofs();
     data_out.attach_dof_handler (dist_dof_handler);
@@ -1962,7 +1964,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
 void XModel::output_distributed_solution(const std::string& mesh_file, const std::string &flag_file, bool is_circle, const unsigned int& cycle, const unsigned int &m_aquifer)
 {
     // MATRIX OUTPUT
-    if(output_options_ && OutputOptions::output_matrix)
+    if(output_options_ & OutputOptions::output_matrix)
     {
         std::stringstream matrix_name;
         matrix_name << "matrix_" << cycle;
