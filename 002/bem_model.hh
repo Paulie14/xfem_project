@@ -39,7 +39,7 @@ class Well;
  * 
  * TODO: Find the error that causes wrong solution.
  */
-class BemModel : public Model_base
+class BemModel : public ModelBase
 {
   public:
     ///@brief Default constructor.

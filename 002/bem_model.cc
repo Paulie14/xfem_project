@@ -37,7 +37,7 @@
 
 
 BemModel::BemModel ()
-  : Model_base::Model_base(),
+  : ModelBase::ModelBase(),
     //dealii fem
     fe (1),
     dof_handler (triangulation),
@@ -50,7 +50,7 @@ BemModel::BemModel ()
 
 BemModel::BemModel (const std::string &name,
                     const unsigned int &n_aquifers):
-    Model_base::Model_base(name, n_aquifers),
+    ModelBase::ModelBase(name, n_aquifers),
     number_of_wells(0),
     
     //dealii fem
@@ -66,7 +66,7 @@ BemModel::BemModel (const std::string &name,
 BemModel::BemModel (const std::vector<Well*> &wells, 
                     const std::string &name,
                     const unsigned int &n_aquifers):
-    Model_base::Model_base(wells, name, n_aquifers),
+    ModelBase::ModelBase(wells, name, n_aquifers),
     number_of_wells(wells.size()),
     
     //dealii fem

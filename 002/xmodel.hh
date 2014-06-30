@@ -83,7 +83,7 @@ class XDataCell;
  * Enrichment area is defined by \f$ r_{enr} \f$, which is set by @p set_enrichment_radius.
  * 
  */
-class XModel : public Model_base 
+class XModel : public ModelBase 
 {
   public:
     /// Default constructor

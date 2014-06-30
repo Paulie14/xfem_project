@@ -1,5 +1,5 @@
-#ifndef Model_base_h
-#define Model_base_h
+#ifndef ModelBase_h
+#define ModelBase_h
 
 #include <deal.II/grid/tria.h>
 #include <deal.II/base/function.h>
@@ -16,7 +16,7 @@ class Well;
  * This is the base class for multi-aquifer model with wells. 
  * Here the simple rutines of setting and getting parameters are implemented.
  */
-class Model_base
+class ModelBase
 {
 public:
   ///type of grid creation
@@ -44,14 +44,14 @@ public:
   }; 
   
   ///Default constructor.
-  Model_base();
+  ModelBase();
   
   ///Constructor.
   /**
    * @param name is the name of model (creates output directory with this name)
    * @param n_aquifers is the number of aquifers (not used sofar)
    */
-  Model_base(const std::string &name, 
+  ModelBase(const std::string &name, 
              const unsigned int &n_aquifers=1);
   
   ///Constructor.
@@ -60,7 +60,7 @@ public:
    * @param name is the name of model (creates output directory with this name)
    * @param n_aquifers is the number of aquifers (not used sofar)
    */
-  Model_base(const std::vector<Well*> &wells,
+  ModelBase(const std::vector<Well*> &wells,
              const std::string &name, 
              const unsigned int &n_aquifers=1);
   
@@ -69,10 +69,10 @@ public:
    * @param model is another model to be copied
    * @param name is a new name for the model   
    */
-  Model_base(const Model_base &model, std::string name);
+  ModelBase(const ModelBase &model, std::string name);
   
   /// Destructor
-  virtual ~Model_base ();
+  virtual ~ModelBase ();
     
   /** @brief Runs all the computations procedures.
    * 
@@ -317,4 +317,4 @@ protected:
   //@}
 };
 
-#endif  //Model_base_h
+#endif  //ModelBase_h

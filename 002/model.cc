@@ -50,7 +50,7 @@
 #include "data_cell.hh"
 
 Model::Model ():
-    Model_base::Model_base(),
+    ModelBase::ModelBase(),
     //constant
     triangulation(NULL),
     refinement_percentage(0.3),
@@ -65,7 +65,7 @@ Model::Model ():
 
 Model::Model (const std::string &name,
               const unsigned int &n_aquifers):
-    Model_base::Model_base(name,n_aquifers),
+    ModelBase::ModelBase(name,n_aquifers),
     //constant
     triangulation(NULL),
     refinement_percentage(0.3),
@@ -80,7 +80,7 @@ Model::Model (const std::string &name,
 Model::Model (const std::vector<Well*> &wells, 
               const std::string &name,
               const unsigned int &n_aquifers):
-    Model_base::Model_base(wells,name,n_aquifers),
+    ModelBase::ModelBase(wells,name,n_aquifers),
     //constant
     triangulation(NULL),
     refinement_percentage(0.3),

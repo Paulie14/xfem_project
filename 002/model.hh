@@ -34,7 +34,7 @@ class DataCell;
  * Homogenous Neumann boundary condition is considered on the areas boundary.
  * The model may be run in cycles to compute adaptively refined grid.
  */
-class Model : public Model_base
+class Model : public ModelBase
 {
   public:
     ///@brief Default constructor.

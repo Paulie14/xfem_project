@@ -56,7 +56,7 @@
 #include "xfevalues.hh"
 
 XModel::XModel () 
-  : Model_base(),
+  : ModelBase(),
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
@@ -76,7 +76,7 @@ XModel::XModel ()
 
 XModel::XModel (const std::string &name, 
                 const unsigned int &n_aquifers) 
-:   Model_base::Model_base(name, n_aquifers),
+:   ModelBase::ModelBase(name, n_aquifers),
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
@@ -97,7 +97,7 @@ XModel::XModel (const std::string &name,
 XModel::XModel (const std::vector<Well*> &wells, 
                 const std::string &name, 
                 const unsigned int &n_aquifers) 
-:   Model_base::Model_base(wells, name, n_aquifers),
+:   ModelBase::ModelBase(wells, name, n_aquifers),
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
