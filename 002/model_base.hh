@@ -116,9 +116,6 @@ public:
   /** @name Getters
    */
   //@{
-  ///Returns time of the last run - includes only methods @p setup, @p assemble and @p solve.
-  inline double get_last_run_time()
-  { return last_run_time_;}
                                              
   /** Returns constant reference to the computed solution.
      */
@@ -133,18 +130,33 @@ public:
  // virtual void get_support_points (std::vector<Point<2> > &support_points) = 0;
   
   ///Getter of initial refinement.
-  inline unsigned int get_refinement() const
-  {return init_refinement;}
+  inline unsigned int initial_refinement() const
+  {return initial_refinement_;}
   
   ///Getter of transmisivity
   ///@param m_aquifer is the number aquifer.
   inline double get_transmisivity(const unsigned int &m_aquifer) const
   {return transmisivity[m_aquifer];}
   
+  /// Returns model name.
+  inline std::string name() const
+  { return name_; }
   
-  ///Returns number of iterations
+  /// Returns cycle number.
+  inline unsigned int cycle() const
+  { return cycle_; }
+  
+  /// Returns number of iterations
   inline unsigned int solver_iterations() const
-  {return solver_it; }
+  {return solver_iterations_; }
+  
+  /// Returns time of the last run - includes only methods @p setup, @p assemble and @p solve.
+  inline double last_run_time() const
+  { return last_run_time_;}
+  
+  /// Returns number of aquifers.
+  inline unsigned int n_aquifers() const
+  { return n_aquifers_; }
   
   //@}
   
@@ -167,8 +179,8 @@ public:
   
   ///Setter of initial refinement level. Default is 0.
   ///@param ref initial refinement level to be set
-  inline void set_refinement(const double &ref)
-  {init_refinement = ref;}
+  inline void set_initial_refinement(unsigned int ref)
+  {initial_refinement_ = ref;}
   
   ///Setter of the main output directory.
   ///@param path file path a directory
@@ -177,8 +189,8 @@ public:
   ///Sets the name of the model and creates individual output directory. Default is 'model_base'.
   ///@param name is the name to be set
   inline void set_name(const std::string &name)
-  { this->name = name;
-    set_output_dir(main_output_dir); //reseting output directory
+  { this->name_ = name;
+    set_output_dir(main_output_dir_); //reseting output directory
   }
   
   ///Sets how the grid should be created. Default is 'rect'.
@@ -264,10 +276,10 @@ protected:
   bool is_adaptive;
   
   ///initial refinement of the grid
-  unsigned int init_refinement;
+  unsigned int initial_refinement_;
  
   ///number of aquifers
-  unsigned int n_aquifers;
+  unsigned int n_aquifers_;
   
   ///transmisivity of the aquifer
   std::vector<double> transmisivity;
@@ -278,20 +290,23 @@ protected:
   ///last run time (setup, assemble, solve)
   double last_run_time_;
   
-  unsigned int solver_it;
+  unsigned int solver_iterations_;
   
   /** @brief Path to output directory.
    * Name should be defined before, else name="Model".
    * The path is set to "main_output_dir/output_dir"
    */
-  std::string output_dir;
+  std::string output_dir_;
   ///path to the main output directory
-  std::string main_output_dir;
+  std::string main_output_dir_;
   
   ///name of model (name of created output directory)
-  std::string name;
+  std::string name_;
+  
   //@}
   
+  ///@name Output Options
+  //@{
     OutputOptionsType output_options_;
   
     static const OutputOptionsType default_output_options_;
@@ -299,6 +314,7 @@ protected:
     static const unsigned int solver_max_iter_;
     static const double solver_tolerance_;
     static const double output_element_tolerance_;
+  //@}
 };
 
 #endif  //Model_base_h

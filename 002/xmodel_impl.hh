@@ -167,7 +167,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     data_out.build_patches ();
 
     std::stringstream filename;
-    filename << output_dir << "xmodel_sol_" << cycle_;
+    filename << output_dir_ << "xmodel_sol_" << cycle_;
     if(iter == 0)  filename << "_s";
     filename << ".vtk"; 
    
@@ -306,7 +306,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
         data_out.build_patches ();
 
         std::stringstream filename;
-        filename << output_dir << "xmodel_error_" << cycle_ << ".vtk";
+        filename << output_dir_ << "xmodel_error_" << cycle_ << ".vtk";
    
         std::ofstream output (filename.str());
         if(output.is_open())

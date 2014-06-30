@@ -70,7 +70,7 @@ XModel::XModel ()
     hanging_nodes(true),
     output_triangulation(nullptr)
 {
-  name = "Default_XFEM_Model";
+  name_ = "Default_XFEM_Model";
   dof_handler = new DoFHandler<2>();
 }
 
@@ -198,7 +198,7 @@ void XModel::make_grid ()
     {
       //square grid
       GridGenerator::hyper_rectangle<2>(coarse_tria, down_left, up_right);
-      coarse_tria.refine_global (init_refinement); 
+      coarse_tria.refine_global (initial_refinement_); 
     }
   }
   
@@ -211,7 +211,7 @@ void XModel::make_grid ()
     
     //MESH OUTPUT - coarse grid = (refinement flags written in output)
     std::stringstream filename1;
-    filename1 << output_dir << "coarse_grid.msh";
+    filename1 << output_dir_ << "coarse_grid.msh";
  
     std::ofstream output (filename1.str());
   
@@ -1032,11 +1032,11 @@ void XModel::setup_system ()
   if(output_options_ && OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
-    std::ofstream out1 (output_dir+"block_sp_pattern.1");
+    std::ofstream out1 (output_dir_+"block_sp_pattern.1");
     block_sp_pattern.print_gnuplot (out1);
 
     //prints SparsityPattern of the block (0,0)
-    std::ofstream out2 (output_dir+"00_sp_pattern.1");
+    std::ofstream out2 (output_dir_+"00_sp_pattern.1");
     block_sp_pattern.block(0,0).print_gnuplot (out2);
   }
   
@@ -1135,7 +1135,7 @@ void XModel::assemble_system ()
         if (t == adaptive_integration_refinement_level_-1)
         {
           // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-          //adaptive_integration.gnuplot_refinement(output_dir);
+          //adaptive_integration.gnuplot_refinement(output_dir_);
         }
       }
       
@@ -1290,7 +1290,7 @@ void XModel::solve ()
   solver_cg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   //solver_bicg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   
-  solver_it = solver_control.last_step();
+  solver_iterations_ = solver_control.last_step();
   
   std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
   //*/
@@ -1357,7 +1357,7 @@ void XModel::output_results (const unsigned int cycle)
     
     // MESH OUTPUT
     std::stringstream filename; 
-    filename << output_dir << "xfem_mesh_" << cycle;
+    filename << output_dir_ << "xfem_mesh_" << cycle;
     
     if(output_options_ && OutputOptions::output_gmsh_mesh)
     {
@@ -1402,7 +1402,7 @@ void XModel::output_results (const unsigned int cycle)
   data_out.build_patches ();
 
   std::stringstream filename;
-  filename << output_dir << "xmodel_solution_" << cycle << ".vtk";
+  filename << output_dir_ << "xmodel_solution_" << cycle << ".vtk";
    
   std::ofstream output (filename.str());
   data_out.write_vtk (output);
@@ -1834,7 +1834,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     if(output_options_ && OutputOptions::output_gmsh_mesh)
     {
         std::stringstream filename; 
-        filename << output_dir << "xfem_mesh_" << cycle;
+        filename << output_dir_ << "xfem_mesh_" << cycle;
         std::ofstream output (filename.str() + ".msh");
         GridOut grid_out;
         grid_out.write_msh<2> (*triangulation, output);
@@ -1842,7 +1842,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
         
         //output of refinement flags of persistent triangulation
         std::stringstream filename_flags;
-        filename_flags << output_dir << "ref_flags_" << cycle << ".ptf";
+        filename_flags << output_dir_ << "ref_flags_" << cycle << ".ptf";
         output.close();
         output.clear();
         output.open(filename_flags.str());
@@ -1853,7 +1853,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     if(output_options_ && OutputOptions::output_matrix)
     {
         std::stringstream filename; 
-        filename << output_dir << "xfem_mesh_" << cycle;
+        filename << output_dir_ << "xfem_mesh_" << cycle;
         DataOut<2> data_out;
         data_out.attach_dof_handler (*dof_handler);
         Vector<double> dummys_solution(block_solution.block(0).size());
@@ -1916,7 +1916,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   data_out.build_patches ();
 
   std::stringstream filename;
-  filename << output_dir << "xmodel_dist_solution_" << cycle << ".vtk";
+  filename << output_dir_ << "xmodel_dist_solution_" << cycle << ".vtk";
    
   std::ofstream output (filename.str());
   data_out.write_vtk (output);
@@ -1948,7 +1948,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     data_out.build_patches ();
   
     std::stringstream filename_x;
-    filename_x << output_dir << "xshape_func" << ".vtk";
+    filename_x << output_dir_ << "xshape_func" << ".vtk";
    
     std::ofstream output_x (filename_x.str());
     data_out.write_vtk (output_x);
@@ -2116,7 +2116,7 @@ void XModel::compute_interpolated_exact(ExactBase *exact_solution)
     data_out.build_patches ();
 
     std::stringstream filename;
-    filename << output_dir << "exact_solution_" << cycle_ << ".vtk";
+    filename << output_dir_ << "exact_solution_" << cycle_ << ".vtk";
    
     std::ofstream output (filename.str());
     if(output.is_open())
@@ -2223,7 +2223,7 @@ void XModel::test_method(ExactBase* exact_solution)
     residuum.add(-1,block_system_rhs);
     
     std::stringstream filename;
-        filename << output_dir << "residuum.txt";
+        filename << output_dir_ << "residuum.txt";
     std::ofstream output (filename.str());
    
     if(output.is_open())
@@ -2251,7 +2251,7 @@ void XModel::test_method(ExactBase* exact_solution)
 
     
     std::stringstream res_filename;
-    res_filename << output_dir << "residuum.vtk"; 
+    res_filename << output_dir_ << "residuum.vtk"; 
    
     std::ofstream res_output (res_filename.str());
     if(output.is_open())
@@ -2286,7 +2286,7 @@ void XModel::test_method(ExactBase* exact_solution)
         data_out.build_patches ();
 
         std::stringstream filename;
-        filename << output_dir << "xmodel_error_" << cycle_ << ".vtk";
+        filename << output_dir_ << "xmodel_error_" << cycle_ << ".vtk";
    
         std::ofstream output (filename.str());
         if(output.is_open())

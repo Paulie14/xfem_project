@@ -45,7 +45,7 @@ BemModel::BemModel ()
     quadrature_formula(2),
     singular_quadrature_order(12)       //max 12 quadrature points
 {
-  name = "Default_BEM_Model";
+  name_ = "Default_BEM_Model";
 }
 
 BemModel::BemModel (const std::string &name,
@@ -545,7 +545,7 @@ void BemModel::get_solution_at_points(const std::vector< Point< 2 > > &points, V
       endc = dof_handler.end();
       
   //q (flow) boundary condition according to the type of boundary in the integral
-  double q_ja[number_of_wells+1];
+  std::vector<double> q_ja(number_of_wells+1);
   q_ja[0] = 0.0;
   for(unsigned int w=0; w < number_of_wells; w++)
   {
@@ -640,7 +640,7 @@ void BemModel::output_distributed_solution(const std::string &mesh_file, const s
   data_out.build_patches ();
 
   std::stringstream filename;
-  filename << output_dir << "bem_distributed_" << cycle << ".vtk";
+  filename << output_dir_ << "bem_distributed_" << cycle << ".vtk";
    
   std::ofstream output (filename.str());
   data_out.write_vtk (output);

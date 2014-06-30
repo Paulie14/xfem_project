@@ -28,16 +28,16 @@ Model_base::Model_base()
     rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
-    init_refinement(0),
+    initial_refinement_(0),
     
-    n_aquifers(1),
+    n_aquifers_(1),
     
     cycle_(-1),
     last_run_time_(0),
-    solver_it(0),
-    output_dir("../output/model/"),
-    main_output_dir("../output/"),
-    name("model_base"),
+    solver_iterations_(0),
+    output_dir_("../output/model/"),
+    main_output_dir_("../output/"),
+    name_("model_base"),
     output_options_(default_output_options_)
 {
 }
@@ -51,20 +51,20 @@ Model_base::Model_base(const std::string& name,
     rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
-    init_refinement(0),
+    initial_refinement_(0),
     
-    n_aquifers(n_aquifers),
+    n_aquifers_(n_aquifers),
     
     cycle_(-1),
     last_run_time_(0),
-    solver_it(0),
-    output_dir("../output/model/"),
-    main_output_dir("../output/"),
-    name(name),
+    solver_iterations_(0),
+    output_dir_("../output/model/"),
+    main_output_dir_("../output/"),
+    name_(name),
     output_options_(default_output_options_)
     
 {
-  transmisivity.resize(n_aquifers, 1.0);
+  transmisivity.resize(n_aquifers_, 1.0);
 }
 
 Model_base::Model_base(const std::vector< Well* >& wells, 
@@ -79,16 +79,16 @@ Model_base::Model_base(const std::vector< Well* >& wells,
     rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
-    init_refinement(0),
+    initial_refinement_(0),
     
-    n_aquifers(n_aquifers),
+    n_aquifers_(n_aquifers),
     cycle_(-1),
     last_run_time_(0),
-    solver_it(0),
+    solver_iterations_(0),
 
-    output_dir("../output/model/"),
-    main_output_dir("../output/"),
-    name(name),
+    output_dir_("../output/model/"),
+    main_output_dir_("../output/"),
+    name_(name),
     output_options_(default_output_options_)
     
 {
@@ -107,17 +107,17 @@ Model_base::Model_base(const Model_base &model, std::string name)
   rhs_function(nullptr),
   triangulation_changed(true),
   is_adaptive(false),
-  init_refinement(model.init_refinement),
+  initial_refinement_(model.initial_refinement()),
   
-  n_aquifers(model.n_aquifers),
+  n_aquifers_(model.n_aquifers()),
   transmisivity(model.transmisivity),
   
   cycle_(-1),
   last_run_time_(0),
-  solver_it(0),
-  output_dir(model.main_output_dir+name+"/"),
-  main_output_dir(model.main_output_dir),
-  name(name),
+  solver_iterations_(0),
+  output_dir_(model.main_output_dir_+name+"/"),
+  main_output_dir_(model.main_output_dir_),
+  name_(name),
   output_options_(default_output_options_)
   
 {  
@@ -186,31 +186,31 @@ void Model_base::set_area(const dealii::Point< 2 >& down_left, const dealii::Poi
 
 void Model_base::set_output_dir(const std::string& path)
 {
-  main_output_dir = path;
+  main_output_dir_ = path;
   
   DIR *dir;
   /* Try to open directory */
-    dir = opendir(output_dir.c_str());
+    dir = opendir(output_dir_.c_str());
     if(dir == NULL) {
         /* Directory doesn't exist. Create new one. */
-        int ret = mkdir(output_dir.c_str(), 0777);
+        int ret = mkdir(output_dir_.c_str(), 0777);
 
         if(ret != 0) {
-            xprintf(Err, "Couldn't create directory: %s\n", output_dir.c_str());
+            xprintf(Err, "Couldn't create directory: %s\n", output_dir_.c_str());
         }
     } else {
         closedir(dir);
     }
     
-    output_dir = main_output_dir + "/" + name + "/";
+    output_dir_ = main_output_dir_ + "/" + name_ + "/";
     
-    dir = opendir(output_dir.c_str());
+    dir = opendir(output_dir_.c_str());
     if(dir == NULL) {
         /* Directory doesn't exist. Create new one. */
-        int ret = mkdir(output_dir.c_str(), 0777);
+        int ret = mkdir(output_dir_.c_str(), 0777);
 
         if(ret != 0) {
-            xprintf(Err, "Couldn't create directory: %s\n", output_dir.c_str());
+            xprintf(Err, "Couldn't create directory: %s\n", output_dir_.c_str());
         }
     } else {
         closedir(dir);
@@ -221,7 +221,7 @@ void Model_base::set_output_dir(const std::string& path)
 void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< double >& matrix, const string& filename)
 {
   // WHOLE SYSTEM MATRIX  ----------------------------------------------------------------
-  std::string path = output_dir + filename + ".m";
+  std::string path = output_dir_ + filename + ".m";
   std::ofstream output (path);
   
   if(! output.is_open()) 
@@ -241,7 +241,7 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
   output.close();
   
   // A MATRIX ----------------------------------------------------------------
-  path = output_dir + filename + "_a.m";
+  path = output_dir_ + filename + "_a.m";
   output.clear();
   output.open(path);
   
@@ -263,7 +263,7 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
   
   
   // E MATRIX ----------------------------------------------------------------
-  path = output_dir + filename + "_e.m";
+  path = output_dir_ + filename + "_e.m";
   output.clear();
   output.open(path);
   

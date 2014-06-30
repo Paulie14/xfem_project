@@ -165,7 +165,7 @@ void bedrichov_tunnel()
   tunnel_adapt_linear.set_name("tunnel_adapt_linear");
   tunnel_adapt_linear.set_output_dir("../output");
   tunnel_adapt_linear.set_transmisivity(bulk_transmisivity,0);
-  tunnel_adapt_linear.set_refinement(1);  
+  tunnel_adapt_linear.set_initial_refinement(1);  
   tunnel_adapt_linear.set_ref_coarse_percentage(0.3,0.05);
   tunnel_adapt_linear.set_adaptivity(true);
   //tunnel_adapt_linear.set_dirichlet_function(dirichlet);
@@ -185,7 +185,7 @@ void bedrichov_tunnel()
   tunnel_xfem.set_name("tunnel_xfem");
   tunnel_xfem.set_output_dir("../output");
   tunnel_xfem.set_transmisivity(bulk_transmisivity,0);
-  tunnel_xfem.set_refinement(4);                                     
+  tunnel_xfem.set_initial_refinement(4);                                     
   tunnel_xfem.set_enrichment_radius(50);
   tunnel_xfem.set_dirichlet_function(dirichlet_piezo_const);
   
@@ -322,7 +322,7 @@ void test_convergence_square(std::string output_dir)
   model_simple.set_output_dir(output_dir);
   model_simple.set_area(down_left,up_right);
   model_simple.set_transmisivity(transmisivity,0);
-  model_simple.set_refinement(1);  
+  model_simple.set_initial_refinement(1);  
   model_simple.set_ref_coarse_percentage(0.95,0.05);
   //model_simple.set_ref_coarse_percentage(0.3,0.05);
   //model_simple.set_grid_create_type(Model_base::rect);
@@ -342,7 +342,7 @@ void test_convergence_square(std::string output_dir)
   xmodel_simple.set_output_dir(output_dir);
   xmodel_simple.set_area(down_left,up_right);
   xmodel_simple.set_transmisivity(transmisivity,0);
-  xmodel_simple.set_refinement(1);                                     
+  xmodel_simple.set_initial_refinement(1);                                     
   xmodel_simple.set_enrichment_radius(enrichment_radius);
   xmodel_simple.set_grid_create_type(Model_base::rect);
   //xmodel_simple.set_computational_mesh(coarse_file, ref_flags_coarse);
@@ -359,7 +359,7 @@ void test_convergence_square(std::string output_dir)
 //     
 //   {
 //     model_simple.set_grid_create_type(Model_base::rect);
-//     model_simple.set_refinement(7);
+//     model_simple.set_initial_refinement(7);
 //     model_simple.set_ref_coarse_percentage(0.2,0.0);
 //     for (unsigned int cycle=0; cycle < 15; ++cycle)
 //     { 
@@ -607,7 +607,7 @@ void test_convergence_square(std::string output_dir)
   model_simple.set_output_dir(output_dir);
   model_simple.set_area(down_left,up_right);
   model_simple.set_transmisivity(transmisivity,0);
-  model_simple.set_refinement(initial_refinement);  
+  model_simple.set_initial_refinement(initial_refinement);  
   model_simple.set_ref_coarse_percentage(0.95,0.05);
   //model_simple.set_ref_coarse_percentage(0.3,0.05);
   //model_simple.set_grid_create_type(Model_base::rect);
@@ -631,7 +631,7 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
   xmodel.set_transmisivity(transmisivity,0);
-  xmodel.set_refinement(initial_refinement);                                     
+  xmodel.set_initial_refinement(initial_refinement);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
   xmodel.set_grid_create_type(Model_base::rect);
   xmodel.set_dirichlet_function(exact_solution);
@@ -690,7 +690,7 @@ void test_convergence_square(std::string output_dir)
             table_convergence.add_value("FEM-dofs",model_simple.get_number_of_dofs());
             table_convergence.add_value("It_{FEM}",model_simple.solver_iterations());
       
-            table_convergence.add_value("FEM-time",model_simple.get_last_run_time());
+            table_convergence.add_value("FEM-time",model_simple.last_run_time());
             table_convergence.set_precision("FEM-time", 3);
 
             table_convergence.set_tex_format("FEM-dofs", "r");
@@ -739,7 +739,7 @@ void test_convergence_square(std::string output_dir)
       table_convergence.add_value("XFEM-enriched dofs",xmodel.get_number_of_dofs().second);
       table_convergence.add_value("It_{XFEM}",xmodel.solver_iterations());
       
-      table_convergence.add_value("XFEM-time",xmodel.get_last_run_time());
+      table_convergence.add_value("XFEM-time",xmodel.last_run_time());
       table_convergence.set_precision("XFEM-time", 3);
       
       table_convergence.set_tex_format("XFEM-dofs", "r");
@@ -752,7 +752,7 @@ void test_convergence_square(std::string output_dir)
         //write the table every cycle (to have at least some results if program fails)
         table_convergence.write_text(std::cout);
         std::ofstream out_file;
-        out_file.open(output_dir + "convergence_square.tex");
+        out_file.open(output_dir + xmodel.name() + ".tex");
         table_convergence.write_tex(out_file);
         out_file.close();
       
@@ -829,7 +829,7 @@ void test_convergence_sin(std::string output_dir)
   model_simple.set_output_dir(output_dir);
   model_simple.set_area(down_left,up_right);
   model_simple.set_transmisivity(transmisivity,0);
-  model_simple.set_refinement(2);  
+  model_simple.set_initial_refinement(2);  
   model_simple.set_ref_coarse_percentage(0.95,0.05);
   //model_simple.set_grid_create_type(Model_base::rect);
   
@@ -847,7 +847,7 @@ void test_convergence_sin(std::string output_dir)
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
   xmodel.set_transmisivity(transmisivity,0);
-  xmodel.set_refinement(3);                                     
+  xmodel.set_initial_refinement(3);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
   xmodel.set_grid_create_type(Model_base::rect);
   xmodel.set_dirichlet_function(dirichlet_square);
@@ -943,7 +943,7 @@ void test_convergence_sin(std::string output_dir)
       table_convergence.add_value("XFEM-enriched dofs",xmodel.get_number_of_dofs().second);
       table_convergence.add_value("It_{XFEM}",xmodel.solver_iterations());
       
-      table_convergence.add_value("XFEM-time",xmodel.get_last_run_time());
+      table_convergence.add_value("XFEM-time",xmodel.last_run_time());
       table_convergence.set_precision("XFEM-time", 3);
       
       table_convergence.set_tex_format("XFEM-dofs", "r");
@@ -955,7 +955,7 @@ void test_convergence_sin(std::string output_dir)
       //write the table every cycle (to have at least some results if program fails)
       table_convergence.write_text(std::cout);
       std::ofstream out_file;
-      out_file.open(output_dir + "convergence_square_sin_.tex");
+      out_file.open(output_dir + xmodel.name() + ".tex");
       table_convergence.write_tex(out_file);
       out_file.close();
       
@@ -1062,13 +1062,13 @@ void test_multiple_wells(std::string output_dir)
   XModel xmodel(wells);  
 //   xmodel.set_name(test_name + "sgfem");
 //   xmodel.set_enrichment_method(Enrichment_method::sgfem);
-  xmodel.set_name(test_name + "xfem_shift_model");
+  xmodel.set_name(test_name + "xfem_shift");
   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
   
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
   xmodel.set_transmisivity(transmisivity,0);
-  xmodel.set_refinement(3);                                     
+  xmodel.set_initial_refinement(3);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
   xmodel.set_grid_create_type(Model_base::rect);
   //xmodel.set_dirichlet_function(dirichlet);
@@ -1080,7 +1080,7 @@ void test_multiple_wells(std::string output_dir)
   if(fem_create)
   {
     model_fem.set_area(down_left,up_right);
-    model_fem.set_refinement(5); 
+    model_fem.set_initial_refinement(5); 
     model_fem.set_grid_create_type(Model_base::rect);
     model_fem.set_ref_coarse_percentage(0.3,0.05);
     model_fem.set_adaptivity(true);
@@ -1141,7 +1141,7 @@ void test_multiple_wells(std::string output_dir)
       //write the table every cycle (to have at least some results if program fails)
       table.write_text(std::cout);
       std::ofstream out_file;
-      out_file.open(output_dir + "table_multiple.tex");
+      out_file.open(output_dir + xmodel.name() + ".tex");
       table.write_tex(out_file);
       out_file.close();
     } 
@@ -1204,7 +1204,7 @@ void test_output(std::string output_dir)
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
   xmodel.set_transmisivity(transmisivity,0);
-  xmodel.set_refinement(4);                                     
+  xmodel.set_initial_refinement(4);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
   xmodel.set_grid_create_type(Model_base::rect);
   xmodel.set_dirichlet_function(dirichlet);
@@ -1271,7 +1271,7 @@ void test_solution(std::string output_dir)
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
   xmodel.set_transmisivity(transmisivity,0);
-  xmodel.set_refinement(3);                                     
+  xmodel.set_initial_refinement(3);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
   xmodel.set_grid_create_type(Model_base::rect);
   xmodel.set_dirichlet_function(exact_solution);

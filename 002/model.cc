@@ -59,7 +59,7 @@ Model::Model ():
     fe (1),
     quadrature_formula(2)
 {
-  name = "Default_Adaptive_FEM";
+  name_ = "Default_Adaptive_FEM";
   dof_handler = new DoFHandler<2>();
 }
 
@@ -187,7 +187,7 @@ void Model::make_grid ()
     {
       //square grid
       GridGenerator::hyper_rectangle<2>(coarse_tria, down_left, up_right);
-      coarse_tria.refine_global (init_refinement); 
+      coarse_tria.refine_global (initial_refinement_); 
     }
   }
   
@@ -200,7 +200,7 @@ void Model::make_grid ()
     
     //MESH OUTPUT - coarse grid = (refinement flags written in output)
     std::stringstream filename1;
-    filename1 << output_dir << "coarse_grid.msh";
+    filename1 << output_dir_ << "coarse_grid.msh";
  
     std::ofstream output (filename1.str());
   
@@ -268,7 +268,7 @@ void Model::refine_grid ()
   /*
   //MESH OUTPUT - LAST USED MESH
    std::stringstream filename1;
-   filename1 << output_dir << "temp_grid.msh";
+   filename1 << output_dir_ << "temp_grid.msh";
  
    std::ofstream output (filename1.str());
   
@@ -392,11 +392,11 @@ void Model::setup_system ()
   if(output_options_ && OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
-    std::ofstream out1 (output_dir + "block_sp_pattern.1");
+    std::ofstream out1 (output_dir_ + "block_sp_pattern.1");
     block_sp_pattern.print_gnuplot (out1);
 
     //prints SparsityPattern of the block (0,0)
-    std::ofstream out2 (output_dir + "00_sp_pattern.1");
+    std::ofstream out2 (output_dir_ + "00_sp_pattern.1");
     block_sp_pattern.block(0,0).print_gnuplot (out2);
   }
   
@@ -808,7 +808,7 @@ void Model::solve ()
 			  
   solver.solve(block_matrix, block_solution, block_system_rhs, preconditioner); //PreconditionIdentity());
   
-  solver_it = solver_control.last_step();
+  solver_iterations_ = solver_control.last_step();
   std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
   
   hanging_node_constraints.distribute(block_solution);
@@ -827,14 +827,14 @@ void Model::output_results (const unsigned int cycle)
     if(output_options_ && OutputOptions::output_matrix)
     {
         std::stringstream filename;
-        filename << output_dir << "real_grid_" << cycle;
+        filename << output_dir_ << "real_grid_" << cycle;
         std::ofstream output (filename.str() + ".msh");
         GridOut grid_out;
         grid_out.write_msh<2> (*triangulation, output);
         
             //output of refinement flags of persistent triangulation
         std::stringstream filename1;
-        filename1 << output_dir << "ref_flags_" << cycle << ".ptf";
+        filename1 << output_dir_ << "ref_flags_" << cycle << ".ptf";
         output.close();
         output.clear();
         output.open(filename1.str());
@@ -854,7 +854,7 @@ void Model::output_results (const unsigned int cycle)
 
    DBGMSG("output_results\n");
    std::stringstream filename2;
-   filename2 << output_dir << "solution_" << cycle << ".vtk";
+   filename2 << output_dir_ << "solution_" << cycle << ".vtk";
   
    std::cout << "output written in: " << filename2.str() << std::endl;
    
@@ -923,7 +923,7 @@ void Model::output_distributed_solution(const dealii::Triangulation< 2 >& dist_t
   data_out.build_patches ();
 
   std::stringstream filename;
-  filename  << output_dir << "fem_dist_solution_" << cycle << ".vtk";
+  filename  << output_dir_ << "fem_dist_solution_" << cycle << ".vtk";
    
   std::ofstream output (filename.str());
   data_out.write_vtk (output);
@@ -949,7 +949,7 @@ void Model::output_foreign_results(const unsigned int cycle, const Vector<double
    data_out.build_patches ();
 
    std::stringstream filename;
-   filename << output_dir << "solution_foreign_" << cycle << ".vtk";
+   filename << output_dir_ << "solution_foreign_" << cycle << ".vtk";
    
    std::ofstream output (filename.str());
    data_out.write_vtk (output);
@@ -1015,7 +1015,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
 //                 if (t == adaptive_integration_refinement_level_-1)
 //                 {
 //                     // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-//                     //adaptive_integration.gnuplot_refinement(output_dir);
+//                     //adaptive_integration.gnuplot_refinement(output_dir_);
 //                 }
 //             }
 //             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
@@ -1058,7 +1058,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
         data_out.build_patches ();
 
         std::stringstream filename;
-        filename << output_dir << "model_error_" << cycle_ << ".vtk";
+        filename << output_dir_ << "model_error_" << cycle_ << ".vtk";
    
         std::ofstream output (filename.str());
         if(output.is_open())
