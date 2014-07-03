@@ -609,15 +609,18 @@ void Model::add_data_to_cell (const DoFHandler<2>::active_cell_iterator cell, We
 
 void Model::assemble_system ()
 {
-  FEValues<2> fe_values (fe, quadrature_formula,
-    update_gradients | update_JxW_values);
+  // set update flags
+  UpdateFlags update_flags  = update_gradients | update_JxW_values;
+  if (rhs_function) update_flags = update_flags | update_values | update_quadrature_points;
+  
+  FEValues<2> fe_values (fe, quadrature_formula,update_flags);
   
   const unsigned int dofs_per_cell = fe.dofs_per_cell;
   const unsigned int n_q_points    = quadrature_formula.size();
 
   
   FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
-  //Vector<double>       cell_rhs (dofs_per_cell);	//HOMOGENOUS NEUMANN -> = 0
+  Vector<double>       cell_rhs (dofs_per_cell);	//HOMOGENOUS NEUMANN -> = 0
   
   std::vector<unsigned int> local_dof_indices (dofs_per_cell);
   
@@ -641,7 +644,7 @@ void Model::assemble_system ()
     cell->get_dof_indices (local_dof_indices);
     
     cell_matrix = 0;
-    //cell_rhs = 0;		//HOMOGENOUS NEUMANN -> = 0
+    cell_rhs = 0;		//HOMOGENOUS NEUMANN -> = 0
     
     //INTEGRALS FOR BLOCK(0,0) ... matrix A
     for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -661,15 +664,18 @@ void Model::assemble_system ()
         //}
         }
         
-    /* HOMOGENOUS NEUMANN -> = 0
-    for (unsigned int i=0; i<dofs_per_cell; ++i)
-      for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
-      {
-        cell_rhs(i) += (fe_values.shape_value (i, q_point) *
-                        0 *
-                        fe_values.JxW (q_point));
-      }
-    //*/
+    if(rhs_function != nullptr)
+    {
+      // HOMOGENOUS NEUMANN -> = 0, else source term
+      for (unsigned int i=0; i<dofs_per_cell; ++i)
+        for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+        {
+          cell_rhs(i) += (fe_values.shape_value (i, q_point) *
+                          rhs_function->value(fe_values.quadrature_point(q_point)) * // 0 for homohenous neumann
+                          fe_values.JxW (q_point));
+        } 
+      block_system_rhs.add(local_dof_indices, cell_rhs);
+    }
 
     //FILLING MATRIX BLOCK(0,0) ... matrix A
     for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -677,11 +683,6 @@ void Model::assemble_system ()
         block_matrix.block(0,0).add ( local_dof_indices[i],
                                       local_dof_indices[j],
                                       cell_matrix(i,j) );
-
-    /* HOMOGENOUS NEUMANN -> = 0
-      for (unsigned int i=0; i<dofs_per_cell; ++i)
-      system_rhs(local_dof_indices[i]) += cell_rhs(i);
-    //*/
   
     //WELLS
     if(cell->user_pointer() != NULL)
@@ -969,6 +970,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
                  index = 0;
                  
     double exact_value, value, cell_norm, total_norm, nodal_norm, total_nodal_norm;
+    double distance_treshold = 5.0;
              
     QGauss<2> temp_quad(3);
     FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
@@ -999,8 +1001,11 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
         temp_fe_values.reinit(cell);
         cell->get_dof_indices(local_dof_indices);
         
-//         if (cell->user_pointer() == nullptr)
-        {
+//          if (cell->user_pointer() == nullptr)
+        
+//         if(cell->center().distance(wells[0]->center()) 
+//             > (wells[0]->radius() + cell->diameter()/2) + distance_treshold)
+         {
             for(unsigned int q=0; q < temp_fe_values.n_quadrature_points; q++)
             {
                 value = 0;

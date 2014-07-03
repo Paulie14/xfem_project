@@ -15,7 +15,7 @@ const ModelBase::OutputOptionsType ModelBase::default_output_options_ = ModelBas
                                                                           | ModelBase::output_decomposed 
                                                                           | ModelBase::output_gmsh_mesh;
 const unsigned int ModelBase::adaptive_integration_refinement_level_ = 12;
-const unsigned int ModelBase::solver_max_iter_ = 4000;
+const unsigned int ModelBase::solver_max_iter_ = 10000;
 const double ModelBase::solver_tolerance_ = 1e-12;
 const double ModelBase::output_element_tolerance_ = 1e-3;
 

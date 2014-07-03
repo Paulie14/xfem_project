@@ -6,10 +6,10 @@
 - XFEM with only ramp function - template adaptive integration for xfem with ramp only - done
 - flags for output features - done
 - rename convergence table according to test name - done
+- actualize FEM model (some virtual methods added etc..) - done
+- sources in FEM - done
 
 - use ini input file and read by ParameterHandler
-- sources in FEM
-- actualize FEM model (some virtual methods added etc..)
 - gnuplot script to print the convergence graph 
 (collect the data in one file from different runs, then call script and print all)
 - clean output methods
