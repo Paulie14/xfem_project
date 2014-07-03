@@ -2,12 +2,28 @@
 
 
 - MY OWN ERROR in L2 NORM - done
-- sin(x) model - done
-- dirichlet boundary condition - done
-- possible prescribe values of chosen DoFs - done
-- bug in adaptive integration when mapping well onto unit cell - done
+- collect numeric parameters at some place, or at least set them there (N adaptive refinements, tolerances etc..) - moved to Model_base
+- XFEM with only ramp function - template adaptive integration for xfem with ramp only - done
+- flags for output features - done
+- rename convergence table according to test name - done
+- actualize FEM model (some virtual methods added etc..) - done
+- sources in FEM - done
 
 - use ini input file and read by ParameterHandler
+- gnuplot script to print the convergence graph 
+(collect the data in one file from different runs, then call script and print all)
+- clean output methods
+
 - convergence rate SGFEM, XFEM, FEM on simple model and with sin(x)
-- study scaled condition number
-- template adaptive integration for xfem with ramp only
+- study scaled condition number - SGFEM is not better
+
+- check the behaviour with more wells / more wells in one element
+- what about that BEM model? 
+
+- automatic enrichment radius choice
+- think of precomputed quadrature points for adaptive interpolation and mapping them onto cells
+
+BUGs:
+- pdf print in adaptive refinement script - "set terminal pdf; set output "out.pdf"; replot;" provides broken pdf
+(to ps and then call from unix ps2pdf works, but without colors)
+

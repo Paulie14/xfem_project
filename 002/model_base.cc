@@ -11,92 +11,96 @@
 #include <fstream>
 #include <iostream>
 
-#include "well.hh"
+const ModelBase::OutputOptionsType ModelBase::default_output_options_ = ModelBase::output_solution 
+                                                                          | ModelBase::output_decomposed 
+                                                                          | ModelBase::output_gmsh_mesh;
+const unsigned int ModelBase::adaptive_integration_refinement_level_ = 12;
+const unsigned int ModelBase::solver_max_iter_ = 10000;
+const double ModelBase::solver_tolerance_ = 1e-12;
+const double ModelBase::output_element_tolerance_ = 1e-3;
 
-Model_base::Model_base()
-:   grid_create(Model_base::rect),
+
+ModelBase::ModelBase()
+:   grid_create(ModelBase::rect),
     down_left(Point<2>(0.0,0.0)),
     up_right(Point<2>(1.0,1.0)),
     dirichlet_function(nullptr),
     rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
-    init_refinement(0),
+    initial_refinement_(0),
     
-    n_aquifers(1),
+    n_aquifers_(1),
     
     cycle_(-1),
     last_run_time_(0),
-    solver_it(0),
-    matrix_output_(false),
-    sparsity_pattern_output_(false),
-    output_dir("../output/model/"),
-    main_output_dir("../output/"),
-    name("model_base")
+    solver_iterations_(0),
+    output_dir_("../output/model/"),
+    main_output_dir_("../output/"),
+    name_("model_base"),
+    output_options_(default_output_options_)
 {
     prm_declare();
 }
 
-Model_base::Model_base(const std::string& name, 
+ModelBase::ModelBase(const std::string& name, 
                        const unsigned int& n_aquifers)
-  : grid_create(Model_base::rect),
+  : grid_create(ModelBase::rect),
     down_left(Point<2>(0.0,0.0)),
     up_right(Point<2>(1.0,1.0)),
     dirichlet_function(nullptr),
     rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
-    init_refinement(0),
+    initial_refinement_(0),
     
-    n_aquifers(n_aquifers),
+    n_aquifers_(n_aquifers),
     
     cycle_(-1),
     last_run_time_(0),
-    solver_it(0),
-    matrix_output_(false),
-    sparsity_pattern_output_(false),
-    output_dir("../output/model/"),
-    main_output_dir("../output/"),
-    name(name)
+    solver_iterations_(0),
+    output_dir_("../output/model/"),
+    main_output_dir_("../output/"),
+    name_(name),
+    output_options_(default_output_options_)
     
 {
-  transmisivity.resize(n_aquifers, 1.0);
+  transmisivity.resize(n_aquifers_, 1.0);
   prm_declare();
 }
 
-Model_base::Model_base(const std::vector< Well* >& wells, 
+ModelBase::ModelBase(const std::vector< Well* >& wells, 
                        const std::string& name, 
                        const unsigned int& n_aquifers)
   : wells(wells),
   
-    grid_create(Model_base::rect),
+    grid_create(ModelBase::rect),
     down_left(Point<2>(0.0,0.0)),
     up_right(Point<2>(1.0,1.0)),
     dirichlet_function(nullptr),
     rhs_function(nullptr),
     triangulation_changed(true),
     is_adaptive(false),
-    init_refinement(0),
+    initial_refinement_(0),
     
-    n_aquifers(n_aquifers),
-    
+    n_aquifers_(n_aquifers),
     cycle_(-1),
     last_run_time_(0),
-    solver_it(0),
-    matrix_output_(false),
-    sparsity_pattern_output_(false),
-    output_dir("../output/model/"),
-    main_output_dir("../output/"),
-    name(name)
+    solver_iterations_(0),
+
+    output_dir_("../output/model/"),
+    main_output_dir_("../output/"),
+    name_(name),
+    output_options_(default_output_options_)
     
 {
-  //DBGMSG("Model_base constructor, wells_size: %d\n",this->wells.size());
+  //DBGMSG("ModelBase constructor, wells_size: %d\n",this->wells.size());
   transmisivity.resize(n_aquifers, 1.0);
   //TODO: check if all wells lies in the area
   prm_declare();
 }
 
-Model_base::Model_base(const Model_base &model, std::string name)
+ModelBase::ModelBase(const ModelBase &model, std::string name)
 : wells(model.wells),
 
   grid_create(model.grid_create),
@@ -106,29 +110,28 @@ Model_base::Model_base(const Model_base &model, std::string name)
   rhs_function(nullptr),
   triangulation_changed(true),
   is_adaptive(false),
-  init_refinement(model.init_refinement),
+  initial_refinement_(model.initial_refinement()),
   
-  n_aquifers(model.n_aquifers),
+  n_aquifers_(model.n_aquifers()),
   transmisivity(model.transmisivity),
   
   cycle_(-1),
   last_run_time_(0),
-  solver_it(0),
-  matrix_output_(false),
-  sparsity_pattern_output_(false),
-  output_dir(model.main_output_dir+name+"/"),
-  main_output_dir(model.main_output_dir),
-  name(name)
+  solver_iterations_(0),
+  output_dir_(model.main_output_dir_+name+"/"),
+  main_output_dir_(model.main_output_dir_),
+  name_(name),
+  output_options_(default_output_options_)
   
 {  
 }
 
-Model_base::~Model_base()
+ModelBase::~ModelBase()
 {
 }
 
 
-void Model_base::run(const unsigned int cycle)
+void ModelBase::run(const unsigned int cycle)
 {  
   cycle_++;
   if(cycle == 0)
@@ -161,7 +164,7 @@ void Model_base::run(const unsigned int cycle)
 }
 
 
-void Model_base::prm_declare()
+void ModelBase::prm_declare()
 {
     parameter_handler_.enter_subsection("aquifer");
     {
@@ -288,7 +291,7 @@ void Model_base::prm_declare()
   //*/
 }
 
-void Model_base::read_input_file()
+void ModelBase::read_input_file()
 {
     MASSERT(!input_file_.empty(),"Input file has not been defined yet. Call set_input_file().");
     std::ifstream in;
@@ -305,7 +308,7 @@ void Model_base::read_input_file()
     
 }
 
-void Model_base::prm_read_inputfile(ifstream& in)
+void ModelBase::prm_read_inputfile(ifstream& in)
 {
     //reading data from filestream
     parameter_handler_.read_input(input_file_);
@@ -319,7 +322,7 @@ void Model_base::prm_read_inputfile(ifstream& in)
                              parameter_handler_.get_double("y"));
         up_right = Point<2>(down_left[0] + w,
                             down_left[1] + w);
-        n_aquifers = 1;
+        n_aquifers_ = 1;
         transmisivity.resize(1);
         transmisivity[0] = parameter_handler_.get_double("transmisivity");
     }
@@ -352,7 +355,7 @@ void Model_base::prm_read_inputfile(ifstream& in)
 
 
 
-void Model_base::set_transmisivity(const double& trans, const unsigned int& m_aquifer)
+void ModelBase::set_transmisivity(const double& trans, const unsigned int& m_aquifer)
 {
   if(m_aquifer < transmisivity.size())  
     transmisivity[m_aquifer] = trans; 
@@ -360,13 +363,13 @@ void Model_base::set_transmisivity(const double& trans, const unsigned int& m_aq
     xprintf(Warn,"Transmisivity not set. Size: %d, index: %d\n",transmisivity.size(), m_aquifer);
 }
 
-void Model_base::set_transmisivity(const std::vector< double >& trans)
+void ModelBase::set_transmisivity(const std::vector< double >& trans)
 {
   transmisivity.clear();
   transmisivity = trans;
 }
 
-void Model_base::set_area(const dealii::Point< 2 >& down_left, const dealii::Point< 2 >& up_right)
+void ModelBase::set_area(const dealii::Point< 2 >& down_left, const dealii::Point< 2 >& up_right)
 {
   MASSERT( (down_left[0] < up_right[0]) && (down_left[1] < up_right[1]), 
              "Wrong point setting - must be down left and up right vertex.");
@@ -374,33 +377,33 @@ void Model_base::set_area(const dealii::Point< 2 >& down_left, const dealii::Poi
   this->up_right = up_right; 
 }
 
-void Model_base::set_output_dir(const std::string& path)
+void ModelBase::set_output_dir(const std::string& path)
 {
-  main_output_dir = path;
+  main_output_dir_ = path;
   
   DIR *dir;
   /* Try to open directory */
-    dir = opendir(output_dir.c_str());
+    dir = opendir(output_dir_.c_str());
     if(dir == NULL) {
         /* Directory doesn't exist. Create new one. */
-        int ret = mkdir(output_dir.c_str(), 0777);
+        int ret = mkdir(output_dir_.c_str(), 0777);
 
         if(ret != 0) {
-            xprintf(Err, "Couldn't create directory: %s\n", output_dir.c_str());
+            xprintf(Err, "Couldn't create directory: %s\n", output_dir_.c_str());
         }
     } else {
         closedir(dir);
     }
     
-    output_dir = main_output_dir + "/" + name + "/";
+    output_dir_ = main_output_dir_ + "/" + name_ + "/";
     
-    dir = opendir(output_dir.c_str());
+    dir = opendir(output_dir_.c_str());
     if(dir == NULL) {
         /* Directory doesn't exist. Create new one. */
-        int ret = mkdir(output_dir.c_str(), 0777);
+        int ret = mkdir(output_dir_.c_str(), 0777);
 
         if(ret != 0) {
-            xprintf(Err, "Couldn't create directory: %s\n", output_dir.c_str());
+            xprintf(Err, "Couldn't create directory: %s\n", output_dir_.c_str());
         }
     } else {
         closedir(dir);
@@ -408,10 +411,10 @@ void Model_base::set_output_dir(const std::string& path)
 }
 
 
-void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< double >& matrix, const string& filename)
+void ModelBase::write_block_sparse_matrix(const dealii::BlockSparseMatrix< double >& matrix, const string& filename)
 {
   // WHOLE SYSTEM MATRIX  ----------------------------------------------------------------
-  std::string path = output_dir + filename + ".m";
+  std::string path = output_dir_ + filename + ".m";
   std::ofstream output (path);
   
   if(! output.is_open()) 
@@ -431,7 +434,7 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
   output.close();
   
   // A MATRIX ----------------------------------------------------------------
-  path = output_dir + filename + "_a.m";
+  path = output_dir_ + filename + "_a.m";
   output.clear();
   output.open(path);
   
@@ -453,7 +456,7 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
   
   
   // E MATRIX ----------------------------------------------------------------
-  path = output_dir + filename + "_e.m";
+  path = output_dir_ + filename + "_e.m";
   output.clear();
   output.open(path);
   
@@ -477,7 +480,8 @@ void Model_base::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doub
 
 
 
-std::pair< double, double > Model_base::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+std::pair< double, double > ModelBase::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
-    DBGMSG("Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
+    MASSERT(0,"Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
+    return std::make_pair<double, double>(0,0);
 }

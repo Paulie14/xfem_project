@@ -83,7 +83,7 @@ class XDataCell;
  * Enrichment area is defined by \f$ r_{enr} \f$, which is set by @p set_enrichment_radius.
  * 
  */
-class XModel : public Model_base 
+class XModel : public ModelBase 
 {
   public:
     /// Default constructor
@@ -188,12 +188,6 @@ class XModel : public Model_base
     //@{
     inline void set_enrichment_radius(double r_enr)
     { this->rad_enr = r_enr; }
-    
-    inline void set_output_features(bool decomposed = true, bool shape_functions = false, bool error = false)
-    { this->out_decomposed_ = decomposed;
-      this->out_shape_functions_ = shape_functions;
-      this->out_error_ = error;
-    }
    
     /**Sets file path to a mesh file. 
      * Grid creation type @p grid_create is set to @p load.
@@ -386,11 +380,8 @@ class XModel : public Model_base
     Vector<double> dist_solution;
     
     //output
-    bool out_decomposed_;
-    bool out_shape_functions_;
-    bool out_error_;
     PersistentTriangulation<2>* output_triangulation;
-    
+      
 };
 
 #include "xmodel_impl.hh"

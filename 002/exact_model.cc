@@ -30,8 +30,8 @@ ExactModel::ExactModel()
 }
 
 ExactModel::ExactModel(ExactBase* exact_solution)
-: dist_tria(NULL),
-  exact_solution(exact_solution)
+: exact_solution(exact_solution),
+  dist_tria(NULL)
 {}
 
 ExactModel::~ExactModel()

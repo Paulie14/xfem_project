@@ -55,9 +55,8 @@
 #include "system.hh"
 #include "xfevalues.hh"
 
-
 XModel::XModel () 
-  : Model_base(),
+  : ModelBase(),
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
@@ -69,18 +68,15 @@ XModel::XModel ()
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed_(true),
-    out_shape_functions_(false),
-    out_error_(false),
     output_triangulation(nullptr)
 {
-  name = "Default_XFEM_Model";
+  name_ = "Default_XFEM_Model";
   dof_handler = new DoFHandler<2>();
 }
 
 XModel::XModel (const std::string &name, 
                 const unsigned int &n_aquifers) 
-:   Model_base::Model_base(name, n_aquifers),
+:   ModelBase::ModelBase(name, n_aquifers),
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
@@ -92,9 +88,6 @@ XModel::XModel (const std::string &name,
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed_(true),
-    out_shape_functions_(false),
-    out_error_(false),
     output_triangulation(nullptr)
     
 {
@@ -104,7 +97,7 @@ XModel::XModel (const std::string &name,
 XModel::XModel (const std::vector<Well*> &wells, 
                 const std::string &name, 
                 const unsigned int &n_aquifers) 
-:   Model_base::Model_base(wells, name, n_aquifers),
+:   ModelBase::ModelBase(wells, name, n_aquifers),
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
@@ -116,9 +109,6 @@ XModel::XModel (const std::vector<Well*> &wells,
     fe_values (fe, quadrature_formula,
       update_values | update_quadrature_points | update_gradients | update_JxW_values),
     hanging_nodes(true),
-    out_decomposed_(true),
-    out_shape_functions_(false),
-    out_error_(false),
     output_triangulation(nullptr)
     
 {
@@ -208,7 +198,7 @@ void XModel::make_grid ()
     {
       //square grid
       GridGenerator::hyper_rectangle<2>(coarse_tria, down_left, up_right);
-      coarse_tria.refine_global (init_refinement); 
+      coarse_tria.refine_global (initial_refinement_); 
     }
   }
   
@@ -221,7 +211,7 @@ void XModel::make_grid ()
     
     //MESH OUTPUT - coarse grid = (refinement flags written in output)
     std::stringstream filename1;
-    filename1 << output_dir << "coarse_grid.msh";
+    filename1 << output_dir_ << "coarse_grid.msh";
  
     std::ofstream output (filename1.str());
   
@@ -300,8 +290,8 @@ void XModel::find_enriched_cells()
         for(unsigned int i=1; i < fe.dofs_per_cell; i++)
         {
           //assumming that the well radius is smaller than the cell
-          dist = std::min(cell->vertex(i).distance(wells[w]->center()), r_enr[w]);
-          //dist = std::max(cell->vertex(i).distance(wells[w]->center()), dist);
+          //dist = std::min(cell->vertex(i).distance(wells[w]->center()), r_enr[w]);
+          dist = std::max(cell->vertex(i).distance(wells[w]->center()), dist);
         }  
         r_enr[w] = std::max(dist, r_enr[w]);
           
@@ -329,7 +319,7 @@ void XModel::find_enriched_cells()
   //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
   DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata.size(), triangulation->n_active_cells());
-  print_xdata();
+  //print_xdata();
 }
 
 void XModel::print_xdata()
@@ -1039,14 +1029,14 @@ void XModel::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  if(sparsity_pattern_output_)
+  if(output_options_ & OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
-    std::ofstream out1 (output_dir+"block_sp_pattern.1");
+    std::ofstream out1 (output_dir_+"block_sp_pattern.1");
     block_sp_pattern.print_gnuplot (out1);
 
     //prints SparsityPattern of the block (0,0)
-    std::ofstream out2 (output_dir+"00_sp_pattern.1");
+    std::ofstream out2 (output_dir_+"00_sp_pattern.1");
     block_sp_pattern.block(0,0).print_gnuplot (out2);
   }
   
@@ -1135,17 +1125,19 @@ void XModel::assemble_system ()
       Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
       
       //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
-      unsigned int refinement_level = 12;
+      //unsigned int refinement_level = 12;
       
-      for(unsigned int t=0; t < refinement_level; t++)
+      for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
       {
         //DBGMSG("refinement level: %d\n", t);
         if ( ! adaptive_integration.refine_edge())
           break;
-        if (t == refinement_level-1)
+        if ( (output_options_ & OutputOptions::output_adaptive_plot) &&
+             (t == adaptive_integration_refinement_level_-1)
+           )
         {
           // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-          //adaptive_integration.gnuplot_refinement(output_dir);
+          adaptive_integration.gnuplot_refinement(output_dir_);
         }
       }
       
@@ -1156,13 +1148,15 @@ void XModel::assemble_system ()
       switch(enrichment_method_)
       {
         case Enrichment_method::xfem_ramp: 
-          adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+            adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           break;
         case Enrichment_method::xfem_shift:
           adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
           break;
         case Enrichment_method::sgfem:
           adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          break;
       }
       //printing enriched nodes and dofs
 //       DBGMSG("Printing dof_indices:  [");
@@ -1241,7 +1235,7 @@ void XModel::solve ()
   //how to do things for BLOCK objects
   //http://www.dealii.org/archive/dealii/msg02097.html
   
-  SolverControl	solver_control(10000, 1e-10);
+  SolverControl	solver_control(solver_max_iter_, solver_tolerance_);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
  
   
@@ -1299,7 +1293,7 @@ void XModel::solve ()
   solver_cg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   //solver_bicg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   
-  solver_it = solver_control.last_step();
+  solver_iterations_ = solver_control.last_step();
   
   std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
   //*/
@@ -1355,35 +1349,39 @@ void XModel::solve ()
 
 void XModel::output_results (const unsigned int cycle)
 { 
-  //TODO: output flags - to set what should be output
+    // MATRIX OUTPUT
+    if(output_options_ & OutputOptions::output_matrix)
+    {
+        std::stringstream matrix_name;
+        matrix_name << "matrix_" << cycle;
+        write_block_sparse_matrix(block_matrix,matrix_name.str());
+    }
   
-  // MATRIX OUTPUT
-  if(matrix_output_)
-  {
-    std::stringstream matrix_name;
-    matrix_name << "matrix_" << cycle;
-    write_block_sparse_matrix(block_matrix,matrix_name.str());
-  }
-  
-  // MESH OUTPUT
-  std::stringstream filename1; 
-  filename1 << output_dir << "xfem_mesh_" << cycle;
-  std::ofstream output1 (filename1.str() + ".msh");
-  GridOut grid_out;
-  grid_out.write_msh<2> (*triangulation, output1);
+    
+    // MESH OUTPUT
+    std::stringstream filename; 
+    filename << output_dir_ << "xfem_mesh_" << cycle;
+    
+    if(output_options_ & OutputOptions::output_gmsh_mesh)
+    {
+        std::ofstream output (filename.str() + ".msh");
+        GridOut grid_out;
+        grid_out.write_msh<2> (*triangulation, output);
+        std::cout << "\nXFEM  gmsh mesh written in:\t" << filename.str() << ".msh" << std::endl;
+    }
    
-
-  // dummy solution for displaying mesh in Paraview
-  DataOut<2> data_out;
-  data_out.attach_dof_handler (*dof_handler);
-  Vector<double> dummys_solution(block_solution.block(0).size());
-  data_out.add_data_vector (dummys_solution, "xfem_grid");
-  data_out.build_patches (0);
-  std::ofstream output2 (filename1.str()+".vtk");
-  data_out.write_vtu (output2); 
-
-  std::cout << "\nXFEM mesh written in:\t" << filename1.str() << ".msh \n\t\tand " << filename1.str() << ".vtk" << std::endl;
-  
+    // dummy solution for displaying mesh in Paraview
+    if(output_options_ & OutputOptions::output_vtk_mesh)
+    {
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (*dof_handler);
+        Vector<double> dummys_solution(block_solution.block(0).size());
+        data_out.add_data_vector (dummys_solution, "xfem_grid");
+        data_out.build_patches (0);
+        std::ofstream output (filename.str()+".vtk");
+        data_out.write_vtu (output); 
+        std::cout << "\nXFEM vtk mesh written in:\t" << filename.str() << ".vtk" << std::endl;
+    }
   
   /*
   //computing solution on the computational mesh
@@ -1407,7 +1405,7 @@ void XModel::output_results (const unsigned int cycle)
   data_out.build_patches ();
 
   std::stringstream filename;
-  filename << output_dir << "xmodel_solution_" << cycle << ".vtk";
+  filename << output_dir_ << "xmodel_solution_" << cycle << ".vtk";
    
   std::ofstream output (filename.str());
   data_out.write_vtk (output);
@@ -1427,6 +1425,8 @@ void XModel::output_results (const unsigned int cycle)
   //triangulation->clear_user_flags();
   
   
+  if(output_options_ & OutputOptions::output_solution)
+  {
   DBGMSG("tria: %d  %d \n",triangulation->n_refinement_steps(), triangulation->n_levels());
   
   if(output_triangulation) delete output_triangulation;
@@ -1448,13 +1448,19 @@ void XModel::output_results (const unsigned int cycle)
   dist_unenriched = block_solution.block(0);
   dist_solution = dist_unenriched;
   
-  double tolerance = 1e-3;
+  double tolerance = output_element_tolerance_;
   unsigned int iterations = 30;
   
   switch(enrichment_method_)
   {
     case Enrichment_method::xfem_ramp: 
-      MASSERT(0,"Not implemented yet.");
+      //MASSERT(0,"Not implemented yet.");
+      for(unsigned int n = 0; n < iterations; n++)
+      {
+        DBGMSG("output [%d]:\n", n);
+        if( recursive_output<Enrichment_method::xfem_ramp>(tolerance, output_grid, temp_dof_handler, temp_fe, n) )
+          break;
+      }
       break;
       
     case Enrichment_method::xfem_shift:
@@ -1474,7 +1480,7 @@ void XModel::output_results (const unsigned int cycle)
           break;
       }
   }
-
+  } //if output_solution
 }
 
 
@@ -1822,41 +1828,49 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
 
 void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_tria, const unsigned int& cycle, const unsigned int& m_aquifer)
 {
-  // MATRIX OUTPUT
-  if(matrix_output_)
-  {
-    std::stringstream matrix_name;
-    matrix_name << "matrix_" << cycle;
-    write_block_sparse_matrix(block_matrix,matrix_name.str());
-  }
+    // MATRIX OUTPUT
+    if(output_options_ & OutputOptions::output_matrix)
+    {
+        std::stringstream matrix_name;
+        matrix_name << "matrix_" << cycle;
+        write_block_sparse_matrix(block_matrix,matrix_name.str());
+    }
+      // MESH OUTPUT
+    if(output_options_ & OutputOptions::output_gmsh_mesh)
+    {
+        std::stringstream filename; 
+        filename << output_dir_ << "xfem_mesh_" << cycle;
+        std::ofstream output (filename.str() + ".msh");
+        GridOut grid_out;
+        grid_out.write_msh<2> (*triangulation, output);
+        std::cout << "\nXFEM  gmsh mesh written in:\t" << filename.str() << ".msh" << std::endl;
+        
+        //output of refinement flags of persistent triangulation
+        std::stringstream filename_flags;
+        filename_flags << output_dir_ << "ref_flags_" << cycle << ".ptf";
+        output.close();
+        output.clear();
+        output.open(filename_flags.str());
+        triangulation->write_flags(output);
+    }
+   
+    // dummy solution for displaying mesh in Paraview
+    if(output_options_ & OutputOptions::output_vtk_mesh)
+    {
+        std::stringstream filename; 
+        filename << output_dir_ << "xfem_mesh_" << cycle;
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (*dof_handler);
+        Vector<double> dummys_solution(block_solution.block(0).size());
+        data_out.add_data_vector (dummys_solution, "xfem_grid");
+        data_out.build_patches (0);
+        std::ofstream output (filename.str()+".vtk");
+        data_out.write_vtu (output); 
+        std::cout << "\nXFEM vtk mesh written in:\t" << filename.str() << ".vtk" << std::endl;
+    }
+    
   
-  // MESH OUTPUT
-  std::stringstream filename1;
-  filename1 << output_dir << "xfem_mesh_" << cycle;
-  std::ofstream output1 (filename1.str() + ".msh");
-  GridOut grid_out;
-  grid_out.write_msh<2> (*triangulation, output1);
-  
-  //output of refinement flags of persistent triangulation
-  std::stringstream filename_flags;
-  filename_flags << output_dir << "ref_flags_" << cycle << ".ptf";
-  output1.close();
-  output1.clear();
-  output1.open(filename_flags.str());
-  triangulation->write_flags(output1);
-  
-  
-  //dummy solution for displaying mesh int Paraview
   DataOut<2> data_out;
-  data_out.attach_dof_handler (*dof_handler);
-  Vector<double> dummys_solution(block_solution.block(0).size());
-  data_out.add_data_vector (dummys_solution, "xfem_grid");
-  data_out.build_patches (0);
-  std::ofstream output2 (filename1.str() + ".vtk");
-  data_out.write_vtu (output2); 
-  std::cout << "\nXFEM mesh written in:\t" << filename1.str() << ".msh \n\t\tand " << filename1.str() << ".vtk" << std::endl;
-  data_out.clear();
-
   
   QGauss<2>        dist_quadrature(2);
   FE_Q<2>          dist_fe(1);                    
@@ -1896,7 +1910,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   dist_hanging_node_constraints.distribute(dist_enriched);
   dist_hanging_node_constraints.distribute(dist_solution);
   
-  if(out_decomposed_)
+  if(output_options_ & OutputOptions::output_decomposed)
   {
     data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
     data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
@@ -1907,7 +1921,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   data_out.build_patches ();
 
   std::stringstream filename;
-  filename << output_dir << "xmodel_dist_solution_" << cycle << ".vtk";
+  filename << output_dir_ << "xmodel_dist_solution_" << cycle << ".vtk";
    
   std::ofstream output (filename.str());
   data_out.write_vtk (output);
@@ -1916,7 +1930,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   std::cout << "\noutput written in:\t" << filename.str() << std::endl;
   
   
-  if(out_shape_functions_)
+  if(output_options_ & OutputOptions::output_shape_functions)
   {
     unsigned int n_dofs = dof_handler->n_dofs();
     data_out.attach_dof_handler (dist_dof_handler);
@@ -1939,7 +1953,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     data_out.build_patches ();
   
     std::stringstream filename_x;
-    filename_x << output_dir << "xshape_func" << ".vtk";
+    filename_x << output_dir_ << "xshape_func" << ".vtk";
    
     std::ofstream output_x (filename_x.str());
     data_out.write_vtk (output_x);
@@ -1952,13 +1966,13 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
 
 void XModel::output_distributed_solution(const std::string& mesh_file, const std::string &flag_file, bool is_circle, const unsigned int& cycle, const unsigned int &m_aquifer)
 {
-  // MATRIX OUTPUT
-  if(matrix_output_)
-  {
-    std::stringstream matrix_name;
-    matrix_name << "matrix_" << cycle;
-    write_block_sparse_matrix(block_matrix,matrix_name.str());
-  }
+    // MATRIX OUTPUT
+    if(output_options_ & OutputOptions::output_matrix)
+    {
+        std::stringstream matrix_name;
+        matrix_name << "matrix_" << cycle;
+        write_block_sparse_matrix(block_matrix,matrix_name.str());
+    }
   
   //triangulation for distributing solution onto domain
   Triangulation<2> dist_coarse_tria;  
@@ -2018,11 +2032,13 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
 
 std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
+  MASSERT(triangulation != nullptr, "No triangulation in model.");
   std::pair<double,double> norms;
   switch(enrichment_method_)
   {
     case Enrichment_method::xfem_ramp: 
-        MASSERT(0,"Not implemented yet.");
+        //MASSERT(0,"Not implemented yet.");
+        norms = integrate_difference<Enrichment_method::xfem_ramp>(diff_vector, exact_solution);
         break;
       
     case Enrichment_method::xfem_shift:  
@@ -2105,7 +2121,7 @@ void XModel::compute_interpolated_exact(ExactBase *exact_solution)
     data_out.build_patches ();
 
     std::stringstream filename;
-    filename << output_dir << "exact_solution_" << cycle_ << ".vtk";
+    filename << output_dir_ << "exact_solution_" << cycle_ << ".vtk";
    
     std::ofstream output (filename.str());
     if(output.is_open())
@@ -2145,8 +2161,9 @@ void XModel::test_method(ExactBase* exact_solution)
     if (triangulation_changed == true)
         setup_system();
     
-    XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
+    //XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
     
+    assemble_system();
     
     // Set the solution - dofs
     
@@ -2188,6 +2205,69 @@ void XModel::test_method(ExactBase* exact_solution)
             }
         }
     }
+    block_solution.block(2)[0] = wells[0]->pressure();
+    
+    //BlockVector<double> temp_solution = block_solution;
+    
+    const unsigned int blocks_dimension = 3;
+    unsigned int n[blocks_dimension] = 
+                      { dof_handler->n_dofs(), //n1-block(0) unenriched dofs
+                        n_enriched_dofs,      //n2-block(1) enriched dofs
+                        wells.size()          //n3-block(2) average pressures on wells
+                      };
+    BlockVector<double> residuum;
+    residuum.reinit(blocks_dimension);
+    //reinitialization of residuum
+    //(N,fast=false) .. vector is filled with zeros
+    for(unsigned int i=0; i < blocks_dimension; i++)
+        residuum.block(i).reinit(n[i]);
+    residuum.collect_sizes();
+    
+    // A*x
+    block_matrix.vmult(residuum,block_solution);
+    residuum.add(-1,block_system_rhs);
+    
+    std::stringstream filename;
+        filename << output_dir_ << "residuum.txt";
+    std::ofstream output (filename.str());
+   
+    if(output.is_open())
+        {
+            residuum.print(output,10,true, false);
+            std::cout << "\nresiduum written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the residuum in file: " << filename.str() << std::endl;
+        }
+    
+    
+    DataOut<2> data_out;
+    data_out.attach_dof_handler (*dof_handler);
+    
+//     temp_hanging_node_constraints.distribute(dist_unenriched);
+//     temp_hanging_node_constraints.distribute(dist_enriched);
+//     temp_hanging_node_constraints.distribute(dist_solution);
+    
+    data_out.add_data_vector (residuum.block(0), "fem_res");
+    data_out.add_data_vector (residuum.block(1), "xfem_res");
+  
+    data_out.build_patches ();
+
+    
+    std::stringstream res_filename;
+    res_filename << output_dir_ << "residuum.vtk"; 
+   
+    std::ofstream res_output (res_filename.str());
+    if(output.is_open())
+        {
+            data_out.write_vtk (res_output);
+            std::cout << "\noutput(error) written in:\t" << res_filename.str() << std::endl;
+        }
+    else
+        {
+            std::cout << "Could not write the output in file: " << res_filename.str() << std::endl;
+        }
     
     /*
     if(out_error_)
@@ -2211,7 +2291,7 @@ void XModel::test_method(ExactBase* exact_solution)
         data_out.build_patches ();
 
         std::stringstream filename;
-        filename << output_dir << "xmodel_error_" << cycle_ << ".vtk";
+        filename << output_dir_ << "xmodel_error_" << cycle_ << ".vtk";
    
         std::ofstream output (filename.str());
         if(output.is_open())

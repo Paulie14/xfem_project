@@ -55,6 +55,8 @@ public:
   ///Refine flag is set true, if this square should be refined during next refinement run.
   bool refine_flag;
   
+  bool on_well_edge;
+  
   ///Pointer to Gauss quadrature, that owns the quadrature points and their weights.
   const QGauss<2> *gauss;
   
@@ -123,65 +125,65 @@ class Adaptive_integration
     template<Enrichment_method::Type EnrType> 
     double integrate_l2_diff(const BlockVector<double> &solution, const Function<2> &exact_solution);
     
-    /** OBSOLETE First version of XFEM (without shift).
-     * Does everything inside - no XFEValues.
-     */
-    void integrate_xfem( FullMatrix<double> &cell_matrix, 
-                         Vector<double> &cell_rhs,
-                         std::vector<unsigned int> &local_dof_indices,
-                         const double &transmisivity
-                       );
-    
-    /** OBSOLETE XFEM with shift.
-     * Adds shift to @p integrate_xfem().
-     * Does everything inside - no XFEValues.
-     */
-    void integrate_xfem_shift( FullMatrix<double> &cell_matrix, 
-                               Vector<double> &cell_rhs,
-                               std::vector<unsigned int> &local_dof_indices,
-                               const double &transmisivity
-                             );
-    
-    /** OBSOLETE XFEM with shift.
-     * Uses XFEValues for the first time, with quadrature points precomputed.
-     * Used as scheme for reimplementation in template method.
-     */
-    void integrate_xfem_shift2( FullMatrix<double> &cell_matrix, 
-                               Vector<double> &cell_rhs,
-                               std::vector<unsigned int> &local_dof_indices,
-                               const double &transmisivity
-                             );
-    
-    /** OBSOLETE SGFEM.
-     * First version of SGFEM method.
-     * Uses XFEValues for the first time, but not for gradients.
-     */
-    void integrate_sgfem( FullMatrix<double> &cell_matrix, 
-                          Vector<double> &cell_rhs,
-                          std::vector<unsigned int> &local_dof_indices,
-                          const double &transmisivity
-                        );
-    
-    /** OBSOLETE SGFEM.
-     * First version of SGFEM method.
-     * Does everything inside - no XFEValues.
-     */
-    void integrate_sgfem2( FullMatrix<double> &cell_matrix, 
-                          Vector<double> &cell_rhs,
-                          std::vector<unsigned int> &local_dof_indices,
-                          const double &transmisivity
-                        );
-    
-    /** OBSOLETE SGFEM.
-     * Third version of SGFEM method.
-     * Uses XFEValues with precomputed quadrature points.
-     * Used as scheme for reimplementation in template method.
-     */
-    void integrate_sgfem3( FullMatrix<double> &cell_matrix, 
-                          Vector<double> &cell_rhs,
-                          std::vector<unsigned int> &local_dof_indices,
-                          const double &transmisivity
-                        );
+//     /** OBSOLETE First version of XFEM (without shift).
+//      * Does everything inside - no XFEValues.
+//      */
+//     void integrate_xfem( FullMatrix<double> &cell_matrix, 
+//                          Vector<double> &cell_rhs,
+//                          std::vector<unsigned int> &local_dof_indices,
+//                          const double &transmisivity
+//                        );
+//     
+//     /** OBSOLETE XFEM with shift.
+//      * Adds shift to @p integrate_xfem().
+//      * Does everything inside - no XFEValues.
+//      */
+//     void integrate_xfem_shift( FullMatrix<double> &cell_matrix, 
+//                                Vector<double> &cell_rhs,
+//                                std::vector<unsigned int> &local_dof_indices,
+//                                const double &transmisivity
+//                              );
+//     
+//     /** OBSOLETE XFEM with shift.
+//      * Uses XFEValues for the first time, with quadrature points precomputed.
+//      * Used as scheme for reimplementation in template method.
+//      */
+//     void integrate_xfem_shift2( FullMatrix<double> &cell_matrix, 
+//                                Vector<double> &cell_rhs,
+//                                std::vector<unsigned int> &local_dof_indices,
+//                                const double &transmisivity
+//                              );
+//     
+//     /** OBSOLETE SGFEM.
+//      * First version of SGFEM method.
+//      * Uses XFEValues for the first time, but not for gradients.
+//      */
+//     void integrate_sgfem( FullMatrix<double> &cell_matrix, 
+//                           Vector<double> &cell_rhs,
+//                           std::vector<unsigned int> &local_dof_indices,
+//                           const double &transmisivity
+//                         );
+//     
+//     /** OBSOLETE SGFEM.
+//      * First version of SGFEM method.
+//      * Does everything inside - no XFEValues.
+//      */
+//     void integrate_sgfem2( FullMatrix<double> &cell_matrix, 
+//                           Vector<double> &cell_rhs,
+//                           std::vector<unsigned int> &local_dof_indices,
+//                           const double &transmisivity
+//                         );
+//     
+//     /** OBSOLETE SGFEM.
+//      * Third version of SGFEM method.
+//      * Uses XFEValues with precomputed quadrature points.
+//      * Used as scheme for reimplementation in template method.
+//      */
+//     void integrate_sgfem3( FullMatrix<double> &cell_matrix, 
+//                           Vector<double> &cell_rhs,
+//                           std::vector<unsigned int> &local_dof_indices,
+//                           const double &transmisivity
+//                         );
     
 
     
@@ -193,6 +195,9 @@ class Adaptive_integration
       * @param show is true then the gnuplot utility is started and plots the refinement on the screen
       */ 
     void gnuplot_refinement(const std::string &output_dir, bool real=true, bool show=false);
+    
+    
+    double test_integration(Function<2>* func);
    
     ///1 point Gauss quadrature with dim=2
     static const QGauss<2> gauss_1;
@@ -365,7 +370,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
         //assembling RHS
         if(rhs_function)
         {
-            DBGMSG("sources\n");
+            //DBGMSG("sources\n");
           cell_rhs(i) += rhs_function->value(xfevalues.quadrature_point(q)) * shape_val_vec[i] * xfevalues.JxW(q);
         }
       }
@@ -392,16 +397,20 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
 #endif
   }
   
-//   std::cout << "cell_matrix" << std::endl;
-//   cell_matrix.print_formatted(std::cout);
-//   std::cout << std::endl;
-    
+   
+//     if(n_wells_inside > 0)
+//     {
+//         std::cout << "cell_matrix" << std::endl;
+//         cell_matrix.print_formatted(std::cout);
+//         std::cout << std::endl;
+//     }
   
   //------------------------------------------------------------------------------ BOUNDARY INTEGRAL
 #ifdef BC_NEWTON //------------------------------------------------------------------------bc_newton
-  //FullMatrix<double> well_cell_matrix;
+  FullMatrix<double> well_cell_matrix;
   unsigned int n_w_dofs=0;
   double jxw = 0;
+  
   //DBGMSG("error n_w:%d\n",n_wells_inside);  
   for(unsigned int w = 0; w < n_wells_inside; w++)
   {
@@ -429,13 +438,30 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       //n_w_dofs = dofs_per_cell+n_enriched_dofs+1;
       n_w_dofs = dofs_per_cell + xdata->n_enriched_dofs(w) + 1;
       
-      //well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
+      well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
       shape_val_vec.resize(n_w_dofs,0);  //unenriched, enriched, well
     
+      std::vector<double > shape_val_averige(n_w_dofs+n_wells,0);
+      
       //cycle over quadrature points inside the cell
       //DBGMSG("n_q:%d\n",xdata->q_points(w).size());
       for (unsigned int q=0; q < xdata->q_points(w).size(); ++q)
       {
+//         // filling shape values at first
+//         for(unsigned int i = 0; i < dofs_per_cell; i++)
+//           shape_val_averige[i] += xfevalues2.shape_value(i,q); 
+//         // filling enrichment shape values
+//         unsigned int index = dofs_per_cell; //TODO: will not work with more wells on partially enriched cells
+//         for(unsigned int k = 0; k < n_vertices; k++)
+//         {
+//           if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node
+//           
+//           shape_val_averige[index] += xfevalues2.enrichment_value(k,w,q);
+//           index++;
+//         }
+//         
+//         shape_val_averige[index] += -1.0;  //testing function of the well
+        
         // filling shape values at first
         for(unsigned int i = 0; i < dofs_per_cell; i++)
           shape_val_vec[i] = xfevalues2.shape_value(i,q); 
@@ -465,6 +491,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                                     shape_val_vec[i] *
                                     shape_val_vec[j] *
                                     jxw);
+        
 //               // for debugging
 //               well_cell_matrix(i,j) += ( well->perm2aquifer() *
 //                                     shape_val_vec[i] *
@@ -472,20 +499,44 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
 //                                     jxw );
               
           }
-      }
+          //*/
+      } //q
+      
+//       for (unsigned int i=0; i < n_w_dofs; ++i)
+//         shape_val_averige[i] = shape_val_averige[i] / xdata->q_points(w).size();
+//           
+//       for (unsigned int i=0; i < n_w_dofs; ++i)
+//           for (unsigned int j=0; j < n_w_dofs; ++j)
+//           {
+//               cell_matrix(i,j) += ( well->perm2aquifer() *
+//                                     shape_val_averige[i] *
+//                                     shape_val_averige[j] 
+//                                    );
+//               // for debugging
+//               well_cell_matrix(i,j) += ( well->perm2aquifer() *
+//                                     shape_val_averige[i] *
+//                                     shape_val_averige[j]
+//                                     );
+//           }
+//           
+              
+      
     } //if
   } // for w
 #endif
  
-//     std::cout << "cell_matrix" << std::endl;
-//     cell_matrix.print_formatted(std::cout);
+//     if(n_wells_inside > 0)
+//     {
+// //     std::cout << "cell_matrix" << std::endl;
+// //     cell_matrix.print_formatted(std::cout);
+// //     std::cout << std::endl;
+//     std::cout << "well_cell_matrix" << std::endl;
+//     well_cell_matrix.print_formatted(std::cout);
 //     std::cout << std::endl;
-//     //std::cout << "well_cell_matrix" << std::endl;
-//     //well_cell_matrix.print_formatted(std::cout);
-//     //std::cout << std::endl;
 //     
 //     cell_rhs.print(std::cout);
 //     std::cout << "--------------------- " << std::endl;
+//     }
     
 }
 

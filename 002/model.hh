@@ -34,7 +34,7 @@ class DataCell;
  * Homogenous Neumann boundary condition is considered on the areas boundary.
  * The model may be run in cycles to compute adaptively refined grid.
  */
-class Model : public Model_base
+class Model : public ModelBase
 {
   public:
     ///@brief Default constructor.
@@ -68,6 +68,9 @@ class Model : public Model_base
     
     void output_distributed_solution(const dealii::Triangulation< 2 >& dist_tria, 
                                      const unsigned int& cycle);
+    
+    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
+                                                   const Function<2> &exact_solution) override;
     
     ///@name Getters
     //@{
@@ -134,12 +137,6 @@ class Model : public Model_base
     void setup_system () override;
     void assemble_system () override;
     void solve () override;
-    
-    
-    ///Computes error in comparision to analytic solution
-    ///Obsolote and unused (have no analytic solution)
-    void compute_solution_error();
-    
 
     ///Function finding the cells through which the well boundary goes.
     ///Uses recusively add_points_to_cell() inside.
@@ -194,7 +191,6 @@ class Model : public Model_base
     
     ///Quadrature for integrating on elements
     QGauss<2>  quadrature_formula;
-    
     
     
     ///matrix containing constraints coming from hanging nodes

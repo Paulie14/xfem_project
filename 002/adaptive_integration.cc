@@ -199,6 +199,7 @@ bool Adaptive_integration::refine_edge()
         //std::cout << i << " addded(node)\n";
         n_squares_to_refine++;
         squares[i].refine_flag = true;
+        squares[i].on_well_edge = true;
         continue;
       }
       //if the whole square is inside the well              ------------------------------------[2]
@@ -265,6 +266,7 @@ bool Adaptive_integration::refine_edge()
             //std::cout << i << " addded(line)\n";
             n_squares_to_refine++;
             squares[i].refine_flag = true;
+            squares[i].on_well_edge = true;
             break;
           }
         }
@@ -355,6 +357,8 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
 
 void Adaptive_integration::gather_w_points()
 {
+    if(q_points_all.size() > 0) return; //do not do it again
+    
     q_points_all.reserve(squares.size()*gauss_3.size());
     jxw_all.reserve(squares.size()*gauss_3.size());
 
@@ -367,36 +371,308 @@ void Adaptive_integration::gather_w_points()
     else
     {
         for(unsigned int i = 0; i < squares.size(); i++)
-        {
-            std::vector<Point<2> > temp(squares[i].gauss->get_points());
-            //temp = squares[i].gauss->get_points(); 
-            squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
-    
-            for(unsigned int j = 0; j < temp.size(); j++)
+        {   
+            //all the squares on the edge of the well
+            if(squares[i].on_well_edge)
             {
-                q_points_all.push_back(temp[j]);
-                jxw_all.push_back( squares[i].gauss->weight(j) *
+                std::vector<Point<2> > temp(squares[i].gauss->get_points());
+                //temp = squares[i].gauss->get_points(); 
+                squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+
+                for(unsigned int w=0; w < xdata->n_wells(); w++)
+                for(unsigned int j = 0; j < temp.size(); j++)
+                {
+                    //include only points outside the well
+                    //TODO: this will not work on non-square mesh
+                    if(m_well_center[w].distance(temp[j]) >= m_well_radius[w])
+                    {
+                    q_points_all.push_back(temp[j]);
+                    jxw_all.push_back( squares[i].gauss->weight(j) *
                                    squares[i].mapping.jakobian() );
+                    }
+                }
+            }
+            //all the squares around the well
+            else if( squares[i].gauss->size() > 1 )
+            {
+                std::vector<Point<2> > temp(squares[i].gauss->get_points());
+                //temp = squares[i].gauss->get_points(); 
+                squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+    
+                for(unsigned int j = 0; j < temp.size(); j++)
+                {
+                    q_points_all.push_back(temp[j]);
+                    jxw_all.push_back( squares[i].gauss->weight(j) *
+                                   squares[i].mapping.jakobian() );
+                }
             }
         }
     }
     q_points_all.shrink_to_fit();
     jxw_all.shrink_to_fit();
     
-    //control sum
-    #ifdef DEBUG    //----------------------
-    double sum = 0;
-    for(unsigned int i = 0; i < q_points_all.size(); i++)
-    {
-        sum += jxw_all[i];
-    }
-    sum = std::abs(sum-1.0);
-    if(sum > 1e-15) DBGMSG("Control sum of weights minus 1: %e\n",sum);
-    MASSERT(sum < 1e-12, "Sum of weights of quadrature points must be 1.0.\n");
-    #endif          //----------------------
+//     //control sum
+//     #ifdef DEBUG    //----------------------
+//     double sum = 0;
+//     for(unsigned int i = 0; i < q_points_all.size(); i++)
+//     {
+//         sum += jxw_all[i];
+//     }
+//     sum = std::abs(sum-1.0);
+//     if(sum > 1e-15) DBGMSG("Control sum of weights: %e\n",sum);
+//     MASSERT(sum < 1e-12, "Sum of weights of quadrature points must be 1.0.\n");
+//     #endif          //----------------------
 }
 
 
+
+void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, bool real, bool show)
+{
+  //DBGMSG("gnuplotting\n");
+  gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+  std::string fgnuplot_ref = "adaptive_integration_refinement_",
+              fgnuplot_qpoints = "adaptive_integration_qpoints_",
+              script_file = "g_script_adapt_";
+  
+              fgnuplot_ref += std::to_string(cell->index()) + ".dat";
+              fgnuplot_qpoints += std::to_string(cell->index()) + ".dat";
+              script_file += std::to_string(cell->index()) + ".p";
+  try
+    {
+        Gnuplot g1("adaptive_integration");
+        //g1.savetops("test_output");
+        //g1.set_title("adaptive_integration\nrefinement");
+        //g1.set_grid();
+        
+        /*
+        std::vector<double> x(squares.size()), y(squares.size());
+
+        for (unsigned int i = 0; i < squares.size(); i++)
+        {
+          for (unsigned int j = 0; j < 4; j++) 
+          {
+            x.push_back(squares[i].vertices[j][0]);          
+            y.push_back(squares[i].vertices[j][1]);
+          }
+        }
+        */
+        
+        
+        std::ofstream myfile1;
+        myfile1.open (output_dir + fgnuplot_ref);
+        if (myfile1.is_open()) 
+        {
+       
+        for (unsigned int i = 0; i < squares.size(); i++)
+        {
+          for (unsigned int j = 0; j < 4; j++) 
+          {
+            if(real)
+              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j]);
+              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
+            else
+              myfile1 << squares[i].vertices[j];
+            
+            myfile1 << "\n";
+          }
+          if(real)
+              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[0]);
+              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
+            else
+              myfile1 << squares[i].vertices[0];
+
+          myfile1 << "\n\n";
+        }
+        std::cout << left << setw(53) <<  "Adaptive XFEM element refinement written in: " << fgnuplot_ref << endl;
+        }
+        else 
+        { 
+          std::cout << "Coud not write refinement for gnuplot.\n";
+        }
+        myfile1.close();
+        
+        std::ofstream myfile2;
+        myfile2.open (output_dir + fgnuplot_qpoints);
+        if (myfile2.is_open()) 
+        {
+       
+            for (unsigned int q = 0; q < q_points_all.size(); q++)
+            {
+                if(real)
+                    myfile2 << mapping->transform_unit_to_real_cell(cell, q_points_all[q]);
+                else
+                    myfile2 << q_points_all[q];
+            myfile2 << "\n";
+            }
+        
+//         for (unsigned int i = 0; i < squares.size(); i++)
+//         {
+//           for (unsigned int j = 0; j < squares[i].gauss->get_points().size(); j++) 
+//           {
+//             if(real)
+//               myfile2 << mapping->transform_unit_to_real_cell(cell, squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
+//               //myfile2 << cell_mapping.map_unit_to_real(squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
+//             else
+//               myfile2 << squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]);
+//              
+//             myfile2 << "\n";
+//           }
+//         }
+        
+            std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
+        }
+        else 
+        { 
+          std::cout << "Coud not write qpoints for gnuplot." << std::endl;
+        }
+        myfile2.close();
+        
+        //g1.set_style("lines").plotfile_xy("adaptive_integration_refinement.dat",1,2,"Adaptive integration refinement");
+        
+        //g1.set_multiplot();
+        
+        //creating command
+        std::ostringstream strs;
+        strs << "set terminal x11\n";
+        strs << "set size ratio -1\n";
+        strs << "set parametric\n";
+        strs << "set trange [0:2*pi]\n";
+        
+        //unsigned int w = 0;
+        for(unsigned int w = 0; w < xdata->n_wells(); w++)
+        {
+          /* # parametricly plotted circle
+           * set parametric
+           * set trange [0:2*pi]
+           * # Parametric functions for a circle
+           * fx(t) = r*cos(t)
+           * fy(t) = r*sin(t)
+           * plot fx(t),fy(t)
+           */
+          if(real)
+          {
+            strs << "fx" << w << "(t) = " << xdata->get_well(w)->center()[0] 
+                << " + "<< xdata->get_well(w)->radius() << "*cos(t)\n";
+            strs << "fy" << w << "(t) = " << xdata->get_well(w)->center()[1] 
+                << " + "<< xdata->get_well(w)->radius() << "*sin(t)\n";
+          }
+          else
+          {
+            strs << "fx" << w << "(t) = " << m_well_center[w][0] 
+                << " + "<< m_well_radius[w] << "*cos(t)\n";
+            strs << "fy" << w << "(t) = " << m_well_center[w][1] 
+                << " + "<< m_well_radius[w] << "*sin(t)\n";
+          }
+        }
+        
+        strs << "plot \"" << fgnuplot_ref << "\" using 1:2 with lines,\\\n"
+             << "\"" << fgnuplot_qpoints << "\" using 1:2 with points lc rgb \"light-blue\",\\\n";
+        for(unsigned int w = 0; w < xdata->n_wells(); w++)
+        {
+          strs << "fx" << w << "(t),fy" << w << "(t)";
+          if(w != xdata->n_wells()-1) 
+            strs << ",\\\n";
+        } 
+        
+        //saving gnuplot script
+        std::ofstream myfile3;
+        myfile3.open (output_dir + script_file);
+        if (myfile3.is_open()) 
+        {
+          // header
+          myfile3 << "# Gnuplot script for printing adaptively refined element.\n" <<
+                     "# Made by Pavel Exner.\n#\n" <<
+                     "# Run the script in gnuplot:\n" <<
+                     "# > load \"" << script_file << "\"\n#\n" <<
+                     "# Data files used:\n" << 
+                     "# " << fgnuplot_ref << "\n"
+                     "# " << fgnuplot_qpoints << "\n" 
+                     "#\n#" << std::endl;
+          // script
+          myfile3 << strs.str() << std::endl;
+          
+          std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
+        }
+        else 
+        { 
+          std::cout << "Coud not write gnuplot script.\n";
+        }
+        myfile3.close();
+        
+        
+        //show the plot by gnuplot if show == true
+        if(show)
+        {
+          //finally plot
+          g1.cmd(strs.str());
+        
+          //g1.unset_multiplot();
+          
+          //g1.set_style("points").plot_xy(x,y,"user-defined points 2d");
+        
+          //g1.showonscreen(); // window output
+         
+          #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
+          std::cout << std::endl << "GNUPLOT output on cell " << cell->index() << " ... Press ENTER to continue..." << std::endl;
+
+          std::cin.clear();
+          std::cin.ignore(std::cin.rdbuf()->in_avail());
+          std::cin.get();
+          #endif
+        }
+        
+    return;
+    
+    }
+    catch (GnuplotException ge)
+    {
+      std::cout << ge.what() << std::endl;
+    }
+}
+
+
+
+double Adaptive_integration::test_integration(Function< 2 >* func)
+{
+    double integral = 0;
+    gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+    Quadrature<2> quad(q_points_all, jxw_all);
+    XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,quad, update_values 
+                                       | update_gradients 
+                                       | update_quadrature_points 
+                                       //| update_covariant_transformation 
+                                       //| update_transformation_values 
+                                       //| update_transformation_gradients
+                                       //| update_boundary_forms 
+                                       //| update_cell_normal_vectors 
+                                       | update_JxW_values 
+                                       //| update_normal_vectors
+                                       //| update_contravariant_transformation
+                                       //| update_q_points
+                                       //| update_support_points
+                                       //| update_support_jacobians 
+                                       //| update_support_inverse_jacobians
+                                       //| update_second_derivatives
+                                       //| update_hessians
+                                       //| update_volume_elements
+                                       //| update_jacobians
+                                       //| update_jacobian_grads
+                                       //| update_inverse_jacobians
+                                                 );
+    xfevalues.reinit(xdata);
+  
+    for(unsigned int q=0; q<q_points_all.size(); q++)
+    {
+        integral += func->value(xfevalues.quadrature_point(q)) * xfevalues.JxW(q);
+    }
+    return integral;
+}
+
+
+
+//OBSOLETE
+/*
+////////////////////////////////////////////////////// INTEGRATE_XFEM_RAMP ////////////////////////////////////////////
 void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix, 
                                       Vector<double> &cell_rhs,
                                       std::vector<unsigned int> &local_dof_indices,
@@ -430,15 +706,15 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
   }
 
   //DBGMSG("number of dofs on the cell(%d): %d\n", cell->index(), n_dofs);
-  /*
-  DBGMSG("nodes weights: ");
-  for(unsigned int w = 0; w < n_wells; w++)
-    for(unsigned int i = 0; i < dofs_per_cell; i++)
-    {
-      std::cout << node_weights[w*dofs_per_cell + i] << "  ";
-    }
-  std::cout << std::endl;
-  //*/
+  
+//   DBGMSG("nodes weights: ");
+//   for(unsigned int w = 0; w < n_wells; w++)
+//     for(unsigned int i = 0; i < dofs_per_cell; i++)
+//     {
+//       std::cout << node_weights[w*dofs_per_cell + i] << "  ";
+//     }
+//   std::cout << std::endl;
+
   
   #ifdef DECOMPOSED_CELL_MATRIX
     FullMatrix<double> cell_matrix_lap(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
@@ -476,31 +752,31 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
     FEValues<2> temp_fe_values(*fe,temp_quad, update_values | update_gradients | update_jacobians);
     temp_fe_values.reinit(cell);
 
-    /*
-    //testing print of mapped q_points
-    if (s == 1)
-    {
-      DBGMSG("mapping q_points:\n");
-      for(unsigned int q=0; q < q_points.size(); q++)
-      {
-        std::cout << q_points[q] << " | ";
-      }
-      std::cout << "\n";
-      for(unsigned int q=0; q < q_points.size(); q++)
-      {
-        std::cout << q_points_mapped[q] << " | ";
-      }
-      std::cout << "\n";
-    }
-    //*/
-    /*
-    //in refinement=3 this cell is enriched but does not cross any well
-    if (cell->index() == 33)
-    {
-      DBGMSG("integration:s_jakobian: %f cell_jakobian: %f\n",squares[s].mapping.jakobian(),cell_jakobian);
-      DBGMSG("number of wells affecting this cell: %d\n", n_wells);
-    }
-    //*/
+    
+//     //testing print of mapped q_points
+//     if (s == 1)
+//     {
+//       DBGMSG("mapping q_points:\n");
+//       for(unsigned int q=0; q < q_points.size(); q++)
+//       {
+//         std::cout << q_points[q] << " | ";
+//       }
+//       std::cout << "\n";
+//       for(unsigned int q=0; q < q_points.size(); q++)
+//       {
+//         std::cout << q_points_mapped[q] << " | ";
+//       }
+//       std::cout << "\n";
+//     }
+//     //
+//     
+//     //in refinement=3 this cell is enriched but does not cross any well
+//     if (cell->index() == 33)
+//     {
+//       DBGMSG("integration:s_jakobian: %f cell_jakobian: %f\n",squares[s].mapping.jakobian(),cell_jakobian);
+//       DBGMSG("number of wells affecting this cell: %d\n", n_wells);
+//     }
+    //
     jacobian = squares[s].mapping.jakobian(); //square.mapping.jakobian = area of the square
     
     for(unsigned int q=0; q < q_points.size(); q++)
@@ -582,84 +858,84 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
 #endif
       } //for w
       
-      /*
-      unsigned int index = dofs_per_cell; //index in the vector of values and gradients
-      for(unsigned int w = 0; w < n_wells; w++) //W
-      { 
-        //if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q])))
-        //  continue;
-        Well * well = xdata->get_well(w);
-        //gradient of xfem function needn't be mapped (it is computed in real coordinates)
-        xshape = well->global_enrich_value(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
-        xshape_grad = well->global_enrich_grad(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
-        
-        for(unsigned int k = 0; k < dofs_per_cell; k++)
-        { 
-          
-        }
-        for(unsigned int k = 0; k < dofs_per_cell; k++) //Ne
-        { 
-          //if(xdata->global_enriched_dofs(w)[k] != 0) 
-          //{
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-            if(n_wells_inside > 0)
-              shape_val_vec[index] = 0;   // giving zero for sure (initialized with zeros)
-#endif
-            shape_grad_vec[index] = 0;  // giving zero for sure (Tensor<dim> is also initialized with zeros)
-            for(unsigned int l = 0; l < dofs_per_cell; l++) //N
-            {
-              
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-              if(n_wells_inside > 0)
-              {
-                shape_val_vec[index] += 
-                       node_weights[w*dofs_per_cell + l] *
-                       //fe->shape_value(l, q_points_mapped[q]) *    // from weight function                                     
-                       //fe->shape_value(k, q_points_mapped[q]) *
-                       temp_fe_values.shape_value(l,q) *
-                       temp_fe_values.shape_value(k,q) *
-                       xshape;
-              }
-#endif
-                       
-              //gradients of shape functions need to be mapped (computed on the unit cell)
-              //scale_to_unit means inverse scaling
-              shape_grad_vec[index] += 
-                       node_weights[w*dofs_per_cell + l] *
-                       ( temp_fe_values.shape_grad(l,q) *
-                        //  cell_mapping.scale_inverse(
-                        //    fe->shape_grad(l, q_points_mapped[q]) ) *    // from weight function                                     
-                         //fe->shape_value(k, q_points_mapped[q]) *
-                         temp_fe_values.shape_value(k,q) *
-                         xshape
-                         +
-                         //fe->shape_value(l, q_points_mapped[q]) *   // from weight function 
-                         temp_fe_values.shape_value(l,q) *
-                         temp_fe_values.shape_grad(k,q) *
-                         //cell_mapping.scale_inverse(
-                         //   fe->shape_grad(k, q_points_mapped[q]) ) *
-                         xshape
-                         +
-                         //fe->shape_value(l, q_points_mapped[q]) *   // from weight function 
-                         //fe->shape_value(k, q_points_mapped[q]) *
-                         temp_fe_values.shape_value(l,q) *
-                         temp_fe_values.shape_value(k,q) *
-                         xshape_grad
-                       );
-            } //for l
-            index ++;
-          //} //if
-        } //for k
-        
-#ifdef SOURCES //----------------------------------------------------------------------------sources
-        //DBGMSG("index=%d\n",index);
-        //DBGMSG("shape_val_vec.size=%d\n",shape_val_vec.size());
-        if(n_wells_inside > 0)
-          shape_val_vec[index] = -1.0;  //testing function of the well
-#endif
-      } //for w          
-      
-      */
+//       
+//       unsigned int index = dofs_per_cell; //index in the vector of values and gradients
+//       for(unsigned int w = 0; w < n_wells; w++) //W
+//       { 
+//         //if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q])))
+//         //  continue;
+//         Well * well = xdata->get_well(w);
+//         //gradient of xfem function needn't be mapped (it is computed in real coordinates)
+//         xshape = well->global_enrich_value(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
+//         xshape_grad = well->global_enrich_grad(mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
+//         
+//         for(unsigned int k = 0; k < dofs_per_cell; k++)
+//         { 
+//           
+//         }
+//         for(unsigned int k = 0; k < dofs_per_cell; k++) //Ne
+//         { 
+//           //if(xdata->global_enriched_dofs(w)[k] != 0) 
+//           //{
+// #ifdef SOURCES //----------------------------------------------------------------------------sources
+//             if(n_wells_inside > 0)
+//               shape_val_vec[index] = 0;   // giving zero for sure (initialized with zeros)
+// #endif
+//             shape_grad_vec[index] = 0;  // giving zero for sure (Tensor<dim> is also initialized with zeros)
+//             for(unsigned int l = 0; l < dofs_per_cell; l++) //N
+//             {
+//               
+// #ifdef SOURCES //----------------------------------------------------------------------------sources
+//               if(n_wells_inside > 0)
+//               {
+//                 shape_val_vec[index] += 
+//                        node_weights[w*dofs_per_cell + l] *
+//                        //fe->shape_value(l, q_points_mapped[q]) *    // from weight function                                     
+//                        //fe->shape_value(k, q_points_mapped[q]) *
+//                        temp_fe_values.shape_value(l,q) *
+//                        temp_fe_values.shape_value(k,q) *
+//                        xshape;
+//               }
+// #endif
+//                        
+//               //gradients of shape functions need to be mapped (computed on the unit cell)
+//               //scale_to_unit means inverse scaling
+//               shape_grad_vec[index] += 
+//                        node_weights[w*dofs_per_cell + l] *
+//                        ( temp_fe_values.shape_grad(l,q) *
+//                         //  cell_mapping.scale_inverse(
+//                         //    fe->shape_grad(l, q_points_mapped[q]) ) *    // from weight function                                     
+//                          //fe->shape_value(k, q_points_mapped[q]) *
+//                          temp_fe_values.shape_value(k,q) *
+//                          xshape
+//                          +
+//                          //fe->shape_value(l, q_points_mapped[q]) *   // from weight function 
+//                          temp_fe_values.shape_value(l,q) *
+//                          temp_fe_values.shape_grad(k,q) *
+//                          //cell_mapping.scale_inverse(
+//                          //   fe->shape_grad(k, q_points_mapped[q]) ) *
+//                          xshape
+//                          +
+//                          //fe->shape_value(l, q_points_mapped[q]) *   // from weight function 
+//                          //fe->shape_value(k, q_points_mapped[q]) *
+//                          temp_fe_values.shape_value(l,q) *
+//                          temp_fe_values.shape_value(k,q) *
+//                          xshape_grad
+//                        );
+//             } //for l
+//             index ++;
+//           //} //if
+//         } //for k
+//         
+// #ifdef SOURCES //----------------------------------------------------------------------------sources
+//         //DBGMSG("index=%d\n",index);
+//         //DBGMSG("shape_val_vec.size=%d\n",shape_val_vec.size());
+//         if(n_wells_inside > 0)
+//           shape_val_vec[index] = -1.0;  //testing function of the well
+// #endif
+//       } //for w          
+//       
+//       
       //filling cell matrix now
       //additions to matrix A,R,S from LAPLACE---------------------------------------------- LAPLACE
       
@@ -710,11 +986,11 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
     } //for q 
   } //for s
   
-  /*
-  std::cout << "cell_matrix" << std::endl;
-  cell_matrix.print_formatted(std::cout);
-  std::cout << std::endl;
-    */
+  
+//   std::cout << "cell_matrix" << std::endl;
+//   cell_matrix.print_formatted(std::cout);
+//   std::cout << std::endl;
+    
   
   //------------------------------------------------------------------------------ BOUNDARY INTEGRAL
 #ifdef BC_NEWTON //------------------------------------------------------------------------bc_newton
@@ -738,17 +1014,17 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
       //node_weights.clear();
       //node_weights.resize(dofs_per_cell,0);
       
-      /*
-      unsigned int n_enriched_dofs=0;
-      for(unsigned int i = 0; i < dofs_per_cell; i++)
-      {
-        if(xdata->weights(w)[i] != 0)        
-        {
-          //node_weights[i] = 1; //enriched
-          n_enriched_dofs ++;
-        }
-      }
-      */
+      
+//       unsigned int n_enriched_dofs=0;
+//       for(unsigned int i = 0; i < dofs_per_cell; i++)
+//       {
+//         if(xdata->weights(w)[i] != 0)        
+//         {
+//           //node_weights[i] = 1; //enriched
+//           n_enriched_dofs ++;
+//         }
+//       }
+      
       
 //       DBGMSG("Printing node_weights:  [");
 //         for(unsigned int a=0; a < node_weights.size(); a++)
@@ -816,12 +1092,11 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
                                     shape_val_vec[i] *
                                     shape_val_vec[j] *
                                     jxw );
-              /* for debugging
-              well_cell_matrix(i,j) += ( well->perm2aquifer() *
-                                    shape_val_vec[i] *
-                                    shape_val_vec[j] *
-                                    jxw );
-              //*/
+//               // for debugging
+//               well_cell_matrix(i,j) += ( well->perm2aquifer() *
+//                                     shape_val_vec[i] *
+//                                     shape_val_vec[j] *
+//                                     jxw );
           }
       } //end of iteration over q_points
     } //if
@@ -849,201 +1124,7 @@ void Adaptive_integration::integrate_xfem( FullMatrix<double> &cell_matrix,
     
 }
 
-
-
-
-
-void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, bool real, bool show)
-{
-  //DBGMSG("gnuplotting\n");
-  std::string fgnuplot_ref = "adaptive_integration_refinement.dat",
-              fgnuplot_qpoints = "adaptive_integration_qpoints.dat",
-              script_file = "g_script_adapt.p";
-  
-  try
-    {
-        Gnuplot g1("adaptive_integration");
-        //g1.savetops("test_output");
-        //g1.set_title("adaptive_integration\nrefinement");
-        //g1.set_grid();
-        
-        /*
-        std::vector<double> x(squares.size()), y(squares.size());
-
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < 4; j++) 
-          {
-            x.push_back(squares[i].vertices[j][0]);          
-            y.push_back(squares[i].vertices[j][1]);
-          }
-        }
-        */
-        
-        
-        std::ofstream myfile1;
-        myfile1.open (output_dir + fgnuplot_ref);
-        if (myfile1.is_open()) 
-        {
-       
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < 4; j++) 
-          {
-            if(real)
-              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j]);
-              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
-            else
-              myfile1 << squares[i].vertices[j];
-            
-            myfile1 << "\n";
-          }
-          if(real)
-              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[0]);
-              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
-            else
-              myfile1 << squares[i].vertices[0];
-
-          myfile1 << "\n\n";
-        }
-        std::cout << left << setw(53) <<  "Adaptive XFEM element refinement written in: " << fgnuplot_ref << endl;
-        }
-        else 
-        { 
-          std::cout << "Coud not write refinement for gnuplot.\n";
-        }
-        myfile1.close();
-        
-        std::ofstream myfile2;
-        myfile2.open (output_dir + fgnuplot_qpoints);
-        if (myfile2.is_open()) 
-        {
-       
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < squares[i].gauss->get_points().size(); j++) 
-          {
-            if(real)
-              myfile2 << mapping->transform_unit_to_real_cell(cell, squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-              //myfile2 << cell_mapping.map_unit_to_real(squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-            else
-              myfile2 << squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]);
-             
-            myfile2 << "\n";
-          }
-        }
-        
-        std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
-        }
-        else 
-        { 
-          std::cout << "Coud not write qpoints for gnuplot." << std::endl;
-        }
-        myfile2.close();
-        
-        //g1.set_style("lines").plotfile_xy("adaptive_integration_refinement.dat",1,2,"Adaptive integration refinement");
-        
-        //g1.set_multiplot();
-        
-        //creating command
-        std::ostringstream strs;
-        strs << "set terminal x11\n";
-        strs << "set size ratio -1\n";
-        strs << "set parametric\n";
-        strs << "set trange [0:2*pi]\n";
-        
-        //unsigned int w = 0;
-        for(unsigned int w = 0; w < xdata->n_wells(); w++)
-        {
-          /* # parametricly plotted circle
-           * set parametric
-           * set trange [0:2*pi]
-           * # Parametric functions for a circle
-           * fx(t) = r*cos(t)
-           * fy(t) = r*sin(t)
-           * plot fx(t),fy(t)
-           */
-          if(real)
-          {
-            strs << "fx" << w << "(t) = " << xdata->get_well(w)->center()[0] 
-                << " + "<< xdata->get_well(w)->radius() << "*cos(t)\n";
-            strs << "fy" << w << "(t) = " << xdata->get_well(w)->center()[1] 
-                << " + "<< xdata->get_well(w)->radius() << "*sin(t)\n";
-          }
-          else
-          {
-            strs << "fx" << w << "(t) = " << m_well_center[w][0] 
-                << " + "<< m_well_radius[w] << "*cos(t)\n";
-            strs << "fy" << w << "(t) = " << m_well_center[w][1] 
-                << " + "<< m_well_radius[w] << "*sin(t)\n";
-          }
-        }
-        
-        strs << "plot \"" << "adaptive_integration_refinement.dat\" using 1:2 with lines,\\\n"
-             << "\"" << "adaptive_integration_qpoints.dat\" using 1:2 with points lc rgb \"light-blue\",\\\n";
-        for(unsigned int w = 0; w < xdata->n_wells(); w++)
-        {
-          strs << "fx" << w << "(t),fy" << w << "(t)";
-          if(w != xdata->n_wells()-1) 
-            strs << ",\\\n";
-        } 
-        
-        //saving gnuplot script
-        std::ofstream myfile3;
-        myfile3.open (output_dir + script_file);
-        if (myfile3.is_open()) 
-        {
-          // header
-          myfile3 << "# Gnuplot script for printing adaptively refined element.\n" <<
-                     "# Made by Pavel Exner.\n#\n" <<
-                     "# Run the script in gnuplot:\n" <<
-                     "# > load \"" << script_file << "\"\n#\n" <<
-                     "# Data files used:\n" << 
-                     "# " << fgnuplot_ref << "\n"
-                     "# " << fgnuplot_qpoints << "\n" 
-                     "#\n#" << std::endl;
-          // script
-          myfile3 << strs.str() << std::endl;
-          
-          std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
-        }
-        else 
-        { 
-          std::cout << "Coud not write gnuplot script.\n";
-        }
-        myfile3.close();
-        
-        
-        //show the plot by gnuplot if show == true
-        if(show)
-        {
-          //finally plot
-          g1.cmd(strs.str());
-        
-          //g1.unset_multiplot();
-          
-          //g1.set_style("points").plot_xy(x,y,"user-defined points 2d");
-        
-          //g1.showonscreen(); // window output
-         
-          #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-          std::cout << std::endl << "GNUPLOT output on cell " << cell->index() << " ... Press ENTER to continue..." << std::endl;
-
-          std::cin.clear();
-          std::cin.ignore(std::cin.rdbuf()->in_avail());
-          std::cin.get();
-          #endif
-        }
-        
-    return;
-    
-    }
-    catch (GnuplotException ge)
-    {
-      std::cout << ge.what() << std::endl;
-    }
-}
-
+//*/
 
 //OBSOLETE
 /*

@@ -1,5 +1,5 @@
-#ifndef Model_base_h
-#define Model_base_h
+#ifndef ModelBase_h
+#define ModelBase_h
 
 #include <fstream>
 #include <iostream>
@@ -20,7 +20,7 @@ class Well;
  * This is the base class for multi-aquifer model with wells. 
  * Here the simple rutines of setting and getting parameters are implemented.
  */
-class Model_base
+class ModelBase
 {
 public:
   ///type of grid creation
@@ -31,15 +31,31 @@ public:
     load_circle //for loading flags and recreating circle mesh
   } grid_create_type;
   
+  typedef unsigned int OutputOptionsType;
+  ///type of grid creation
+  enum OutputOptions {
+    output_solution = 0x001,
+    output_decomposed = 0x002,
+    output_error = 0x004,
+    output_matrix = 0x008,
+    output_adaptive_plot = 0x010,
+    output_gmsh_mesh = 0x020,
+    output_vtk_mesh = 0x040,
+    output_sparsity_pattern = 0x080,
+    output_shape_functions = 0x100,
+    //other free ...
+    output_all = 0x800
+  }; 
+  
   ///Default constructor.
-  Model_base();
+  ModelBase();
   
   ///Constructor.
   /**
    * @param name is the name of model (creates output directory with this name)
    * @param n_aquifers is the number of aquifers (not used sofar)
    */
-  Model_base(const std::string &name, 
+  ModelBase(const std::string &name, 
              const unsigned int &n_aquifers=1);
   
   ///Constructor.
@@ -48,7 +64,7 @@ public:
    * @param name is the name of model (creates output directory with this name)
    * @param n_aquifers is the number of aquifers (not used sofar)
    */
-  Model_base(const std::vector<Well*> &wells,
+  ModelBase(const std::vector<Well*> &wells,
              const std::string &name, 
              const unsigned int &n_aquifers=1);
   
@@ -57,10 +73,10 @@ public:
    * @param model is another model to be copied
    * @param name is a new name for the model   
    */
-  Model_base(const Model_base &model, std::string name);
+  ModelBase(const ModelBase &model, std::string name);
   
   /// Destructor
-  virtual ~Model_base ();
+  virtual ~ModelBase ();
     
   /** @brief Runs all the computations procedures.
    * 
@@ -97,15 +113,13 @@ public:
                                              const unsigned int &cycle=0, 
                                              const unsigned int &m_aquifer=0) = 0;
                                              
-  virtual std::pair<double,double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
+  virtual std::pair<double,double> integrate_difference(Vector<double>& diff_vector, 
+                                                        const Function<2> &exact_solution);
   
                                              
   /** @name Getters
    */
   //@{
-  ///Returns time of the last run - includes only methods @p setup, @p assemble and @p solve.
-  inline double get_last_run_time()
-  { return last_run_time_;}
                                              
   /** Returns constant reference to the computed solution.
      */
@@ -120,18 +134,33 @@ public:
  // virtual void get_support_points (std::vector<Point<2> > &support_points) = 0;
   
   ///Getter of initial refinement.
-  inline unsigned int get_refinement() const
-  {return init_refinement;}
+  inline unsigned int initial_refinement() const
+  {return initial_refinement_;}
   
   ///Getter of transmisivity
   ///@param m_aquifer is the number aquifer.
   inline double get_transmisivity(const unsigned int &m_aquifer) const
   {return transmisivity[m_aquifer];}
   
+  /// Returns model name.
+  inline std::string name() const
+  { return name_; }
   
-  ///Returns number of iterations
+  /// Returns cycle number.
+  inline unsigned int cycle() const
+  { return cycle_; }
+  
+  /// Returns number of iterations
   inline unsigned int solver_iterations() const
-  {return solver_it; }
+  {return solver_iterations_; }
+  
+  /// Returns time of the last run - includes only methods @p setup, @p assemble and @p solve.
+  inline double last_run_time() const
+  { return last_run_time_;}
+  
+  /// Returns number of aquifers.
+  inline unsigned int n_aquifers() const
+  { return n_aquifers_; }
   
   //@}
   
@@ -154,8 +183,8 @@ public:
   
   ///Setter of initial refinement level. Default is 0.
   ///@param ref initial refinement level to be set
-  inline void set_refinement(const double &ref)
-  {init_refinement = ref;}
+  inline void set_initial_refinement(unsigned int ref)
+  {initial_refinement_ = ref;}
   
   ///Setter of the main output directory.
   ///@param path file path a directory
@@ -164,8 +193,8 @@ public:
   ///Sets the name of the model and creates individual output directory. Default is 'model_base'.
   ///@param name is the name to be set
   inline void set_name(const std::string &name)
-  { this->name = name;
-    set_output_dir(main_output_dir); //reseting output directory
+  { this->name_ = name;
+    set_output_dir(main_output_dir_); //reseting output directory
   }
   
   ///Sets the name of the model and creates individual output directory. Default is 'model_base'.
@@ -200,13 +229,8 @@ public:
     rhs_function = func;
   }
   
-  ///Sets output of the system matrix on/off. Default is false.
-  inline void set_matrix_output(bool matrix_output)
-  { matrix_output_ = matrix_output;}
-  
-  ///Sets output of the sparsity pattern on/off. Default is false.
-  inline void set_sparsity_pattern_output(bool sparsity_pattern_output)
-  { sparsity_pattern_output_ = sparsity_pattern_output;}
+  inline void set_output_options(OutputOptionsType output_options)
+  { output_options_ = output_options;}
   //@}
     
   inline void print_parameters(std::ostream &stream)
@@ -273,10 +297,10 @@ protected:
   bool is_adaptive;
   
   ///initial refinement of the grid
-  unsigned int init_refinement;
+  unsigned int initial_refinement_;
  
   ///number of aquifers
-  unsigned int n_aquifers;
+  unsigned int n_aquifers_;
   
   ///transmisivity of the aquifer
   std::vector<double> transmisivity;
@@ -287,22 +311,31 @@ protected:
   ///last run time (setup, assemble, solve)
   double last_run_time_;
   
-  unsigned int solver_it;
-  bool matrix_output_,
-       sparsity_pattern_output_;
+  unsigned int solver_iterations_;
   
   /** @brief Path to output directory.
    * Name should be defined before, else name="Model".
    * The path is set to "main_output_dir/output_dir"
    */
-  std::string output_dir;
+  std::string output_dir_;
   ///path to the main output directory
-  std::string main_output_dir;
+  std::string main_output_dir_;
   
   ///name of model (name of created output directory)
-  std::string name;
+  std::string name_;
+  
   //@}
-           
+  
+  ///@name Output Options
+  //@{
+    OutputOptionsType output_options_;
+  
+    static const OutputOptionsType default_output_options_;
+    static const unsigned int adaptive_integration_refinement_level_;
+    static const unsigned int solver_max_iter_;
+    static const double solver_tolerance_;
+    static const double output_element_tolerance_;
+  //@}
 };
 
-#endif  //Model_base_h
+#endif  //ModelBase_h

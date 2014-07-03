@@ -35,6 +35,7 @@
 #include <deal.II/numerics/vector_tools.h>
 
 //output
+#include <deal.II/fe/fe_dgq.h>
 #include <deal.II/numerics/data_out.h>
 #include <fstream>
 #include <iostream>
@@ -48,9 +49,8 @@
 #include "well.hh"
 #include "data_cell.hh"
 
-
 Model::Model ():
-    Model_base::Model_base(),
+    ModelBase::ModelBase(),
     //constant
     triangulation(NULL),
     refinement_percentage(0.3),
@@ -59,13 +59,13 @@ Model::Model ():
     fe (1),
     quadrature_formula(2)
 {
-  name = "Default_Adaptive_FEM";
+  name_ = "Default_Adaptive_FEM";
   dof_handler = new DoFHandler<2>();
 }
 
 Model::Model (const std::string &name,
               const unsigned int &n_aquifers):
-    Model_base::Model_base(name,n_aquifers),
+    ModelBase::ModelBase(name,n_aquifers),
     //constant
     triangulation(NULL),
     refinement_percentage(0.3),
@@ -80,7 +80,7 @@ Model::Model (const std::string &name,
 Model::Model (const std::vector<Well*> &wells, 
               const std::string &name,
               const unsigned int &n_aquifers):
-    Model_base::Model_base(wells,name,n_aquifers),
+    ModelBase::ModelBase(wells,name,n_aquifers),
     //constant
     triangulation(NULL),
     refinement_percentage(0.3),
@@ -187,7 +187,7 @@ void Model::make_grid ()
     {
       //square grid
       GridGenerator::hyper_rectangle<2>(coarse_tria, down_left, up_right);
-      coarse_tria.refine_global (init_refinement); 
+      coarse_tria.refine_global (initial_refinement_); 
     }
   }
   
@@ -200,7 +200,7 @@ void Model::make_grid ()
     
     //MESH OUTPUT - coarse grid = (refinement flags written in output)
     std::stringstream filename1;
-    filename1 << output_dir << "coarse_grid.msh";
+    filename1 << output_dir_ << "coarse_grid.msh";
  
     std::ofstream output (filename1.str());
   
@@ -268,7 +268,7 @@ void Model::refine_grid ()
   /*
   //MESH OUTPUT - LAST USED MESH
    std::stringstream filename1;
-   filename1 << output_dir << "temp_grid.msh";
+   filename1 << output_dir_ << "temp_grid.msh";
  
    std::ofstream output (filename1.str());
   
@@ -389,14 +389,14 @@ void Model::setup_system ()
   //prints number of nozero elements in block_c_sparsity
   std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
   
-  if(sparsity_pattern_output_)
+  if(output_options_ & OutputOptions::output_sparsity_pattern)
   {
     //prints whole BlockSparsityPattern
-    std::ofstream out1 (output_dir + "block_sp_pattern.1");
+    std::ofstream out1 (output_dir_ + "block_sp_pattern.1");
     block_sp_pattern.print_gnuplot (out1);
 
     //prints SparsityPattern of the block (0,0)
-    std::ofstream out2 (output_dir + "00_sp_pattern.1");
+    std::ofstream out2 (output_dir_ + "00_sp_pattern.1");
     block_sp_pattern.block(0,0).print_gnuplot (out2);
   }
   
@@ -609,15 +609,18 @@ void Model::add_data_to_cell (const DoFHandler<2>::active_cell_iterator cell, We
 
 void Model::assemble_system ()
 {
-  FEValues<2> fe_values (fe, quadrature_formula,
-    update_gradients | update_JxW_values);
+  // set update flags
+  UpdateFlags update_flags  = update_gradients | update_JxW_values;
+  if (rhs_function) update_flags = update_flags | update_values | update_quadrature_points;
+  
+  FEValues<2> fe_values (fe, quadrature_formula,update_flags);
   
   const unsigned int dofs_per_cell = fe.dofs_per_cell;
   const unsigned int n_q_points    = quadrature_formula.size();
 
   
   FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
-  //Vector<double>       cell_rhs (dofs_per_cell);	//HOMOGENOUS NEUMANN -> = 0
+  Vector<double>       cell_rhs (dofs_per_cell);	//HOMOGENOUS NEUMANN -> = 0
   
   std::vector<unsigned int> local_dof_indices (dofs_per_cell);
   
@@ -641,7 +644,7 @@ void Model::assemble_system ()
     cell->get_dof_indices (local_dof_indices);
     
     cell_matrix = 0;
-    //cell_rhs = 0;		//HOMOGENOUS NEUMANN -> = 0
+    cell_rhs = 0;		//HOMOGENOUS NEUMANN -> = 0
     
     //INTEGRALS FOR BLOCK(0,0) ... matrix A
     for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -661,15 +664,18 @@ void Model::assemble_system ()
         //}
         }
         
-    /* HOMOGENOUS NEUMANN -> = 0
-    for (unsigned int i=0; i<dofs_per_cell; ++i)
-      for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
-      {
-        cell_rhs(i) += (fe_values.shape_value (i, q_point) *
-                        0 *
-                        fe_values.JxW (q_point));
-      }
-    //*/
+    if(rhs_function != nullptr)
+    {
+      // HOMOGENOUS NEUMANN -> = 0, else source term
+      for (unsigned int i=0; i<dofs_per_cell; ++i)
+        for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+        {
+          cell_rhs(i) += (fe_values.shape_value (i, q_point) *
+                          rhs_function->value(fe_values.quadrature_point(q_point)) * // 0 for homohenous neumann
+                          fe_values.JxW (q_point));
+        } 
+      block_system_rhs.add(local_dof_indices, cell_rhs);
+    }
 
     //FILLING MATRIX BLOCK(0,0) ... matrix A
     for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -677,11 +683,6 @@ void Model::assemble_system ()
         block_matrix.block(0,0).add ( local_dof_indices[i],
                                       local_dof_indices[j],
                                       cell_matrix(i,j) );
-
-    /* HOMOGENOUS NEUMANN -> = 0
-      for (unsigned int i=0; i<dofs_per_cell; ++i)
-      system_rhs(local_dof_indices[i]) += cell_rhs(i);
-    //*/
   
     //WELLS
     if(cell->user_pointer() != NULL)
@@ -798,7 +799,7 @@ void Model::solve ()
 {
   //block_matrix.print_formatted(std::cout);
   //block_system_rhs.print(std::cout);
-  SolverControl	solver_control(4000, 1e-10);
+  SolverControl	solver_control(solver_max_iter_, solver_tolerance_);
   PrimitiveVectorMemory<BlockVector<double> > vector_memory;
   //this solver is used for block matrices and vectors
   SolverCG<BlockVector<double> > solver(solver_control, vector_memory);
@@ -808,7 +809,7 @@ void Model::solve ()
 			  
   solver.solve(block_matrix, block_solution, block_system_rhs, preconditioner); //PreconditionIdentity());
   
-  solver_it = solver_control.last_step();
+  solver_iterations_ = solver_control.last_step();
   std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
   
   hanging_node_constraints.distribute(block_solution);
@@ -818,28 +819,31 @@ void Model::solve ()
 
 void Model::output_results (const unsigned int cycle)
 {
-  // MATRIX OUTPUT
-  if(matrix_output_)
-    write_block_sparse_matrix(block_matrix,"fem_matrix");
+    // MATRIX OUTPUT
+    if(output_options_ & OutputOptions::output_matrix)
+        write_block_sparse_matrix(block_matrix,"fem_matrix");
   
-   //MESH OUTPUT
-   std::stringstream filename;
+    //MESH OUTPUT
+  
+    if(output_options_ & OutputOptions::output_gmsh_mesh)
+    {
+        std::stringstream filename;
+        filename << output_dir_ << "real_grid_" << cycle;
+        std::ofstream output (filename.str() + ".msh");
+        GridOut grid_out;
+        grid_out.write_msh<2> (*triangulation, output);
+        
+            //output of refinement flags of persistent triangulation
+        std::stringstream filename1;
+        filename1 << output_dir_ << "ref_flags_" << cycle << ".ptf";
+        output.close();
+        output.clear();
+        output.open(filename1.str());
+        //std::ofstream output1 (filename1.str());
+        triangulation->write_flags(output);
+    }
    
-   //output of real grid
-   filename << output_dir << "real_grid_" << cycle << ".msh";
-   std::ofstream output (filename.str());
-   GridOut grid_out;
-   grid_out.write_msh<2> (*triangulation, output);
-   
-   //output of refinement flags of persistent triangulation
-   std::stringstream filename1;
-   filename1 << output_dir << "ref_flags_" << cycle << ".ptf";
-   output.close();
-   output.clear();
-   output.open(filename1.str());
-   //std::ofstream output1 (filename1.str());
-   //triangulation->write_flags(output1);
-   triangulation->write_flags(output);
+
    
    
    //SOLUTION OUTPUT
@@ -851,7 +855,7 @@ void Model::output_results (const unsigned int cycle)
 
    DBGMSG("output_results\n");
    std::stringstream filename2;
-   filename2 << output_dir << "solution_" << cycle << ".vtk";
+   filename2 << output_dir_ << "solution_" << cycle << ".vtk";
   
    std::cout << "output written in: " << filename2.str() << std::endl;
    
@@ -864,29 +868,6 @@ void Model::output_results (const unsigned int cycle)
    
 }
 
-
-/*                              
-void Model::run (const unsigned int cycle)
-{
-  if (cycle == 0)
-    make_grid ();
-  else if (is_adaptive)
-    refine_grid();
-  std::cout << "Number of active cells:       "
-            << triangulation->n_active_cells()
-            << std::endl;
-  
-  std::cout << "Total number of cells: "
-            << triangulation->n_cells()
-            << std::endl;
-  
-  if(triangulation_changed)
-    setup_system ();
-  
-  assemble_system ();
-  solve ();
-}
-*/
 
 const dealii::Vector< double >& Model::get_distributed_solution()
 {
@@ -910,7 +891,7 @@ void Model::output_distributed_solution(const std::string& mesh_file, const std:
 void Model::output_distributed_solution(const dealii::Triangulation< 2 >& dist_tria, const unsigned int& cycle)
 {
   // MATRIX OUTPUT
-  if(matrix_output_)
+  if(output_options_ & OutputOptions::output_matrix)
   {
     std::stringstream matrix_name;
     matrix_name << "matrix_" << cycle;
@@ -943,7 +924,7 @@ void Model::output_distributed_solution(const dealii::Triangulation< 2 >& dist_t
   data_out.build_patches ();
 
   std::stringstream filename;
-  filename  << output_dir << "fem_dist_solution_" << cycle << ".vtk";
+  filename  << output_dir_ << "fem_dist_solution_" << cycle << ".vtk";
    
   std::ofstream output (filename.str());
   data_out.write_vtk (output);
@@ -969,7 +950,7 @@ void Model::output_foreign_results(const unsigned int cycle, const Vector<double
    data_out.build_patches ();
 
    std::stringstream filename;
-   filename << output_dir << "solution_foreign_" << cycle << ".vtk";
+   filename << output_dir_ << "solution_foreign_" << cycle << ".vtk";
    
    std::ofstream output (filename.str());
    data_out.write_vtk (output);
@@ -979,6 +960,145 @@ void Model::output_foreign_results(const unsigned int cycle, const Vector<double
 
 
 
+std::pair< double, double > Model::integrate_difference(dealii::Vector< double >& diff_vector, 
+                                                        const Function< 2 >& exact_solution)
+{
+    std::pair<double,double> norms;
+
+    std::cout << "Computing l2 norm of difference...";
+    unsigned int dofs_per_cell = fe.dofs_per_cell,
+                 index = 0;
+                 
+    double exact_value, value, cell_norm, total_norm, nodal_norm, total_nodal_norm;
+    double distance_treshold = 5.0;
+             
+    QGauss<2> temp_quad(3);
+    FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
+    std::vector<unsigned int> local_dof_indices (temp_fe_values.dofs_per_cell);   
+  
+    //Check if the dofs of FE_DGQ are corresponding.
+//         FE_DGQ<2> temp_fe(0);
+//         DoFHandler<2>    temp_dof_handler;
+//         ConstraintMatrix hanging_node_constraints;
+//         temp_dof_handler.initialize(*triangulation,temp_fe);
+//         DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+//         hanging_node_constraints.close();
+//         Vector<double> my_vector(dof_handler->get_tria().n_active_cells());
+//         DoFHandler<2>::active_cell_iterator my_cell = temp_dof_handler.begin_active();
+//         std::vector<unsigned int> my_local_dof_indices (temp_fe.dofs_per_cell);  
+        
+    Vector<double> diff_nodal_vector(dof_handler->n_dofs());
+    diff_vector.reinit(dof_handler->get_tria().n_active_cells());
+    
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+        cell_norm = 0;
+        //DBGMSG("cell: %d\n",cell->index());
+        // is there is NOT a user pointer on the cell == is not enriched?
+        temp_fe_values.reinit(cell);
+        cell->get_dof_indices(local_dof_indices);
+        
+//          if (cell->user_pointer() == nullptr)
+        
+//         if(cell->center().distance(wells[0]->center()) 
+//             > (wells[0]->radius() + cell->diameter()/2) + distance_treshold)
+         {
+            for(unsigned int q=0; q < temp_fe_values.n_quadrature_points; q++)
+            {
+                value = 0;
+                for(unsigned int i=0; i < dofs_per_cell; i++)
+                    value += block_solution(local_dof_indices[i]) * temp_fe_values.shape_value(i,q);
+                
+                exact_value = exact_solution.value(temp_fe_values.quadrature_point(q));
+                value = value - exact_value;                         // u_h - u
+                cell_norm += value * value * temp_fe_values.JxW(q);  // (u_h-u)^2 * JxW
+            }
+        }
+        //TODO: use also adaptive integration
+//         else
+//         { 
+//             Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping());
+//             
+//             //unsigned int refinement_level = 15;
+//             for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
+//             {
+//                 //if(t>0) DBGMSG("refinement level: %d\n", t);
+//                 if ( ! adaptive_integration.refine_edge())
+//                 break;
+//                 if (t == adaptive_integration_refinement_level_-1)
+//                 {
+//                     // (output_dir, false, true) must be set to unit coordinates and to show on screen 
+//                     //adaptive_integration.gnuplot_refinement(output_dir_);
+//                 }
+//             }
+//             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
+//         }
+        
+        cell_norm = std::sqrt(cell_norm);// / cell->measure());   // square root
+        diff_vector[index] = cell_norm;     // save L2 norm on cell
+        
+    //Check if the dofs of FE_DGQ are corresponding.
+//         my_cell->get_dof_indices(my_local_dof_indices);
+//         my_vector[index] = my_local_dof_indices[0];
+//         ++my_cell;
+        
+        index ++;
+        
+        //node values should be exactly equal FEM dofs
+        for(unsigned int i=0; i < dofs_per_cell; i++)
+        {
+            nodal_norm = block_solution(local_dof_indices[i]) - exact_solution.value(cell->vertex(i));
+            diff_nodal_vector[local_dof_indices[i]] = std::abs(nodal_norm);
+        }
+    }
+    
+    total_nodal_norm = diff_nodal_vector.l2_norm();
+    total_norm = diff_vector.l2_norm();
+    std::cout << "\t" << total_norm << "\t vertex l2 norm: " << total_nodal_norm << std::endl;
+    
+    if(output_options_ & OutputOptions::output_error)
+    {
+        FE_DGQ<2> temp_fe(0);
+        DoFHandler<2>    temp_dof_handler;
+        ConstraintMatrix hanging_node_constraints;
+  
+        temp_dof_handler.initialize(*triangulation,temp_fe);
+  
+        DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+        hanging_node_constraints.close();
+  
+        //====================vtk output
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (temp_dof_handler);
+  
+        hanging_node_constraints.distribute(diff_vector);
+  
+        data_out.add_data_vector (diff_vector, "fem_error");
+        //Check if the dofs of FE_DGQ are corresponding.
+        //data_out.add_data_vector (my_vector, "my_vector");
+        data_out.build_patches ();
+
+        std::stringstream filename;
+        filename << output_dir_ << "model_error_" << cycle_ << ".vtk";
+   
+        std::ofstream output (filename.str());
+        if(output.is_open())
+        {
+            data_out.write_vtk (output);
+            data_out.clear();
+            std::cout << "\noutput(error) written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+        }
+    }
+    
+    return std::make_pair(total_nodal_norm, total_norm);
+}
 
 
 
@@ -992,31 +1112,6 @@ void Model::output_foreign_results(const unsigned int cycle, const Vector<double
  *                                OBSOLETE        
  * *******************************************************************
  */
-/*
-///OBSOLETE, UNUSED
-void Model::compute_solution_error()
-{
-  //std::vector<Point<2> > v;
-  //v = dof_handler->get_fe().get_generalized_support_points();
-  //std::vector<Point<2> > cell_support_points (fe.dofs_per_cell);  
-  std::vector<Point<2> > support_points (dof_handler->n_dofs()); 
-  solution_error.reinit(dof_handler->n_dofs());
-  solution_exact.reinit(dof_handler->n_dofs());
-  
-  Exact_solution exact_solution(wells[0].get_radius(),wells[0].GetPressureAtTop(),
-                                wells[0].GetPosition()(0));
-   
-  DoFTools::map_dofs_to_support_points<2>(fe_values.get_mapping(), dof_handler, support_points);
-  
-  for(unsigned int i=0; i < support_points.size(); i++)
-  {
-    solution_exact(i) = exact_solution.Value(support_points[i]);;
-    solution_error(i) = solution_exact(i) - block_solution.block(0)(i);
-    //std::cout << support_points[i] << "....." << solution_error(i)<< std::endl;
-  }
-  //std::cout << "error (L2norm):   " << solution_exact.l2_norm() << std::endl;
-}
-//*/
 
 ///OBSOLETE - finding cells in which the centers of the wells lie.
 /*

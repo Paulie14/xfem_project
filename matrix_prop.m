@@ -2,7 +2,7 @@ function [r,c,sym,pd] = matrix_prop(A)
 
 disp('dimensions and rank: ');
 [m,n] = size(A)
-r = rank(A,eps)
+%r = rank(A,eps)
 
 
 %{
@@ -14,7 +14,7 @@ else pd=0;
 endif
 %}
 
-
+%{
 disp('Positive definite:');
 
 pos_def = 0;
@@ -30,7 +30,7 @@ else
 	pd=0;
 endif
 
-%}
+
 
 disp('Symetry (=norm(A-AT)): ');
 norm_sym = norm(A-A');
@@ -41,6 +41,7 @@ else
 	disp('NO');
 	sym = 0;
 endif
+%}
 
 %computation of eigenvalues and condition number
 disp('Condition number:');

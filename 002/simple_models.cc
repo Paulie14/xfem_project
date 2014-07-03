@@ -148,7 +148,7 @@ void XModel_simple::make_grid()
     {
       //square grid
       GridGenerator::hyper_rectangle<2>(coarse_tria, down_left, up_right);
-      coarse_tria.refine_global (init_refinement); 
+      coarse_tria.refine_global (initial_refinement_); 
     }
   }
   
@@ -160,7 +160,7 @@ void XModel_simple::make_grid()
     triangulation->restore();
     //MESH OUTPUT - coarse grid = (refinement flags written in output)
     std::stringstream filename1;
-    filename1 << output_dir << "coarse_grid.msh";
+    filename1 << output_dir_ << "coarse_grid.msh";
  
     std::ofstream output (filename1.str());
   
@@ -171,7 +171,7 @@ void XModel_simple::make_grid()
   
   //MESH OUTPUT 
     std::stringstream filename1;
-    filename1 << output_dir << "grid.msh";
+    filename1 << output_dir_ << "grid.msh";
  
     std::ofstream output (filename1.str());
   
@@ -186,13 +186,13 @@ void XModel_simple::refine_grid()
 {
   // assuming all cells in enrichment area are of the same refinement level
   // and also of the same size in this particular case
-  double enriched_cell_diameter = 0;
-  double enrichment_radius = rad_enr;
-
-  if(xdata.size() > 0)
-    enriched_cell_diameter = xdata[0]->get_cell()->diameter();
-  if(r_enr.size() > 0)
-    enrichment_radius = r_enr[0];
+//   double enriched_cell_diameter = 0;
+//   double enrichment_radius = rad_enr;
+// 
+//   if(xdata.size() > 0)
+//     enriched_cell_diameter = xdata[0]->get_cell()->diameter();
+//   if(r_enr.size() > 0)
+//     enrichment_radius = r_enr[0];
   
   triangulation->set_all_refine_flags();
   
@@ -279,29 +279,45 @@ void XModel_simple::assemble_dirichlet()
     {
         //DBGMSG("cell: %d\n",cell->index());
         // is there is NOT a user pointer on the cell == is not enriched?
+        //if(cell->at_boundary())
+//         if(cell->center().distance(wells[0]->center()) < 4)
+//         if (cell->user_pointer() != nullptr)
+//         {   
+//             local_xdata = static_cast<XDataCell*>( cell->user_pointer() );
+//             
+//             for(unsigned int k = 0; k < GeometryInfo<2>::vertices_per_cell; k++) //M_w
+//                     {
+//                         for(unsigned int w = 0; w < local_xdata->n_wells(); w++) //W
+//                         {
+//                             if(local_xdata->global_enriched_dofs(w)[k] != 0)
+//                                 boundary_values[local_xdata->global_enriched_dofs(w)[k]] = exact_solution->a();
+//                         }
+//                     }
+//                 
+//             }
         
-        if(cell->at_boundary())
-        if (cell->user_pointer() != nullptr)
-        {   
-            local_xdata = static_cast<XDataCell*>( cell->user_pointer() );
-            
-            for(unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; face_no++)
-            {
-                if(cell->face(face_no)->at_boundary())
-                {
-                    for(unsigned int j = 0; j < GeometryInfo<2>::vertices_per_face; j++) //M_w
-                    {
-                        unsigned int k = GeometryInfo<2>::face_to_cell_vertices(face_no,j); //cell vertex index
-                        for(unsigned int w = 0; w < local_xdata->n_wells(); w++) //W
-                        {
-                            if(local_xdata->global_enriched_dofs(w)[k] != 0)
-                                boundary_values[local_xdata->global_enriched_dofs(w)[k]] = exact_solution->a();
-                        }
-                    }
-                }
-            }
-        }
-    }
+//         if(cell->at_boundary())
+//         if (cell->user_pointer() != nullptr)
+//         {   
+//             local_xdata = static_cast<XDataCell*>( cell->user_pointer() );
+//             
+//             for(unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; face_no++)
+//             {
+//                 if(cell->face(face_no)->at_boundary())
+//                 {
+//                     for(unsigned int j = 0; j < GeometryInfo<2>::vertices_per_face; j++) //M_w
+//                     {
+//                         unsigned int k = GeometryInfo<2>::face_to_cell_vertices(face_no,j); //cell vertex index
+//                         for(unsigned int w = 0; w < local_xdata->n_wells(); w++) //W
+//                         {
+//                             if(local_xdata->global_enriched_dofs(w)[k] != 0)
+//                                 boundary_values[local_xdata->global_enriched_dofs(w)[k]] = exact_solution->a();
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+     }
     //*/
     
    /*
