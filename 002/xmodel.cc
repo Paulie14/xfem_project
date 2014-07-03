@@ -1156,6 +1156,7 @@ void XModel::assemble_system ()
           break;
         case Enrichment_method::sgfem:
           adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          break;
       }
       //printing enriched nodes and dofs
 //       DBGMSG("Printing dof_indices:  [");
@@ -1424,6 +1425,8 @@ void XModel::output_results (const unsigned int cycle)
   //triangulation->clear_user_flags();
   
   
+  if(output_options_ & OutputOptions::output_solution)
+  {
   DBGMSG("tria: %d  %d \n",triangulation->n_refinement_steps(), triangulation->n_levels());
   
   if(output_triangulation) delete output_triangulation;
@@ -1477,7 +1480,7 @@ void XModel::output_results (const unsigned int cycle)
           break;
       }
   }
-
+  } //if output_solution
 }
 
 
