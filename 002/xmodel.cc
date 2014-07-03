@@ -1131,14 +1131,13 @@ void XModel::assemble_system ()
       {
         //DBGMSG("refinement level: %d\n", t);
         if ( ! adaptive_integration.refine_edge())
-          break;
-        if ( (output_options_ & OutputOptions::output_adaptive_plot) &&
-             (t == adaptive_integration_refinement_level_-1)
-           )
-        {
-          // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-          adaptive_integration.gnuplot_refinement(output_dir_);
-        }
+            break;
+      }
+      
+      if (output_options_ & OutputOptions::output_adaptive_plot)
+      {
+        // (output_dir, false, true) must be set to unit coordinates and to show on screen 
+        adaptive_integration.gnuplot_refinement(output_dir_, true, true);
       }
       
       //sets the dirichlet and source function

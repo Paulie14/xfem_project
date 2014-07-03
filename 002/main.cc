@@ -640,6 +640,7 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
                           //| ModelBase::output_solution
                           //| ModelBase::output_decomposed
+                          //| ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
 //   // Exact model

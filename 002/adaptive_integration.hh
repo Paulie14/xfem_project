@@ -35,6 +35,27 @@ public:
   ///@param p2 is up right vertex of the square
   Square(const Point<2> &p1, const Point<2> &p2);
   
+    ///@name Getters
+    //@{
+        inline double real_diameter() const
+        { return real_diameter_; }
+        
+        inline double unit_diameter() const
+        { return unit_diameter_; }
+        
+        inline Point<2> real_vertex(unsigned int i) const
+        { return real_vertices_[i]; }
+        
+        inline Point<2> vertex(unsigned int i) const
+        { return vertices[i]; }
+        
+        inline Quadrature<2> const* quadrature() const
+        { return gauss; }
+    //@}
+    
+    void transform_to_real_space(const DoFHandler< 2  >::active_cell_iterator& cell,
+                                 const Mapping<2> &mapping);
+    
   /** Vertices of the square.
     *
     * Numbering of the squares:
@@ -58,8 +79,14 @@ public:
   bool on_well_edge;
   
   ///Pointer to Gauss quadrature, that owns the quadrature points and their weights.
-  const QGauss<2> *gauss;
+  QGauss<2> const *gauss;
   
+private:
+    Point<2> real_vertices_[4];
+    /// Length of diagonal in real space.
+    double real_diameter_;
+    /// Length of diagonal in real space.
+    double unit_diameter_;
 };
 
 
@@ -197,15 +224,14 @@ class Adaptive_integration
     void gnuplot_refinement(const std::string &output_dir, bool real=true, bool show=false);
     
     
-    double test_integration(Function<2>* func);
-   
-    ///1 point Gauss quadrature with dim=2
-    static const QGauss<2> gauss_1;
-    ///3 point Gauss quadrature with dim=2
-    static const QGauss<2> gauss_3;
-    ///4 point Gauss quadrature with dim=2
-    static const QGauss<2> gauss_4;
+    double test_integration(Function<2>* func); 
     
+    /// 1 point Gauss quadrature with dim=2
+    static const QGauss<2> gauss_1;
+    /// 3 point Gauss quadrature with dim=2
+    static const QGauss<2> gauss_3;
+    /// 4 point Gauss quadrature with dim=2
+    static const QGauss<2> gauss_4;
     
   private:
     ///Current cell to integrate
@@ -253,6 +279,9 @@ class Adaptive_integration
     
     ///mapped well radius to unit cell
     std::vector<double > m_well_radius;
+    
+    // Square refinement criteria constant on the cells without well inside.
+    static const double square_refinement_criteria_factor;
     
 };
 

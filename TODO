@@ -9,6 +9,7 @@
 - actualize FEM model (some virtual methods added etc..) - done
 - sources in FEM - done
 
+- rename members in Square and AdaptiveIntegration (make common quadrature, not gauss)
 - use ini input file and read by ParameterHandler
 - gnuplot script to print the convergence graph 
 (collect the data in one file from different runs, then call script and print all)

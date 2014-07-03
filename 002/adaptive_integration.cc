@@ -9,6 +9,7 @@
 #include "mapping.hh"
 #include "xfevalues.hh"
 
+const double Adaptive_integration::square_refinement_criteria_factor = 1.0;
 const QGauss<2> Adaptive_integration::gauss_1 = QGauss<2>(1);
 const QGauss<2> Adaptive_integration::gauss_3 = QGauss<2>(3);
 const QGauss<2> Adaptive_integration::gauss_4 = QGauss<2>(4);
@@ -69,8 +70,26 @@ Square::Square(const Point< 2 > &p1, const Point< 2 > &p2)
   vertices[2] = p2;
   vertices[3] = Point<2>(p1[0],p2[1]);
   
+  unit_diameter_ = p1.distance(p2);
   mapping = MyMapping(vertices[0],vertices[2]);
 }
+
+
+void Square::transform_to_real_space(const DoFHandler< 2  >::active_cell_iterator& cell,
+                                     const Mapping< 2 >& cell_mapping)
+{
+    //mapping.print(cout);
+    for(unsigned int i=0; i<4; i++)
+    {
+        //real_vertices_[i] = mapping.map_unit_to_real(vertices[i]);  //map to unit cell
+        real_vertices_[i] = cell_mapping.transform_unit_to_real_cell(cell,vertices[i]); // map to real cell
+    }
+    real_diameter_ = std::max(real_vertices_[0].distance(real_vertices_[2]),
+                              real_vertices_[1].distance(real_vertices_[3]));
+    
+    //DBGMSG("unit_diameter_=%f, real_diameter_=%f\n", unit_diameter_, real_diameter_);
+}
+
 
 
 Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_iterator& cell, 
@@ -129,7 +148,7 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
 //         }
 //         
 //         if( well_inside[w] )
-          if( xdata->q_points(w).size() > 0)    // is the well inside ?
+        if( xdata->q_points(w).size() > 0)    // is the well inside ?
         {
             //m_well_center[w] = cell_mapping.map_real_to_unit(xdata->get_well(w)->center());
             //DBGMSG("Map well center:\n");
@@ -138,7 +157,10 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
             well_radius[0] = xdata->get_well(w)->radius();
             well_radius = cell_mapping.scale_inverse(well_radius);
             m_well_radius[w] = well_radius[0];
+            //DBGMSG("m_well_radius=%e\n",m_well_radius[w]);
         }
+        else DBGMSG("adaptive refinement on cell without well, index = %d\n",cell->index());
+
       }
       
       //DBGMSG("Printing cell mapping:\n");
@@ -156,7 +178,7 @@ bool Adaptive_integration::refine_edge()
   Point<2> t_points[4];
   unsigned int n_squares_to_refine = 0; 
   unsigned int n_nodes_in_well=0;
-  
+  Well* well;
   /* there are several cases that can happen:
    * 1] a node of a square can be inside a well       -> refine
    * 2] if all nodes of a square are inside a well 
@@ -170,12 +192,31 @@ bool Adaptive_integration::refine_edge()
   //DBGMSG("wells.size(): %d", xdata->wells().size());
   for(unsigned int w = 0; w < xdata->n_wells(); w++)
   {
+    well = xdata->get_well(w);
     if( xdata->q_points(w).size() == 0)    // is the well not inside ? )
     {
-        continue;
+        // refine the cell - criteria is the minimum distance of square vertex to well edge
+        for(unsigned int i = 0; i < squares.size(); i++)
+        {
+            squares[i].transform_to_real_space(cell, *mapping);
+            double min_distance = squares[i].real_vertex(0).distance(well->center()) - well->radius();
+            for(unsigned int j=1; j < 4; j++)
+            {
+                double dist = well->center().distance(squares[i].real_vertex(j)) - well->radius();
+                min_distance = std::min(min_distance,dist);
+            }
+            DBGMSG("square [%d] diameter=%f , min_distance=%f cell_diameter=%f\n",i,squares[i].real_diameter(),min_distance, cell->diameter());
+            // criteria:
+            if( squares[i].real_diameter() > square_refinement_criteria_factor * min_distance)
+            {
+                DBGMSG("Refine square[%d], diameter=%f. \n",i,squares[i].real_diameter());
+                squares[i].refine_flag = true;
+                n_squares_to_refine++;
+            }
+        }
     }
     //DBGMSG("well center: %f %f\tradius: %f", m_well_center[w][0], m_well_center[w][1], m_well_radius[w]);
-    
+    else
     for(unsigned int i = 0; i < squares.size(); i++)
     {
       //testing the edge of the well
@@ -272,8 +313,8 @@ bool Adaptive_integration::refine_edge()
         }
       }
       //std::cout << std::endl;
-    }
-  }
+    } // for squares
+  } // for wells
   
   if (n_squares_to_refine == 0) 
     return false;
@@ -286,6 +327,7 @@ bool Adaptive_integration::refine_edge()
 
 void Adaptive_integration::refine(unsigned int n_squares_to_refine)
 {
+  DBGMSG("refine() cell index = %d\n",cell->index());
   //temporary point - center of the square to refine
   Point<2> center;
   //counts nodes of a square that lie in the well
