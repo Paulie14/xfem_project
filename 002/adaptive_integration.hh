@@ -87,6 +87,8 @@ private:
     double real_diameter_;
     /// Length of diagonal in real space.
     double unit_diameter_;
+    /// Flag is true if the @p transform_to_real_space method was called.
+    bool transformed_to_real_;
 };
 
 
@@ -129,6 +131,8 @@ class Adaptive_integration
      *  Sofar not implemented
       */ 
     bool refine_error();
+    
+    bool refine_criterion_a(Square &square, Well &well);
     
     /** @brief Integrates over all squares and their quadrature points.
       * @tparam EnrType is the type of enrichment method (XFEM-shifted, SGFEM sofar)
@@ -228,6 +232,8 @@ class Adaptive_integration
     
     /// 1 point Gauss quadrature with dim=2
     static const QGauss<2> gauss_1;
+    /// 3 point Gauss quadrature with dim=2
+    static const QGauss<2> gauss_2;
     /// 3 point Gauss quadrature with dim=2
     static const QGauss<2> gauss_3;
     /// 4 point Gauss quadrature with dim=2
