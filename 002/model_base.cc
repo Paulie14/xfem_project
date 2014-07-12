@@ -150,8 +150,13 @@ void ModelBase::run(const unsigned int cycle)
   MASSERT((start = clock())!=-1, "Measure time error.");
 
   if (triangulation_changed == true)
+  {
+    std::cout << "# setup system..." << std::endl;
     setup_system();
+  }
+  std::cout << "# assemble system..." << std::endl;
   assemble_system();
+  std::cout << "# solve system..." << std::endl;
   solve();
  
   /* Stop timer */
