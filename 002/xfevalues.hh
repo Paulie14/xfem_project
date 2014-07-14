@@ -81,9 +81,9 @@ void XFEValues<T>::reinit(XDataCell* xdata)
   this->reinit(cell_);
   
   
-  if(update_quadrature_points && this->get_update_flags())
+  if(update_quadrature_points & this->get_update_flags())
   {
-    if(update_values && this->get_update_flags())
+    if(update_values & this->get_update_flags())
     {
       q_enrich_values_.resize(n_wells_);
   
@@ -94,8 +94,8 @@ void XFEValues<T>::reinit(XDataCell* xdata)
         for(unsigned int q=0; q < this->n_quadrature_points; q++)
           q_enrich_values_[w][q] = xdata_->get_well(w)->global_enrich_value(this->quadrature_point(q)); //returns quadrature_point in real coordinates
       }
+      prepare();
     }
-    prepare();
   }
 }
 
