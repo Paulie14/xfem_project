@@ -219,7 +219,9 @@ class XModel : public ModelBase
     /// Set the solution vector (dofs) accurately according to the exact solution and test XFEValues etc.
     void test_method(ExactBase *exact_solution);
     
-    double well_pressure();
+    void test_adaptive_integration(Function<2> *func);
+    
+    double well_pressure(unsigned int w);
     
   protected:
     virtual void make_grid () override;

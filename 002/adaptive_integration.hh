@@ -30,10 +30,10 @@ class XDataCell;
 class Square
 {
 public: 
-  ///@brief Constructor.
-  ///@param p1 is down left vertex of the square
-  ///@param p2 is up right vertex of the square
-  Square(const Point<2> &p1, const Point<2> &p2);
+    ///@brief Constructor.
+    ///@param p1 is down left vertex of the square
+    ///@param p2 is up right vertex of the square
+    Square(const Point<2> &p1, const Point<2> &p2);
   
     ///@name Getters
     //@{
@@ -68,18 +68,21 @@ public:
     *   0-------1
     *       0
     */
-  Point<2> vertices[4];
+    Point<2> vertices[4];
   
-  ///Object mappping data between the adaptively created square and unit cell
-  MyMapping mapping;
+    ///Object mappping data between the adaptively created square and unit cell
+    MyMapping mapping;
   
-  ///Refine flag is set true, if this square should be refined during next refinement run.
-  bool refine_flag;
+    ///Refine flag is set true, if this square should be refined during next refinement run.
+    bool refine_flag;
   
-  bool on_well_edge;
+    bool on_well_edge;
   
-  ///Pointer to Gauss quadrature, that owns the quadrature points and their weights.
-  QGauss<2> const *gauss;
+    /// Flag is true if the square has already been processed.
+    bool processed;
+  
+    ///Pointer to Gauss quadrature, that owns the quadrature points and their weights.
+    QGauss<2> const *gauss;
   
 private:
     Point<2> real_vertices_[4];
@@ -131,8 +134,6 @@ class Adaptive_integration
      *  Sofar not implemented
       */ 
     bool refine_error();
-    
-    bool refine_criterion_a(Square &square, Well &well);
     
     /** @brief Integrates over all squares and their quadrature points.
       * @tparam EnrType is the type of enrichment method (XFEM-shifted, SGFEM sofar)
@@ -275,6 +276,14 @@ class Adaptive_integration
     /// @param n_squares_to_refine is number of squares to be refined
     void refine(unsigned int n_squares_to_refine);
     
+    /// Returns true if criterion is satisfied.
+    /** Criterion: square diameter > C * (minimal distance of a node from well edge)
+     */
+    bool refine_criterion_a(Square &square, Well &well);
+    
+    /// Returns number of nodes of @p square inside the @p well.
+    unsigned int refine_criterion_nodes_in_well(Square &square, Well &well);
+        
     void gather_w_points();
   
     

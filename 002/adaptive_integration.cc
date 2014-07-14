@@ -18,6 +18,7 @@ const QGauss<2> Adaptive_integration::gauss_4 = QGauss<2>(3);
 
 Square::Square(const Point< 2 > &p1, const Point< 2 > &p2)
   : refine_flag(false),
+    processed(false),
     gauss(&(Adaptive_integration::gauss_4)),
     transformed_to_real_(false)
 {
@@ -153,6 +154,14 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
 //         }
 //         
 //         if( well_inside[w] )
+          
+        //if the whole square is inside the well
+        if(refine_criterion_nodes_in_well(squares[0],*(xdata->get_well(w))) == 4)
+        {
+            squares[0].gauss = &Adaptive_integration::gauss_1;
+            squares[0].processed = true;
+        }
+    
         if( xdata->q_points(w).size() > 0)    // is the well inside ?
         {
             //m_well_center[w] = cell_mapping.map_real_to_unit(xdata->get_well(w)->center());
@@ -178,6 +187,7 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
 bool Adaptive_integration::refine_criterion_a(Square& square, Well& well)
 {
     square.transform_to_real_space(cell, *mapping);
+    
     double min_distance = square.real_vertex(0).distance(well.center()) - well.radius();
     for(unsigned int j=1; j < 4; j++)
     {
@@ -187,13 +197,23 @@ bool Adaptive_integration::refine_criterion_a(Square& square, Well& well)
     //DBGMSG("square [%d] diameter=%f , min_distance=%f cell_diameter=%f\n",i,squares[i].real_diameter(),min_distance, cell->diameter());
     // criteria:
     if( square.real_diameter() > square_refinement_criteria_factor * min_distance)
-    {
-                //DBGMSG("Refine square[%d], diameter=%f. \n",i,squares[i].real_diameter());
-                //squares[i].refine_flag = true;
-                //n_squares_to_refine++;
         return true;
-    }
 }
+
+unsigned int Adaptive_integration::refine_criterion_nodes_in_well(Square& square, Well& well)
+{
+    square.transform_to_real_space(cell, *mapping);
+
+    unsigned int vertices_in_well = 0;
+    for(unsigned int j=0; j < 4; j++)
+    {
+        if(well.points_inside(square.real_vertex(j)))
+            vertices_in_well++;
+    }
+    //DBGMSG("nodes in well %d\n",vertices_in_well);
+    return vertices_in_well;
+}
+
 
 bool Adaptive_integration::refine_edge()
 {
@@ -220,11 +240,13 @@ bool Adaptive_integration::refine_edge()
   for(unsigned int w = 0; w < xdata->n_wells(); w++)
   {
     well = xdata->get_well(w);
+            
     // refinement on the cells without well inside
     if( xdata->q_points(w).size() == 0)    // is the well not inside ? )
     {
         for(unsigned int i = 0; i < squares.size(); i++)
-        {
+        {   
+            if(squares[i].processed) continue;
             //minimum distance from well criterion      ------------------------------------[5]
             if( refine_criterion_a(squares[i],*well) )
             {
@@ -239,22 +261,23 @@ bool Adaptive_integration::refine_edge()
     if( xdata->q_points(w).size() > 0)    // is the well not inside ? )
     for(unsigned int i = 0; i < squares.size(); i++)
     {
+      if(squares[i].processed) continue;
       //skip squares that are already flagged
       //if(squares[i].refine_flag) continue;
       
       //testing the edge of the well
       //by the distance of a point (center of the well) to a line (side of the square)
       
-      n_nodes_in_well = 0;
-      //if the node of the square lies in the well circle than it must be definitely refine
-      for(unsigned int j=0; j < 4; j++)
-      {
-        //if(squares[i].vertices[j].distance(m_well_center[w]) <= m_well_radius[w])
-        if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j])))
-        {
-          n_nodes_in_well++;
-        }
-      }
+      n_nodes_in_well = refine_criterion_nodes_in_well(squares[i],*well);
+//       //if the node of the square lies in the well circle than it must be definitely refine
+//       for(unsigned int j=0; j < 4; j++)
+//       {
+//         //if(squares[i].vertices[j].distance(m_well_center[w]) <= m_well_radius[w])
+//         if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j])))
+//         {
+//           n_nodes_in_well++;
+//         }
+//       }
       //if the whole square is not inside the the well      ------------------------------------[1]
       if(n_nodes_in_well !=0 && n_nodes_in_well < 4)
       {
@@ -485,6 +508,7 @@ void Adaptive_integration::gather_w_points()
     q_points_all.shrink_to_fit();
     jxw_all.shrink_to_fit();
     
+    DBGMSG("Number of quadrature points is %d\n",q_points_all.size());
 //     //control sum
 //     #ifdef DEBUG    //----------------------
 //     double sum = 0;
@@ -708,37 +732,20 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
 
 double Adaptive_integration::test_integration(Function< 2 >* func)
 {
+    DBGMSG("integrating...\n");
     double integral = 0;
     gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
     Quadrature<2> quad(q_points_all, jxw_all);
-    XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,quad, update_values 
-                                       | update_gradients 
-                                       | update_quadrature_points 
-                                       //| update_covariant_transformation 
-                                       //| update_transformation_values 
-                                       //| update_transformation_gradients
-                                       //| update_boundary_forms 
-                                       //| update_cell_normal_vectors 
-                                       | update_JxW_values 
-                                       //| update_normal_vectors
-                                       //| update_contravariant_transformation
-                                       //| update_q_points
-                                       //| update_support_points
-                                       //| update_support_jacobians 
-                                       //| update_support_inverse_jacobians
-                                       //| update_second_derivatives
-                                       //| update_hessians
-                                       //| update_volume_elements
-                                       //| update_jacobians
-                                       //| update_jacobian_grads
-                                       //| update_inverse_jacobians
-                                                 );
+    XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,quad, 
+                                        update_quadrature_points | update_JxW_values );
     xfevalues.reinit(xdata);
   
     for(unsigned int q=0; q<q_points_all.size(); q++)
     {
+//         if(q % 500 == 0) DBGMSG("q: %d\n",q);
         integral += func->value(xfevalues.quadrature_point(q)) * xfevalues.JxW(q);
     }
+//     DBGMSG("q done\n");
     return integral;
 }
 

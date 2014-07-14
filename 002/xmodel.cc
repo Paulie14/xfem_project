@@ -1126,8 +1126,8 @@ void XModel::assemble_system ()
       
       //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
       //unsigned int refinement_level = 12;
-      
-      for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
+      unsigned int t;
+      for(t=0; t < adaptive_integration_refinement_level_; t++)
       {
         //DBGMSG("refinement level: %d\n", t);
         if ( ! adaptive_integration.refine_edge())
@@ -1136,8 +1136,10 @@ void XModel::assemble_system ()
       
       if (output_options_ & OutputOptions::output_adaptive_plot)
       {
+        //output only cells which have well inside
+        //if(t == adaptive_integration_refinement_level_-1)
         // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-        adaptive_integration.gnuplot_refinement(output_dir_, true, true);
+        //adaptive_integration.gnuplot_refinement(output_dir_);
       }
       
       //sets the dirichlet and source function
@@ -2309,13 +2311,71 @@ void XModel::test_method(ExactBase* exact_solution)
 
 
 
-double XModel::well_pressure()
+double XModel::well_pressure(unsigned int w)
 {
-    MASSERT(block_solution.size() > 0, "Solution not computed.");
+    MASSERT(block_solution.size() >= w, "Solution not computed.");
     
-    return block_solution.block(2)[0];
+    return block_solution.block(2)[w];
 }
 
+
+void XModel::test_adaptive_integration(Function<2> *func)
+{
+    make_grid();
+
+    clock_t start, stop;
+    last_run_time_ = 0.0;
+
+    /* Start timer */
+    MASSERT((start = clock())!=-1, "Measure time error.");
+
+    dof_handler->initialize(*triangulation,fe);
+    find_enriched_cells();
+    XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
+  
+    const unsigned int dofs_per_cell = fe.dofs_per_cell;
+    std::vector<unsigned int> local_dof_indices (dofs_per_cell);
+
+    double adaptive_integral = 0;
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+        DBGMSG("on cell %d\n",cell->index());
+        fe_values.reinit (cell);
+        MASSERT(cell->user_pointer() != nullptr, "Not enriched cell.");
+  
+        
+        Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
+      
+        unsigned int t;
+        for(t=0; t < adaptive_integration_refinement_level_-2; t++)
+        {
+            
+            //DBGMSG("refinement level: %d\n", t);
+            if ( ! adaptive_integration.refine_edge())
+                break;
+        }
+        DBGMSG("cell %d - adaptive refinement level %d\n",cell->index(), t);
+        
+        adaptive_integration.gnuplot_refinement(output_dir_);
+        
+        adaptive_integral += adaptive_integration.test_integration(func);
+    }
+  
+    std::cout << setprecision(16) << adaptive_integral << std::endl;
+  
+    Well well = *wells[0];
+    double width = std::abs(down_left[0]-up_right[0]);
+    double integral = width*width - well.radius() * well.radius() * M_PI;
+    std::cout << setprecision(16) << integral << std::endl;
+  
+    /* Stop timer */
+    stop = clock();
+    last_run_time_ = ((double) (stop-start))/CLOCKS_PER_SEC;
+    std::cout << "Run time: " << last_run_time_ << " s" << std::endl;
+}
 
 
 

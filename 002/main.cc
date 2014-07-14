@@ -58,6 +58,28 @@ class TestIntegration : public Function<2>
     private:
         Well *well;
     };
+
+class WellCharacteristicFunction : public Function<2>
+    {
+      public:
+        ///Constructor
+        WellCharacteristicFunction(Well* well) : Function< 2 >()
+        {
+            this->well = well;
+        }
+        
+        ///Returns the value of pressure at the boundary.
+        virtual double value (const Point<2>   &p,
+                              const unsigned int  component = 0) const
+        {
+            double distance = p.distance(well->center());
+            if (distance <= well->radius())
+                return 0.0;
+            else return 1.0;
+        }
+    private:
+        Well *well;
+    };
     
 class Dirichlet_pressure : public Function<2>
     {
@@ -566,7 +588,7 @@ void test_convergence_square(std::string output_dir)
   
   double p_a = 100.0,    //area of the model
          p_b = 100.0,
-         excenter = 5.43,
+         excenter = 0,//5.43,
          radius = p_a*std::sqrt(2),
          well_radius = 0.2,
          perm2fer = Parameters::perm2fer, 
@@ -640,7 +662,7 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
                           //| ModelBase::output_solution
                           //| ModelBase::output_decomposed
-                          //| ModelBase::output_adaptive_plot
+                          | ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
 //   // Exact model
@@ -1419,7 +1441,7 @@ void test_adaptive_integration(std::string output_dir)
 
   Adaptive_integration adapt(cell, fe,fe_values.get_mapping());
   
-  for(unsigned int i; i < 12; i++)
+  for(unsigned int i; i < 10; i++)
     adapt.refine_edge();
   
   adapt.gnuplot_refinement(output_dir,true);
@@ -1440,6 +1462,56 @@ void test_adaptive_integration(std::string output_dir)
 }
 
 
+void test_adaptive_integration2(std::string output_dir)
+{
+  std::string test_name = "test_adaptive_integration2_";
+  double p_a = 2.0,    //area of the model
+         well_radius = 1.0,
+         excenter = 0.61,
+         perm2fer = Parameters::perm2fer, 
+         perm2tard = Parameters::perm2tard;
+         
+  unsigned int n_well_q_points = 500;
+         
+  Point<2> well_center(0+excenter,0+excenter);
+  
+  //--------------------------END SETTING----------------------------------
+  
+  Point<2> down_left(-p_a,-p_a);
+  Point<2> up_right(p_a, p_a);
+  std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+  
+  
+  Well *well = new Well( well_radius,
+                         well_center,
+                         perm2fer, 
+                         perm2tard);
+  well->set_pressure(well_radius);
+  well->evaluate_q_points(n_well_q_points);
+  
+  WellCharacteristicFunction *well_characteristic_function = new WellCharacteristicFunction(well);
+  
+  XModel_simple xmodel(well);
+  xmodel.set_name(test_name);
+  xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+  
+  xmodel.set_output_dir(output_dir);
+  xmodel.set_area(down_left,up_right);
+  
+  xmodel.set_transmisivity(1.0,0);
+  xmodel.set_initial_refinement(2);                                     
+  xmodel.set_enrichment_radius(4*p_a);
+  xmodel.set_grid_create_type(ModelBase::rect);
+//   xmodel.set_dirichlet_function(exact_solution);
+//   xmodel.set_adaptivity(true);
+//   xmodel.set_well_computation_type(Well_computation::sources);
+//   xmodel.set_output_options(ModelBase::output_gmsh_mesh
+//                           | ModelBase::output_solution
+//                           | ModelBase::output_decomposed
+//                           | ModelBase::output_error);
+  xmodel.test_adaptive_integration(well_characteristic_function);
+}
+
 
 int main ()
 {
@@ -1448,11 +1520,12 @@ int main ()
   //bedrichov_tunnel(); 
   //return 0;
   
-  //test_adaptive_integration(output_dir);
+//   test_adaptive_integration(output_dir);
+  test_adaptive_integration2(output_dir);
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-  test_convergence_square(output_dir);
+//   test_convergence_square(output_dir);
 //   test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
   //test_output(output_dir);
