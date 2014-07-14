@@ -217,13 +217,13 @@ unsigned int Adaptive_integration::refine_criterion_nodes_in_well(Square& square
 
 bool Adaptive_integration::refine_edge()
 {
-  Tensor<1,2> direction_vectors[4];
-  double lines_parameters[4];
-  double distances[4];
-  Point<2> t_points[4];
-  unsigned int n_squares_to_refine = 0; 
-  unsigned int n_nodes_in_well=0;
-  Well* well;
+    Tensor<1,2> direction_vectors[4];
+    double lines_parameters[4];
+    double distances[4];
+    Point<2> t_points[4];
+    unsigned int n_squares_to_refine = 0; 
+    unsigned int n_nodes_in_well;
+    Well* well;
   /* there are several cases that can happen:
    * 1] a node of a square can be inside a well       -> refine
    * 2] if all nodes of a square are inside a well 
@@ -237,139 +237,267 @@ bool Adaptive_integration::refine_edge()
    *    to well edge is smaller than square diameter  -> refine
    */
   //DBGMSG("wells.size(): %d", xdata->wells().size());
-  for(unsigned int w = 0; w < xdata->n_wells(); w++)
-  {
-    well = xdata->get_well(w);
-            
-    // refinement on the cells without well inside
-    if( xdata->q_points(w).size() == 0)    // is the well not inside ? )
-    {
-        for(unsigned int i = 0; i < squares.size(); i++)
-        {   
-            if(squares[i].processed) continue;
-            //minimum distance from well criterion      ------------------------------------[5]
-            if( refine_criterion_a(squares[i],*well) )
-            {
-                squares[i].refine_flag = true;
-                n_squares_to_refine++;
-            }
-        }
-    }
-    //DBGMSG("well center: %f %f\tradius: %f", m_well_center[w][0], m_well_center[w][1], m_well_radius[w]);
-    
-    // refinement on the cells with well inside
-    if( xdata->q_points(w).size() > 0)    // is the well not inside ? )
+  
     for(unsigned int i = 0; i < squares.size(); i++)
-    {
-      if(squares[i].processed) continue;
-      //skip squares that are already flagged
-      //if(squares[i].refine_flag) continue;
+    { 
+        if(squares[i].processed) 
+        {
+            //DBGMSG("processed\n");
+            continue;
+        }
+                
+        for(unsigned int w = 0; w < xdata->n_wells(); w++)
+        {
+            well = xdata->get_well(w);
+            //skip squares that are already flagged
+            if(squares[i].refine_flag) continue;
+        
+            // refinement on the cells without well inside
+            if( xdata->q_points(w).size() == 0)    // is the well not inside ? )
+            {
+                //minimum distance from well criterion      ------------------------------------[5]
+                if( refine_criterion_a(squares[i],*well) )
+                {
+                    squares[i].refine_flag = true;
+                    n_squares_to_refine++;
+                }
+            }
+            else
+            {
+                //testing the edge of the well
+                //by the distance of a point (center of the well) to a line (side of the square)
       
-      //testing the edge of the well
-      //by the distance of a point (center of the well) to a line (side of the square)
+                n_nodes_in_well = refine_criterion_nodes_in_well(squares[i],*well);
+
+                //if the whole square is not inside the the well      ------------------------------------[1]
+                if(n_nodes_in_well !=0 && n_nodes_in_well < 4)
+                {
+                    //squares on the edge of the well obtain three point quadrature
+                    squares[i].gauss = &(Adaptive_integration::gauss_3);
+                    //std::cout << i << " addded(node)\n";
+                    n_squares_to_refine++;
+                    squares[i].refine_flag = true;
+                    continue;
+                }
+                //if the whole square is inside the well              ------------------------------------[2]
+                if (n_nodes_in_well == 4) 
+                {
+                    //squares inside the well obtain one point quadrature
+                    squares[i].gauss = &(Adaptive_integration::gauss_1);
+                    continue;
+                }
       
-      n_nodes_in_well = refine_criterion_nodes_in_well(squares[i],*well);
-//       //if the node of the square lies in the well circle than it must be definitely refine
-//       for(unsigned int j=0; j < 4; j++)
+                //if the whole well is inside the square              ------------------------------------[3]
+                if ( n_nodes_in_well == 0 
+                    && (m_well_center[w][0] >= squares[i].vertices[0][0]) 
+                    && (m_well_center[w][0] <= squares[i].vertices[2][0])
+                    && (m_well_center[w][1] >= squares[i].vertices[0][1]) 
+                    && (m_well_center[w][1] <= squares[i].vertices[2][1]) 
+                    ) 
+                {
+                    //squares outside the well obtain three point quadrature
+                    squares[i].gauss = &(Adaptive_integration::gauss_3);
+                    n_squares_to_refine++;
+                    squares[i].refine_flag = true;
+                    continue;
+                }
+                
+                //computing lines:
+                //if there are no nodes of the square in the circle of the well
+                //then if the line goes through the well edge 
+                //check if the sum of distances of neighbour lines from center is equal the side of square
+                for(unsigned int j = 0; j < 3; j++)
+                {
+                    direction_vectors[j] = squares[i].vertices[j+1] - squares[i].vertices[j];
+                    lines_parameters[j] = ( direction_vectors[j] * 
+                                            (m_well_center[w] - squares[i].vertices[j])
+                                        ) / direction_vectors[j].norm_square();
+                                        
+                    t_points[j] = lines_parameters[j]*direction_vectors[j] + squares[i].vertices[j];
+                    distances[j] = m_well_center[w].distance(t_points[j]);
+                }
+                direction_vectors[3] = squares[i].vertices[0] - squares[i].vertices[3];
+                lines_parameters[3] = (direction_vectors[3] * (m_well_center[w] - squares[i].vertices[3])) 
+                                      / direction_vectors[3].norm_square();
+                t_points[3] = lines_parameters[3]*direction_vectors[3] + squares[i].vertices[3];
+                distances[3] = m_well_center[w].distance(t_points[3]);
+                
+                //std::cout << "distance\t";
+                for(unsigned int j = 0; j < 4; j++)
+                {
+                    //std::cout << distances[j] << " _ ";
+                    if(distances[j] <= m_well_radius[w])
+                    {
+                    int a = j-1,
+                        b = j+1;
+                    if (j == 0) 
+                        a = 3;
+                    if (j == 3) 
+                        b = 0;
+                    
+                    //then the well edge crosses the square line------------------------------------[4]
+                    if( std::abs(distances[a] + distances[b] - 
+                                    squares[i].vertices[0].distance(squares[i].vertices[1])) < 1e-13) 
+                    {
+                        //squares on the edge of the well obtain three point quadrature
+                        squares[i].gauss = &(Adaptive_integration::gauss_3);
+                        //std::cout << i << " addded(line)\n";
+                        n_squares_to_refine++;
+                        squares[i].refine_flag = true;
+                        break;
+                    }
+                    }
+                }
+                if(squares[i].refine_flag) continue;
+                
+                //minimum distance from well criterion      ------------------------------------[5]
+                if( refine_criterion_a(squares[i],*well) )
+                {
+                        squares[i].gauss = &(Adaptive_integration::gauss_3);
+                        squares[i].refine_flag = true;
+                        n_squares_to_refine++;
+                }
+                //std::cout << std::endl;
+            }   // if
+        } // for w
+        
+        if(! squares[i].refine_flag) squares[i].processed = true;
+    } // for i
+    
+    
+//   for(unsigned int w = 0; w < xdata->n_wells(); w++)
+//   {
+//     well = xdata->get_well(w);
+//             
+//     // refinement on the cells without well inside
+//     if( xdata->q_points(w).size() == 0)    // is the well not inside ? )
+//     {
+//         for(unsigned int i = 0; i < squares.size(); i++)
+//         {   
+//             if(squares[i].processed) continue;
+//             //minimum distance from well criterion      ------------------------------------[5]
+//             if( refine_criterion_a(squares[i],*well) )
+//             {
+//                 squares[i].refine_flag = true;
+//                 n_squares_to_refine++;
+//             }
+//         }
+//     }
+//     //DBGMSG("well center: %f %f\tradius: %f", m_well_center[w][0], m_well_center[w][1], m_well_radius[w]);
+//     
+//     // refinement on the cells with well inside
+//     if( xdata->q_points(w).size() > 0)    // is the well not inside ? )
+//     for(unsigned int i = 0; i < squares.size(); i++)
+//     {
+//       if(squares[i].processed) continue;
+//       //skip squares that are already flagged
+//       //if(squares[i].refine_flag) continue;
+//       
+//       //testing the edge of the well
+//       //by the distance of a point (center of the well) to a line (side of the square)
+//       
+//       n_nodes_in_well = refine_criterion_nodes_in_well(squares[i],*well);
+// //       //if the node of the square lies in the well circle than it must be definitely refine
+// //       for(unsigned int j=0; j < 4; j++)
+// //       {
+// //         //if(squares[i].vertices[j].distance(m_well_center[w]) <= m_well_radius[w])
+// //         if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j])))
+// //         {
+// //           n_nodes_in_well++;
+// //         }
+// //       }
+//       //if the whole square is not inside the the well      ------------------------------------[1]
+//       if(n_nodes_in_well !=0 && n_nodes_in_well < 4)
 //       {
-//         //if(squares[i].vertices[j].distance(m_well_center[w]) <= m_well_radius[w])
-//         if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j])))
+//         //squares on the edge of the well obtain three point quadrature
+//         squares[i].gauss = &(Adaptive_integration::gauss_3);
+//         //std::cout << i << " addded(node)\n";
+//         n_squares_to_refine++;
+//         squares[i].refine_flag = true;
+//         squares[i].on_well_edge = true;
+//         continue;
+//       }
+//       //if the whole square is inside the well              ------------------------------------[2]
+//       if (n_nodes_in_well == 4) 
+//       {
+//         //squares inside the well obtain one point quadrature
+//         squares[i].gauss = &(Adaptive_integration::gauss_1);
+//         continue;
+//       }
+//       
+//       //if the whole well is inside the square              ------------------------------------[3]
+//       if ( n_nodes_in_well == 0 
+//            && (m_well_center[w][0] >= squares[i].vertices[0][0]) 
+//            && (m_well_center[w][0] <= squares[i].vertices[2][0])
+//            && (m_well_center[w][1] >= squares[i].vertices[0][1]) 
+//            && (m_well_center[w][1] <= squares[i].vertices[2][1]) 
+//          ) 
+//       {
+//         //squares outside the well obtain three point quadrature
+//         squares[i].gauss = &(Adaptive_integration::gauss_3);
+//         n_squares_to_refine++;
+//         squares[i].refine_flag = true;
+//         continue;
+//       }
+//       
+//       //computing lines:
+//       //if there are no nodes of the square in the circle of the well
+//       //then if the line goes through the well edge 
+//       //check if the sum of distances of neighbour lines from center is equal the side of square
+//       for(unsigned int j = 0; j < 3; j++)
+//       {
+//         direction_vectors[j] = squares[i].vertices[j+1] - squares[i].vertices[j];
+//         lines_parameters[j] = ( direction_vectors[j] * 
+//                                 (m_well_center[w] - squares[i].vertices[j])
+//                               ) / direction_vectors[j].norm_square();
+//                               
+//         t_points[j] = lines_parameters[j]*direction_vectors[j] + squares[i].vertices[j];
+//         distances[j] = m_well_center[w].distance(t_points[j]);
+//       }
+//       direction_vectors[3] = squares[i].vertices[0] - squares[i].vertices[3];
+//       lines_parameters[3] = (direction_vectors[3] * (m_well_center[w] - squares[i].vertices[3])) / direction_vectors[3].norm_square();
+//       t_points[3] = lines_parameters[3]*direction_vectors[3] + squares[i].vertices[3];
+//       distances[3] = m_well_center[w].distance(t_points[3]);
+//       
+//       //std::cout << "distance\t";
+//       for(unsigned int j = 0; j < 4; j++)
+//       {
+//         //std::cout << distances[j] << " _ ";
+//         if(distances[j] <= m_well_radius[w])
 //         {
-//           n_nodes_in_well++;
+//           int a = j-1,
+//               b = j+1;
+//           if (j == 0) 
+//             a = 3;
+//           if (j == 3) 
+//             b = 0;
+//           
+//           //then the well edge crosses the square line------------------------------------[4]
+//           if( std::abs(distances[a] + distances[b] - 
+//                           squares[i].vertices[0].distance(squares[i].vertices[1])) < 1e-13) 
+//           {
+//             //squares on the edge of the well obtain three point quadrature
+//             squares[i].gauss = &(Adaptive_integration::gauss_3);
+//             //std::cout << i << " addded(line)\n";
+//             n_squares_to_refine++;
+//             squares[i].refine_flag = true;
+//             squares[i].on_well_edge = true;
+//             break;
+//           }
 //         }
 //       }
-      //if the whole square is not inside the the well      ------------------------------------[1]
-      if(n_nodes_in_well !=0 && n_nodes_in_well < 4)
-      {
-        //squares on the edge of the well obtain three point quadrature
-        squares[i].gauss = &(Adaptive_integration::gauss_3);
-        //std::cout << i << " addded(node)\n";
-        n_squares_to_refine++;
-        squares[i].refine_flag = true;
-        squares[i].on_well_edge = true;
-        continue;
-      }
-      //if the whole square is inside the well              ------------------------------------[2]
-      if (n_nodes_in_well == 4) 
-      {
-        //squares inside the well obtain one point quadrature
-        squares[i].gauss = &(Adaptive_integration::gauss_1);
-        continue;
-      }
-      
-      //if the whole well is inside the square              ------------------------------------[3]
-      if ( n_nodes_in_well == 0 
-           && (m_well_center[w][0] >= squares[i].vertices[0][0]) 
-           && (m_well_center[w][0] <= squares[i].vertices[2][0])
-           && (m_well_center[w][1] >= squares[i].vertices[0][1]) 
-           && (m_well_center[w][1] <= squares[i].vertices[2][1]) 
-         ) 
-      {
-        //squares outside the well obtain three point quadrature
-        squares[i].gauss = &(Adaptive_integration::gauss_3);
-        n_squares_to_refine++;
-        squares[i].refine_flag = true;
-        continue;
-      }
-      
-      //computing lines:
-      //if there are no nodes of the square in the circle of the well
-      //then if the line goes through the well edge 
-      //check if the sum of distances of neighbour lines from center is equal the side of square
-      for(unsigned int j = 0; j < 3; j++)
-      {
-        direction_vectors[j] = squares[i].vertices[j+1] - squares[i].vertices[j];
-        lines_parameters[j] = ( direction_vectors[j] * 
-                                (m_well_center[w] - squares[i].vertices[j])
-                              ) / direction_vectors[j].norm_square();
-                              
-        t_points[j] = lines_parameters[j]*direction_vectors[j] + squares[i].vertices[j];
-        distances[j] = m_well_center[w].distance(t_points[j]);
-      }
-      direction_vectors[3] = squares[i].vertices[0] - squares[i].vertices[3];
-      lines_parameters[3] = (direction_vectors[3] * (m_well_center[w] - squares[i].vertices[3])) / direction_vectors[3].norm_square();
-      t_points[3] = lines_parameters[3]*direction_vectors[3] + squares[i].vertices[3];
-      distances[3] = m_well_center[w].distance(t_points[3]);
-      
-      //std::cout << "distance\t";
-      for(unsigned int j = 0; j < 4; j++)
-      {
-        //std::cout << distances[j] << " _ ";
-        if(distances[j] <= m_well_radius[w])
-        {
-          int a = j-1,
-              b = j+1;
-          if (j == 0) 
-            a = 3;
-          if (j == 3) 
-            b = 0;
-          
-          //then the well edge crosses the square line------------------------------------[4]
-          if( std::abs(distances[a] + distances[b] - 
-                          squares[i].vertices[0].distance(squares[i].vertices[1])) < 1e-13) 
-          {
-            //squares on the edge of the well obtain three point quadrature
-            squares[i].gauss = &(Adaptive_integration::gauss_3);
-            //std::cout << i << " addded(line)\n";
-            n_squares_to_refine++;
-            squares[i].refine_flag = true;
-            squares[i].on_well_edge = true;
-            break;
-          }
-        }
-      }
-      if(squares[i].refine_flag) continue;
-      
-      //minimum distance from well criterion      ------------------------------------[5]
-      if( refine_criterion_a(squares[i],*well) )
-      {
-            squares[i].gauss = &(Adaptive_integration::gauss_3);
-            squares[i].refine_flag = true;
-            n_squares_to_refine++;
-      }
-      //std::cout << std::endl;
-    } // for squares
-  } // for wells
+//       if(squares[i].refine_flag) continue;
+//       
+//       //minimum distance from well criterion      ------------------------------------[5]
+//       if( refine_criterion_a(squares[i],*well) )
+//       {
+//             squares[i].gauss = &(Adaptive_integration::gauss_3);
+//             squares[i].refine_flag = true;
+//             n_squares_to_refine++;
+//       }
+//       //std::cout << std::endl;
+//     } // for squares
+//   } // for wells
   
   if (n_squares_to_refine == 0) 
     return false;
@@ -399,29 +527,21 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
       {
         squares.push_back(Square(squares[i].vertices[j],center));
         
-        
-        //checking if the whole new square lies in the well
-        n_nodes_in_well = 0;
-        //if the node of the square lies in the well circle than it must be definitely refine
-        for(unsigned int w = 0; w < xdata->n_wells(); w++)
+        for(unsigned int w = 0; w < xdata->n_wells(); w++)        
         {
-          for(unsigned int u=0; u < 4; u++)
-          {
-            if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, squares.back().vertices[u])))
+            //checking if the whole new square lies in the well
+            n_nodes_in_well = refine_criterion_nodes_in_well(squares.back(),*(xdata->get_well(w)));
+            if (n_nodes_in_well == 4)
             {
-              n_nodes_in_well++;
+                //if the whole square lies in the well then only one point quadrature is needed
+                squares.back().gauss = &(Adaptive_integration::gauss_1);
+                squares.back().processed = true;
             }
-          }
-        }
-        if (n_nodes_in_well == 4)
-        {
-          //if the whole square lies in the well then only one point quadrature is needed
-          squares.back().gauss = &(Adaptive_integration::gauss_1);
-        }
-        else
-        {
-          //else it gets the quadrature from the descendant square
-          squares.back().gauss = squares[i].gauss;
+            else
+            {
+                //else it gets the quadrature from the descendant square
+                squares.back().gauss = squares[i].gauss;
+            }
         }
       }
     }
@@ -469,8 +589,15 @@ void Adaptive_integration::gather_w_points()
     {
         for(unsigned int i = 0; i < squares.size(); i++)
         {   
+            //TODO: this will not include the squares with cross-section with well and no nodes inside
             //all the squares on the edge of the well
-            if(squares[i].on_well_edge)
+            bool on_well_edge = false;
+            for(unsigned int w=0; w < xdata->n_wells(); w++)
+            {
+                unsigned int n = refine_criterion_nodes_in_well(squares[i],*(xdata->get_well(w)));
+                if( (n > 0) && (n < 4)) on_well_edge = true;
+            }
+            if(on_well_edge)    
             {
                 std::vector<Point<2> > temp(squares[i].gauss->get_points());
                 //temp = squares[i].gauss->get_points(); 

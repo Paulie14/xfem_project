@@ -22,6 +22,8 @@
 
 #include "adaptive_integration.hh"
 
+#include <stdlib.h>
+#include <time.h>
 #include <fstream>
 #include <iostream>
 
@@ -1467,13 +1469,20 @@ void test_adaptive_integration2(std::string output_dir)
   std::string test_name = "test_adaptive_integration2_";
   double p_a = 2.0,    //area of the model
          well_radius = 1.0,
-         excenter = 0.61,
+         //excenter = 0.61,
          perm2fer = Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard;
          
   unsigned int n_well_q_points = 500;
          
-  Point<2> well_center(0+excenter,0+excenter);
+  //center random:
+  srand(time(nullptr)); //set random seed
+  
+  double x = (-1.0) * rand() / RAND_MAX;   //<-1,0>
+  double y = (-1.0) * x + (1.0+x) * rand() / RAND_MAX;   //<-x,1>
+  DBGMSG("well center: %f  %f\n",x,y);
+  
+  Point<2> well_center(x,y);
   
   //--------------------------END SETTING----------------------------------
   
@@ -1509,7 +1518,20 @@ void test_adaptive_integration2(std::string output_dir)
 //                           | ModelBase::output_solution
 //                           | ModelBase::output_decomposed
 //                           | ModelBase::output_error);
-  xmodel.test_adaptive_integration(well_characteristic_function);
+  TableHandler table;
+  for(unsigned int l=3; l < 12; l++ )
+  {
+    double rel_error = xmodel.test_adaptive_integration(well_characteristic_function,l);
+    table.add_value("level",l);
+    table.add_value("rel_error", rel_error);
+    table.set_precision("rel_error",6);
+    table.set_scientific("rel_error",true);
+    table.write_text(cout);
+  }
+  
+  delete well_characteristic_function;
+  delete well;
+  //*/
 }
 
 

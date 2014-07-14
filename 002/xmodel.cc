@@ -127,7 +127,11 @@ XModel::~XModel()
     delete dof_handler;
   
   if(triangulation != nullptr)
+  {
+//     triangulation->clear_user_data();
+//     triangulation->clear();
     delete triangulation;
+  }
   
   if(output_triangulation != nullptr)
     delete output_triangulation;
@@ -136,13 +140,19 @@ XModel::~XModel()
 
 void XModel::make_grid ()
 {
-  dof_handler->clear();
-  coarse_tria.clear();
+  if(dof_handler != nullptr)
+  {
+    delete dof_handler;
+    dof_handler = new DoFHandler<2>();
+  }
+ 
   if(triangulation != nullptr)
   {
-    triangulation->clear();
-    triangulation->clear_flags();
+        triangulation->clear();
+        delete triangulation;
   }
+  
+  coarse_tria.clear();
   
   switch (grid_create)
   {
@@ -2319,14 +2329,18 @@ double XModel::well_pressure(unsigned int w)
 }
 
 
-void XModel::test_adaptive_integration(Function<2> *func)
+double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level, unsigned int pol_degree)
 {
+    for(unsigned int i=0; i < xdata.size(); i++)
+        delete xdata[i];
+    
+    xdata.clear();
     make_grid();
 
     clock_t start, stop;
     last_run_time_ = 0.0;
 
-    /* Start timer */
+    // Start timer 
     MASSERT((start = clock())!=-1, "Measure time error.");
 
     dof_handler->initialize(*triangulation,fe);
@@ -2350,7 +2364,7 @@ void XModel::test_adaptive_integration(Function<2> *func)
         Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
       
         unsigned int t;
-        for(t=0; t < adaptive_integration_refinement_level_-2; t++)
+        for(t=0; t < level; t++)
         {
             
             //DBGMSG("refinement level: %d\n", t);
@@ -2359,7 +2373,7 @@ void XModel::test_adaptive_integration(Function<2> *func)
         }
         DBGMSG("cell %d - adaptive refinement level %d\n",cell->index(), t);
         
-        adaptive_integration.gnuplot_refinement(output_dir_);
+        //adaptive_integration.gnuplot_refinement(output_dir_);
         
         adaptive_integral += adaptive_integration.test_integration(func);
     }
@@ -2371,10 +2385,17 @@ void XModel::test_adaptive_integration(Function<2> *func)
     double integral = width*width - well.radius() * well.radius() * M_PI;
     std::cout << setprecision(16) << integral << std::endl;
   
-    /* Stop timer */
+    double rel_error = std::abs(adaptive_integral - integral)/integral;
+    
+    std::cout << "relative error: " << setprecision(16) 
+        << rel_error << std::endl;
+    
+    // Stop timer 
     stop = clock();
     last_run_time_ = ((double) (stop-start))/CLOCKS_PER_SEC;
     std::cout << "Run time: " << last_run_time_ << " s" << std::endl;
+    //*/
+    return rel_error;
 }
 
 

@@ -70,14 +70,19 @@ XModel_simple::~XModel_simple()
 
 void XModel_simple::make_grid()
 {
-  dof_handler->clear();
-  coarse_tria.clear();
-  
-  if(triangulation != NULL)
+  if(dof_handler != nullptr)
   {
-    triangulation->clear();
-    triangulation->clear_flags();
+    delete dof_handler;
+    dof_handler = new DoFHandler<2>();
   }
+ 
+  if(triangulation != nullptr)
+  {
+        triangulation->clear();
+        delete triangulation;
+  }
+  
+  coarse_tria.clear();
   
   switch (grid_create)
   {

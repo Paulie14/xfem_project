@@ -76,8 +76,6 @@ public:
     ///Refine flag is set true, if this square should be refined during next refinement run.
     bool refine_flag;
   
-    bool on_well_edge;
-  
     /// Flag is true if the square has already been processed.
     bool processed;
   
