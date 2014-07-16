@@ -3,6 +3,7 @@
 *.cc~
 *.hh~
 .kdev4
+*.kdev4
 .kdev_include_paths
 build
 output
@@ -19,6 +20,8 @@ output
 *.out
 *.swp
 *.toc
+*.nav
+*.snm
 *.bib~
 *.tex~
 
