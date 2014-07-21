@@ -230,6 +230,8 @@ class Adaptive_integration
     double test_integration(Function<2>* func); 
     
     /// 1 point Gauss quadrature with dim=2
+    static const QGauss<2> empty_quadrature;
+    /// 1 point Gauss quadrature with dim=2
     static const QGauss<2> gauss_1;
     /// 3 point Gauss quadrature with dim=2
     static const QGauss<2> gauss_2;
@@ -331,6 +333,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   cell_rhs = 0;
                
   gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+  if(q_points_all.size() == 0) return;  // if no quadrature points return zero matrix and rhs 
+                                        // (case when whole cell is inside the well - unprobable)
   Quadrature<2> quad(q_points_all, jxw_all);
   XFEValues<EnrType> xfevalues(*fe,quad, update_values 
                                        | update_gradients 

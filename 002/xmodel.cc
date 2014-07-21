@@ -44,6 +44,10 @@
 #include <fstream>
 #include <iostream>
 
+//create directory
+#include <dirent.h>
+#include <sys/stat.h>
+
 #define _USE_MATH_DEFINES       //we are using M_PI
 #include <cmath>
 
@@ -1146,10 +1150,23 @@ void XModel::assemble_system ()
       
       if (output_options_ & OutputOptions::output_adaptive_plot)
       {
+        stringstream dir_name;
+        dir_name << output_dir_ << "/adaptref_" << cycle_ << "/";
+        DIR *dir;
+        dir = opendir(dir_name.str().c_str());
+        if(dir == NULL) {
+            int ret = mkdir(dir_name.str().c_str(), 0777);
+
+            if(ret != 0) {
+                xprintf(Err, "Couldn't create directory: %s\n", dir_name.str().c_str());
+            }
+        } else {
+            closedir(dir);
+        }
         //output only cells which have well inside
         //if(t == adaptive_integration_refinement_level_-1)
-        // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-        //adaptive_integration.gnuplot_refinement(output_dir_);
+//         (output_dir, false, true) must be set to unit coordinates and to show on screen 
+        adaptive_integration.gnuplot_refinement(dir_name.str());
       }
       
       //sets the dirichlet and source function
@@ -2330,7 +2347,7 @@ double XModel::well_pressure(unsigned int w)
 
 
 double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level, unsigned int pol_degree)
-{
+{  
     for(unsigned int i=0; i < xdata.size(); i++)
         delete xdata[i];
     

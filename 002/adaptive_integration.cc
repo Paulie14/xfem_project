@@ -10,6 +10,7 @@
 #include "xfevalues.hh"
 
 const double Adaptive_integration::square_refinement_criteria_factor = 1.0;
+const QGauss<2> Adaptive_integration::empty_quadrature = QGauss<2>(0);
 const QGauss<2> Adaptive_integration::gauss_1 = QGauss<2>(1);
 const QGauss<2> Adaptive_integration::gauss_2 = QGauss<2>(2);
 const QGauss<2> Adaptive_integration::gauss_3 = QGauss<2>(3);
@@ -158,7 +159,7 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
         //if the whole square is inside the well
         if(refine_criterion_nodes_in_well(squares[0],*(xdata->get_well(w))) == 4)
         {
-            squares[0].gauss = &Adaptive_integration::gauss_1;
+            squares[0].gauss = &Adaptive_integration::empty_quadrature;
             squares[0].processed = true;
         }
     
@@ -283,7 +284,7 @@ bool Adaptive_integration::refine_edge()
                 if (n_nodes_in_well == 4) 
                 {
                     //squares inside the well obtain one point quadrature
-                    squares[i].gauss = &(Adaptive_integration::gauss_1);
+                    squares[i].gauss = &(Adaptive_integration::empty_quadrature);
                     continue;
                 }
       
@@ -533,8 +534,8 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
             n_nodes_in_well = refine_criterion_nodes_in_well(squares.back(),*(xdata->get_well(w)));
             if (n_nodes_in_well == 4)
             {
-                //if the whole square lies in the well then only one point quadrature is needed
-                squares.back().gauss = &(Adaptive_integration::gauss_1);
+                //if the whole square lies in the well
+                squares.back().gauss = &(Adaptive_integration::empty_quadrature);
                 squares.back().processed = true;
             }
             else
@@ -589,6 +590,9 @@ void Adaptive_integration::gather_w_points()
     {
         for(unsigned int i = 0; i < squares.size(); i++)
         {   
+            // if no quadrature points are to be added
+            if( *(squares[i].gauss) == Adaptive_integration::empty_quadrature) continue;
+            
             //TODO: this will not include the squares with cross-section with well and no nodes inside
             //all the squares on the edge of the well
             bool on_well_edge = false;
@@ -617,7 +621,7 @@ void Adaptive_integration::gather_w_points()
                 }
             }
             //all the squares around the well
-            else if( squares[i].gauss->size() > 1 )
+            else
             {
                 std::vector<Point<2> > temp(squares[i].gauss->get_points());
                 //temp = squares[i].gauss->get_points(); 
@@ -635,7 +639,7 @@ void Adaptive_integration::gather_w_points()
     q_points_all.shrink_to_fit();
     jxw_all.shrink_to_fit();
     
-    DBGMSG("Number of quadrature points is %d\n",q_points_all.size());
+    //DBGMSG("Number of quadrature points is %d\n",q_points_all.size());
 //     //control sum
 //     #ifdef DEBUG    //----------------------
 //     double sum = 0;
@@ -655,9 +659,13 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
 {
   //DBGMSG("gnuplotting\n");
   gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+  // print only adaptively refined elements
+  if(q_points_all.size() <= gauss_4.size()) return;
+      
   std::string fgnuplot_ref = "adaptive_integration_refinement_",
               fgnuplot_qpoints = "adaptive_integration_qpoints_",
-              script_file = "g_script_adapt_";
+              script_file = "g_script_adapt_",
+              felements = "elements";
   
               fgnuplot_ref += std::to_string(cell->index()) + ".dat";
               fgnuplot_qpoints += std::to_string(cell->index()) + ".dat";
@@ -682,6 +690,22 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
         }
         */
         
+        std::ofstream felements_file;
+        felements_file.open (output_dir + felements, ios_base::app);
+        if (felements_file.is_open()) 
+        {
+            //reordering
+            felements_file << cell->vertex(0) << "\n"
+                << cell->vertex(1) << "\n"
+                << cell->vertex(3) << "\n"
+                << cell->vertex(2) << "\n"
+                << cell->vertex(0) << "\n\n";
+        }
+        else 
+        { 
+          std::cout << "Coud not write refinement for gnuplot.\n";
+        }
+        felements_file.close();
         
         std::ofstream myfile1;
         myfile1.open (output_dir + fgnuplot_ref);
@@ -690,21 +714,23 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
        
         for (unsigned int i = 0; i < squares.size(); i++)
         {
+          if(real) squares[i].transform_to_real_space(cell, *mapping);
           for (unsigned int j = 0; j < 4; j++) 
           {
             if(real)
-              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j]);
-              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
+                myfile1 << squares[i].real_vertex(j);
+              //myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j]);
             else
-              myfile1 << squares[i].vertices[j];
+              myfile1 << squares[i].vertex(j);
             
             myfile1 << "\n";
           }
           if(real)
-              myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[0]);
-              //myfile1 << cell_mapping.map_unit_to_real(squares[i].vertices[j]);
+              myfile1 << squares[i].real_vertex(0);
+              //myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[0]);
             else
-              myfile1 << squares[i].vertices[0];
+              myfile1 << squares[i].vertex(0);
+              //myfile1 << squares[i].vertices[0];
 
           myfile1 << "\n\n";
         }
@@ -862,6 +888,8 @@ double Adaptive_integration::test_integration(Function< 2 >* func)
     DBGMSG("integrating...\n");
     double integral = 0;
     gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
+    if (q_points_all.size() == 0) return 0;
+    
     Quadrature<2> quad(q_points_all, jxw_all);
     XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,quad, 
                                         update_quadrature_points | update_JxW_values );

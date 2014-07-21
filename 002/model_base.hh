@@ -158,6 +158,10 @@ public:
   inline unsigned int n_aquifers() const
   { return n_aquifers_; }
   
+  /// Returns path to the output directory.
+  inline std::string output_dir() const
+  { return output_dir_; }
+  
   //@}
   
   /** @name Setters
