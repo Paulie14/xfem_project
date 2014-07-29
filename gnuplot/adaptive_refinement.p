@@ -10,7 +10,10 @@
 #
 #
 reset
-set terminal x11
+#set terminal x11
+set terminal postscript eps enhanced color font 'Helvetica,15' linewidth 2
+set output 'adaptive_refinement.eps'
+
 set size ratio -1
 set key off
 set parametric
