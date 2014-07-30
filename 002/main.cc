@@ -590,7 +590,7 @@ void test_convergence_square(std::string output_dir)
   
   double p_a = 100.0,    //area of the model
          p_b = 100.0,
-         excenter = 0,//5.43,
+         excenter = 5.43,
          radius = p_a*std::sqrt(2),
          well_radius = 0.2,
          perm2fer = Parameters::perm2fer, 
@@ -645,10 +645,10 @@ void test_convergence_square(std::string output_dir)
                                 | ModelBase::output_error);
   
   XModel_simple xmodel(well);  
-//   xmodel.set_name(test_name + "sgfem"); 
-//   xmodel.set_enrichment_method(Enrichment_method::sgfem);
-  xmodel.set_name(test_name + "xfem_shift");
-  xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+  xmodel.set_name(test_name + "sgfem"); 
+  xmodel.set_enrichment_method(Enrichment_method::sgfem);
+//   xmodel.set_name(test_name + "xfem_shift");
+//   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
 //     xmodel.set_name(test_name + "xfem_ramp");
 //     xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
   
@@ -664,7 +664,7 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
                           //| ModelBase::output_solution
                           //| ModelBase::output_decomposed
-                          | ModelBase::output_adaptive_plot
+                          //| ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
 //   // Exact model
@@ -1466,51 +1466,69 @@ void test_adaptive_integration(std::string output_dir)
 
 void test_adaptive_integration2(std::string output_dir)
 {
-  std::string test_name = "test_adaptive_integration2_";
-  double p_a = 2.0,    //area of the model
-         well_radius = 1.0,
-         //excenter = 0.61,
-         perm2fer = Parameters::perm2fer, 
-         perm2tard = Parameters::perm2tard;
+    std::string test_name = "test_adaptive_integration2_";
+    std::string output_path;
+    // test setting:
+    const unsigned int refinement_level_min = 2,
+                       refinement_level_max = 12,
+                       n_refinement_levels = refinement_level_max - refinement_level_min + 1,
+                       n_center_generations = 20;
+                 
+    double p_a = 2.0,    //area of the model
+           well_radius = 1.0,
+           perm2fer = Parameters::perm2fer, 
+           perm2tard = Parameters::perm2tard;
          
-  unsigned int n_well_q_points = 500;
-         
-  //center random:
-  srand(time(nullptr)); //set random seed
+    const unsigned int n_well_q_points = 500;
   
-  double x = (-1.0) * rand() / RAND_MAX;   //<-1,0>
-  double y = (-1.0) * x + (1.0+x) * rand() / RAND_MAX;   //<-x,1>
-  DBGMSG("well center: %f  %f\n",x,y);
+    std::vector<Point<2> > well_centers(n_center_generations);
+    std::vector<Well*> wells(n_center_generations);
+    
+    std::vector<double> average_relative_errors(n_refinement_levels, 0);
+    std::vector<double> max_relative_errors(n_refinement_levels, 0);
   
-  Point<2> well_center(x,y);
+    WellCharacteristicFunction *well_characteristic_function;
+    //--------------------------END SETTING----------------------------------
   
-  //--------------------------END SETTING----------------------------------
+    Point<2> down_left(-p_a,-p_a);
+    Point<2> up_right(p_a, p_a);
+    std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
   
-  Point<2> down_left(-p_a,-p_a);
-  Point<2> up_right(p_a, p_a);
-  std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+    //random center generation:
+    srand(time(nullptr)); //set random seed
+
+    for(unsigned int i=0; i < n_center_generations; i++)
+    {
+        double x = (-1.0) * rand() / RAND_MAX;   //<-1,0>
+        double y = (-1.0) * x + (1.0+x) * rand() / RAND_MAX;   //<-x,1>
+        DBGMSG("well center: %f  %f\n",x,y);  
+        
+        well_centers[i] = Point<2>(x,y);
+        wells[i] = new Well(well_radius,
+                            well_centers[i],
+                            perm2fer, 
+                            perm2tard);
+        wells[i]->set_pressure(well_radius);
+        wells[i]->evaluate_q_points(n_well_q_points);
+    }
+   
+   
+    for(unsigned int i=0; i < n_center_generations; i++)
+    {
+        well_characteristic_function = new WellCharacteristicFunction(wells[i]);
   
+        XModel_simple xmodel(wells[i]);
+        xmodel.set_name(test_name);
+        xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
   
-  Well *well = new Well( well_radius,
-                         well_center,
-                         perm2fer, 
-                         perm2tard);
-  well->set_pressure(well_radius);
-  well->evaluate_q_points(n_well_q_points);
+        xmodel.set_output_dir(output_dir);
+        output_path = xmodel.output_dir();
+        xmodel.set_area(down_left,up_right);
   
-  WellCharacteristicFunction *well_characteristic_function = new WellCharacteristicFunction(well);
-  
-  XModel_simple xmodel(well);
-  xmodel.set_name(test_name);
-  xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
-  
-  xmodel.set_output_dir(output_dir);
-  xmodel.set_area(down_left,up_right);
-  
-  xmodel.set_transmisivity(1.0,0);
-  xmodel.set_initial_refinement(2);                                     
-  xmodel.set_enrichment_radius(4*p_a);
-  xmodel.set_grid_create_type(ModelBase::rect);
+        xmodel.set_transmisivity(1.0,0);
+        xmodel.set_initial_refinement(2);                                     
+        xmodel.set_enrichment_radius(4*p_a);
+        xmodel.set_grid_create_type(ModelBase::rect);
 //   xmodel.set_dirichlet_function(exact_solution);
 //   xmodel.set_adaptivity(true);
 //   xmodel.set_well_computation_type(Well_computation::sources);
@@ -1518,19 +1536,78 @@ void test_adaptive_integration2(std::string output_dir)
 //                           | ModelBase::output_solution
 //                           | ModelBase::output_decomposed
 //                           | ModelBase::output_error);
-  TableHandler table;
-  for(unsigned int l=3; l < 12; l++ )
-  {
-    double rel_error = xmodel.test_adaptive_integration(well_characteristic_function,l);
-    table.add_value("level",l);
-    table.add_value("rel_error", rel_error);
-    table.set_precision("rel_error",6);
-    table.set_scientific("rel_error",true);
-    table.write_text(cout);
-  }
-  
-  delete well_characteristic_function;
-  delete well;
+        
+        TableHandler table;
+        for(unsigned int l=refinement_level_min; l <= refinement_level_max; l++ )
+        {
+            unsigned int index = l - refinement_level_min;
+            double rel_error = xmodel.test_adaptive_integration(well_characteristic_function,l);
+            average_relative_errors[index] += rel_error;
+            max_relative_errors[index] = std::max(max_relative_errors[index], rel_error);
+            
+            table.add_value("level",l);
+            table.add_value("rel_error", rel_error);
+            table.set_precision("rel_error",6);
+            table.set_scientific("rel_error",true);
+        }
+        // write the table in different streams
+        table.write_text(cout);
+        std::stringstream table_filename;
+        table_filename << output_path << "table_" << i;
+        std::ofstream out_file;
+        out_file.open(table_filename.str() + ".tex");
+        table.write_tex(out_file);
+        out_file.close();
+        out_file.clear();
+        out_file.open(table_filename.str() + ".txt");
+        table.write_text(out_file, 
+                         TableHandler::TextOutputFormat::table_with_separate_column_description);
+        out_file.close();
+       
+        delete well_characteristic_function;
+    }
+    
+    TableHandler final_table;
+    //averaging relative errors
+    for(unsigned int l=refinement_level_min; l <= refinement_level_max; l++ )
+    {
+        unsigned int index = l - refinement_level_min;
+        final_table.add_value("level",l);
+        
+        final_table.add_value("max_rel_error", max_relative_errors[index]);
+        final_table.set_precision("max_rel_error",3);
+        final_table.set_scientific("max_rel_error",true);
+        
+        average_relative_errors[index] /= n_center_generations;
+        final_table.add_value("avg_rel_error", average_relative_errors[index]);
+        final_table.set_precision("avg_rel_error",3);
+        final_table.set_scientific("avg_rel_error",true);
+    }
+    // write the table in different streams
+    final_table.write_text(cout);
+    std::ofstream out_file;
+    out_file.open(output_path + "final_table.tex");
+    final_table.write_tex(out_file);
+    out_file.close();
+    out_file.clear();
+    out_file.open(output_path + "final_table.txt");
+    final_table.write_text(out_file, 
+                           TableHandler::TextOutputFormat::table_with_separate_column_description);
+    out_file.close();
+    
+    // output well centers
+    std::ofstream well_centers_file;
+    well_centers_file.open (output_path + "well_centers.dat");
+    for(unsigned int i=0; i < n_center_generations; i++)
+    {
+        if (well_centers_file.is_open()) well_centers_file << well_centers[i] << "\n";
+    }
+    well_centers_file.close();
+    
+    for(unsigned int i=0; i < n_center_generations; i++)
+    {
+        delete wells[i];
+    }
   //*/
 }
 
@@ -1543,11 +1620,11 @@ int main ()
   //return 0;
   
 //   test_adaptive_integration(output_dir);
-  test_adaptive_integration2(output_dir);
+//   test_adaptive_integration2(output_dir);
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-//   test_convergence_square(output_dir);
+  test_convergence_square(output_dir);
 //   test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
   //test_output(output_dir);

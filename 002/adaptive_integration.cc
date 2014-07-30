@@ -187,6 +187,7 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
 
 bool Adaptive_integration::refine_criterion_a(Square& square, Well& well)
 {
+    //return false; // switch on and off the criterion
     square.transform_to_real_space(cell, *mapping);
     
     double min_distance = square.real_vertex(0).distance(well.center()) - well.radius();
@@ -195,6 +196,7 @@ bool Adaptive_integration::refine_criterion_a(Square& square, Well& well)
         double dist = well.center().distance(square.real_vertex(j)) - well.radius();
         min_distance = std::min(min_distance,dist);
     }
+
     //DBGMSG("square [%d] diameter=%f , min_distance=%f cell_diameter=%f\n",i,squares[i].real_diameter(),min_distance, cell->diameter());
     // criteria:
     if( square.real_diameter() > square_refinement_criteria_factor * min_distance)
