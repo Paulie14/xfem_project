@@ -923,15 +923,15 @@ void XModel::assemble_system ()
 {
     for(unsigned int m = 0; m < n_aquifers_; m++)
     {
-        DBGMSG("######### aquifer %d assembly ##########\n",m);
+        std::cout << "######### aquifer" << m << " assembly ########## T = " << transmisivity_[m] << std::endl;
         setup_subsystem(m);
         assemble_subsystem(m);
         system_matrix_.enter(block_matrix[m],n_aquifers_-m-1,n_aquifers_-m-1);
     }
     
     assemble_communication();
-    system_matrix_.print_latex(cout);
-    block_system_rhs.print(cout);
+    //system_matrix_.print_latex(cout);
+    //block_system_rhs.print(cout);
     
     if(output_options_ & OutputOptions::output_sparsity_pattern)
     {
@@ -1219,7 +1219,9 @@ void XModel::assemble_subsystem (unsigned int m)
     for (unsigned int w = 0; w < wells.size(); w++)
     {
         //addition to block (2,2) ... matrix E
-        double temp_val = wells[w]->perm2aquitard() + wells[w]->perm2aquitard();
+        double temp_val;
+        if(m == 0) temp_val = wells[w]->perm2aquitard();
+        else temp_val = wells[w]->perm2aquitard() + wells[w]->perm2aquitard();
         //TODO: sum of two perm2aquitard constants
         block_matrix[m].add(w_idx,w_idx,temp_val);
         //addition to rhs at the top aquifer
@@ -1239,8 +1241,8 @@ void XModel::assemble_subsystem (unsigned int m)
     //if(m == 0)
     //block_matrix[m].print(cout);
     assemble_dirichlet(m);
-    DBGMSG("block_matrix[%d]:\n",m);
-    block_matrix[m].print(cout);
+    //DBGMSG("block_matrix[%d]:\n",m);
+    //block_matrix[m].print(cout);
   //assemble_reduce_known();
   
     if(hanging_nodes)
@@ -1296,8 +1298,8 @@ void XModel::assemble_communication()
         for (unsigned int w=0; w < wells.size(); w++)
             block_comm_matrix[m].add(w+offset, w+offset, -wells[w]->perm2aquitard());
         
-        DBGMSG("block_comm_matrix[%d]:\n",m);
-        block_comm_matrix[m].print(cout);
+        //DBGMSG("block_comm_matrix[%d]:\n",m);
+        //block_comm_matrix[m].print(cout);
         
         system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-1, n_aquifers_-m-2);
         system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-2, n_aquifers_-m-1);
@@ -1412,8 +1414,8 @@ void XModel::solve ()
 //   for (unsigned int w=0; w < wells.size(); ++w)
 //       std::cout << setprecision(12) << "value of H" << w << " = " << block_solution[0].block(2)[w] << std::endl;
   
-  DBGMSG("Printing solution:\n");
-  block_solution.print(std::cout);
+  //DBGMSG("Printing solution:\n");
+  //block_solution.print(std::cout);
 }
 
 
@@ -1506,7 +1508,7 @@ void XModel::output_results (const unsigned int cycle)
   output_triangulation = new PersistentTriangulation<2>(coarse_tria);
   PersistentTriangulation<2> &output_grid = *output_triangulation;
   
-  triangulation->clear_user_pointers();
+  triangulation->clear_user_data();
   triangulation->load_user_pointers(tria_pointers_[m]); //reload proper xdata
   output_grid.copy_triangulation(*triangulation);
   output_grid.restore();
@@ -2114,7 +2116,11 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
 
 std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
-  MASSERT(triangulation != nullptr, "No triangulation in model.");
+    unsigned int m = n_aquifers_-1;
+    MASSERT(triangulation != nullptr, "No triangulation in model.");
+    triangulation->clear_user_data();
+    triangulation->load_user_pointers(tria_pointers_[m]); //reload proper xdata_
+    
   std::pair<double,double> norms;
   switch(enrichment_method_)
   {

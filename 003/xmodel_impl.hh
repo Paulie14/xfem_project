@@ -221,7 +221,9 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
 template<Enrichment_method::Type EnrType>
 std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
-    unsigned int m=0;
+    unsigned int m = n_aquifers_-1;
+//     unsigned int m = 0;
+  
     std::cout << "Computing l2 norm of difference...";
     unsigned int dofs_per_cell = fe.dofs_per_cell,
                  index = 0;

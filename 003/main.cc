@@ -597,8 +597,9 @@ void test_convergence_square(std::string output_dir)
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
          enrichment_radius = 50.0,
-         well_pressure = 10;//50*Parameters::pressure_at_top;
-         
+         well_pressure = 50*Parameters::pressure_at_top;
+  
+  std::vector<double> transmisivity_vec = {1.0, 1.0, 1.0};
   unsigned int n_well_q_points = 200,
                initial_refinement = 2;
          
@@ -644,7 +645,7 @@ void test_convergence_square(std::string output_dir)
                                 | ModelBase::output_solution
                                 | ModelBase::output_error);
   
-  XModel_simple xmodel(well, "", 2);  
+  XModel_simple xmodel(well, "", 3);  
   xmodel.set_name(test_name + "sgfem"); 
   xmodel.set_enrichment_method(Enrichment_method::sgfem);
 //   xmodel.set_name(test_name + "xfem_shift");
@@ -654,7 +655,8 @@ void test_convergence_square(std::string output_dir)
   
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
-  xmodel.set_transmisivity(transmisivity,0);
+  //xmodel.set_transmisivity(transmisivity,0);
+  xmodel.set_transmisivity(transmisivity_vec);
   xmodel.set_initial_refinement(initial_refinement);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
   xmodel.set_grid_create_type(ModelBase::rect);
