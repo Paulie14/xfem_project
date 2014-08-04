@@ -1,6 +1,8 @@
 
 #include <string>
 
+#include <deal.II/base/quadrature_lib.h>
+
 #include "adaptive_integration.hh"
 #include "system.hh"
 #include "gnuplot_i.hpp"

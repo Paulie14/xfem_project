@@ -58,7 +58,7 @@ class XModel_simple : public XModel
     void refine_grid() override;
     
     ///if Dirichlet condition is wanted then this method will do it
-    void assemble_dirichlet() override;
+    void assemble_dirichlet(unsigned int m) override;
     
     ///center of the circle area of computation
     Point<2> center;
@@ -104,7 +104,7 @@ class Model_simple : public Model
     ///(important to comparision)
     void refine_grid() override;
     ///if Dirichlet condition is wanted then this method will do it
-    void assemble_dirichlet() override;
+    void assemble_dirichlet(unsigned int m) override;
 };
 
 #endif //Simple_models_h

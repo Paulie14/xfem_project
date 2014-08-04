@@ -64,7 +64,7 @@ ModelBase::ModelBase(const std::string& name,
     output_options_(default_output_options_)
     
 {
-  transmisivity.resize(n_aquifers_, 1.0);
+  transmisivity_.resize(n_aquifers_, 1.0);
 }
 
 ModelBase::ModelBase(const std::vector< Well* >& wells, 
@@ -93,7 +93,7 @@ ModelBase::ModelBase(const std::vector< Well* >& wells,
     
 {
   //DBGMSG("ModelBase constructor, wells_size: %d\n",this->wells.size());
-  transmisivity.resize(n_aquifers, 1.0);
+  transmisivity_.resize(n_aquifers, 1.0);
   //TODO: check if all wells lies in the area
 }
 
@@ -110,7 +110,7 @@ ModelBase::ModelBase(const ModelBase &model, std::string name)
   initial_refinement_(model.initial_refinement()),
   
   n_aquifers_(model.n_aquifers()),
-  transmisivity(model.transmisivity),
+  transmisivity_(model.transmisivity_),
   
   cycle_(-1),
   last_run_time_(0),
@@ -169,16 +169,16 @@ void ModelBase::run(const unsigned int cycle)
 
 void ModelBase::set_transmisivity(const double& trans, const unsigned int& m_aquifer)
 {
-  if(m_aquifer < transmisivity.size())  
-    transmisivity[m_aquifer] = trans; 
+  if(m_aquifer < transmisivity_.size())  
+    transmisivity_[m_aquifer] = trans; 
   else
-    xprintf(Warn,"Transmisivity not set. Size: %d, index: %d\n",transmisivity.size(), m_aquifer);
+    xprintf(Warn,"Transmisivity not set. Size: %d, index: %d\n",transmisivity_.size(), m_aquifer);
 }
 
 void ModelBase::set_transmisivity(const std::vector< double >& trans)
 {
-  transmisivity.clear();
-  transmisivity = trans;
+  transmisivity_.clear();
+  transmisivity_ = trans;
 }
 
 void ModelBase::set_area(const dealii::Point< 2 >& down_left, const dealii::Point< 2 >& up_right)

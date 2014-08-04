@@ -655,7 +655,7 @@ void Model::assemble_system ()
         //{
           //if( ! wells[w]->points_inside(fe_values.get_quadrature_points()[q_point]))
           {
-            cell_matrix(i,j) += ( transmisivity[0] *
+            cell_matrix(i,j) += ( transmisivity_[0] *
                                   fe_values.shape_grad (i, q_point) *
                                   fe_values.shape_grad (j, q_point) *
                                   fe_values.JxW (q_point) );
@@ -788,7 +788,7 @@ void Model::assemble_system ()
   }
   //*/
   
-  assemble_dirichlet();
+  assemble_dirichlet(0);
   
   hanging_node_constraints.condense(block_matrix);
   hanging_node_constraints.condense(block_system_rhs);

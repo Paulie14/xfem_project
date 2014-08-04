@@ -13,7 +13,9 @@ template<Enrichment_method::Type EnrType>
 int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& output_grid, 
                              DoFHandler<2> &temp_dof_handler, 
                              FE_Q<2> &temp_fe, 
-                             const unsigned int iter)
+                             const unsigned int iter,
+                             unsigned int m
+                            )
 { 
   bool refine = false,
        cell_refined;
@@ -63,7 +65,6 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     }
     else
         cell_refined = false;
-    
     //else it is enriched and we must compute the difference
     
     temp_fe_values.reinit(cell);
@@ -83,7 +84,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
         {
           if(cell_xdata->global_enriched_dofs(w)[j] == 0) continue;  //skip unenriched node_enrich_value
           
-          dist_enriched[temp_local_dof_indices[i]] += block_solution(cell_xdata->global_enriched_dofs(w)[j]) *
+          dist_enriched[temp_local_dof_indices[i]] += block_solution.block(m)(cell_xdata->global_enriched_dofs(w)[j]) *
                                                       xfevalues.enrichment_value(j,w,cell->vertex(i));
         }
       }
@@ -112,14 +113,14 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       for(unsigned int i=0; i < dofs_per_cell; i++)
       {
         inter += dist_solution[temp_local_dof_indices[i]] * temp_fe_values.shape_value(i,q);
-        sol += block_solution(local_dof_indices[i]) * fe.shape_value(i,unit_point);
+        sol += block_solution.block(m)(local_dof_indices[i]) * fe.shape_value(i,unit_point);
       }
       for(unsigned int w=0; w < cell_xdata->n_wells(); w++)
       {
         for(unsigned int j=0; j < dofs_per_cell; j++)
         {
           if(cell_xdata->global_enriched_dofs(w)[j] == 0) continue;  //skip unenriched node_enrich_value
-          sol += block_solution(cell_xdata->global_enriched_dofs(w)[j]) *
+          sol += block_solution.block(m)(cell_xdata->global_enriched_dofs(w)[j]) *
                  xfevalues.enrichment_value(j,w,temp_fe_values.quadrature_point(q));
         }
       }
@@ -138,7 +139,11 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
       refine = true;
     }
     }
-  }
+  } // for cells
+  
+//   block_solution.block(0).print(cout);
+//   DBGMSG("size = %d\n",block_solution.block(0).size());
+//   dist_enriched.print(cout);
   
     if(iter == 0)
     {
@@ -167,7 +172,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
     data_out.build_patches ();
 
     std::stringstream filename;
-    filename << output_dir_ << "xmodel_sol_" << cycle_;
+    filename << output_dir_ << "xmodel_sol_aq" << m << "_" << cycle_;
     if(iter == 0)  filename << "_s";
     filename << ".vtk"; 
    
@@ -191,8 +196,11 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
   
     DBGMSG("dofn1: %d\t dofn2: %d\t\n",dof_handler->n_dofs(), temp_dof_handler.n_dofs());
   //  DBGMSG("n1: %d\t n2: %d\t\n",block_solution.block(0).size(), dist_unenriched.size());
+    Vector<double>::iterator first = block_solution.block(m).begin();
+    Vector<double>::iterator last = first + dof_handler->n_dofs();
+  
     VectorTools::interpolate_to_different_mesh(*dof_handler, 
-                                             block_solution.block(0), 
+                                             Vector<double>(first, last), 
                                              temp_dof_handler, 
                                              temp_hanging_node_constraints, 
                                              dist_unenriched);
@@ -213,6 +221,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
 template<Enrichment_method::Type EnrType>
 std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
 {
+    unsigned int m=0;
     std::cout << "Computing l2 norm of difference...";
     unsigned int dofs_per_cell = fe.dofs_per_cell,
                  index = 0;
@@ -243,7 +252,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
             {
                 value = 0;
                 for(unsigned int i=0; i < dofs_per_cell; i++)
-                    value += block_solution(local_dof_indices[i]) * temp_fe_values.shape_value(i,q);
+                    value += block_solution.block(m)(local_dof_indices[i]) * temp_fe_values.shape_value(i,q);
                 
                 exact_value = exact_solution.value(temp_fe_values.quadrature_point(q));
                 value = value - exact_value;                        // u_h - u
@@ -266,7 +275,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
                     //adaptive_integration.gnuplot_refinement(output_dir);
                 }
             }
-            cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution,exact_solution);
+            cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),exact_solution);
         }
         
         cell_norm = std::sqrt(cell_norm);   // square root
@@ -276,7 +285,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
         //node values should be exactly equal FEM dofs
         for(unsigned int i=0; i < dofs_per_cell; i++)
         {
-            nodal_norm = block_solution(local_dof_indices[i]) - exact_solution.value(cell->vertex(i));
+            nodal_norm = block_solution.block(m)(local_dof_indices[i]) - exact_solution.value(cell->vertex(i));
             diff_nodal_vector[local_dof_indices[i]] = std::abs(nodal_norm);
         }
     }

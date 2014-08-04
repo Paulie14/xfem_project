@@ -19,6 +19,7 @@
 #include <deal.II/lac/block_sparse_matrix.h>
 #include <deal.II/lac/block_matrix.h>
 #include <deal.II/lac/block_vector.h>
+#include <lac/block_matrix_array.h>
 
 #include "model_base.hh"
 #include "xfevalues.hh"
@@ -230,12 +231,18 @@ class XModel : public ModelBase
     void assemble_system () override;
     void solve ();
    
+    void setup_subsystem (unsigned int m);
+    void assemble_subsystem (unsigned int m);
+    void assemble_communication ();
+    
+    /// Procedures that are done in constructor.
+    void constructor_init();
     
     // Print the list of Xdata
     void print_xdata();
     
     // Sets known dofs. For testing only.
-    void assemble_reduce_known();
+    void assemble_reduce_known(unsigned int m);
     
     //Computes error in comparision to another solution
     //void compute_solution_error();
@@ -245,7 +252,7 @@ class XModel : public ModelBase
      * calls @p enrich_cell to recusively mark enriched cells and distribute 
      * degrees of freedom of the enrichment.
      */
-    void find_enriched_cells();
+    void find_enriched_cells(unsigned int m);
      
     /** @brief Recursive function to mark enriched cells and nodes.
      * Recusively marks enriched cells and distribute 
@@ -257,7 +264,8 @@ class XModel : public ModelBase
                       const unsigned int &well_index,
                       std::vector<unsigned int> &enriched_dof_indices,
                       std::vector<unsigned int> &enriched_weights,
-                      unsigned int &n_global_enriched_dofs
+                      unsigned int &n_global_enriched_dofs,
+                      unsigned int m
                       );
    
     /** @brief Recursive function to mark enriched cells and nodes.
@@ -269,7 +277,8 @@ class XModel : public ModelBase
     void enrich_cell_sgfem (const DoFHandler<2>::active_cell_iterator cell, 
                       const unsigned int &well_index,
                       std::vector<unsigned int> &enriched_dof_indices,
-                      unsigned int &n_global_enriched_dofs
+                      unsigned int &n_global_enriched_dofs,
+                      unsigned int m
                       );
     
     /** @brief Helpful function used when outputing the enriched shape function.
@@ -279,7 +288,9 @@ class XModel : public ModelBase
      * @param dof_index is the index of the degree of freedom which we are testing
      */
     void find_dofs_enriched_cells(std::vector<DoFHandler<2>::active_cell_iterator> &cells, 
-                                  const unsigned int &dof_index);
+                                  const unsigned int &dof_index,
+                                  unsigned int m
+                                 );
     
     
     /** Computes chosen shape function at specified points.
@@ -299,7 +310,9 @@ class XModel : public ModelBase
                          PersistentTriangulation<2> &output_grid, 
                          DoFHandler<2> &temp_dof_handler, 
                          FE_Q<2> &temp_fe, 
-                         const unsigned int iter);
+                         const unsigned int iter,
+                         unsigned int m
+                        );
     
     template<Enrichment_method::Type EnrType>
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
@@ -328,7 +341,9 @@ class XModel : public ModelBase
     std::vector<double> r_enr;
     
     ///vector of data for enriched cells
-    std::vector<XDataCell*> xdata;
+    std::vector<std::vector<XDataCell*> > xdata_;
+    
+    std::vector<std::vector<void *> > tria_pointers_;
     
     ///vector of global enrichment function values at nodes of the triangulation
     std::vector<std::map<unsigned int, double> > node_enrich_values;
@@ -348,7 +363,7 @@ class XModel : public ModelBase
     ///Finite 2d Element
     FE_Q<2>              fe;                    
     ///DofHandler for 2d triangulation
-    DoFHandler<2>        *dof_handler;
+    DoFHandler<2>*      dof_handler;
     
     ///Gauss Quadrature for 2d finite element, 2-point (approximate 2d linear function), only on unenriched cells.
     QGauss<2>  quadrature_formula;
@@ -362,14 +377,21 @@ class XModel : public ModelBase
     bool hanging_nodes;
 
     ///Sparsity pattern of the system matrix.
-    BlockSparsityPattern        block_sp_pattern;
+    SparsityPattern        block_sp_pattern;
+    SparsityPattern        comm_sp_pattern;
     ///System Matrix
-    BlockSparseMatrix<double>   block_matrix;   
+    std::vector<SparseMatrix<double> >  block_matrix;      ///< Block diagonal aquifer matrices.
+    std::vector<SparseMatrix<double> >  block_comm_matrix; ///< Communication matrices F_i.
     
     ///Solution vector (unenriched, enriched and well degrees of freedom)
     BlockVector<double> block_solution;
     ///Right hand side
     BlockVector<double> block_system_rhs;
+    
+    
+    //GrowingVectorMemory<Vector<double> > memory_vector_;
+    BlockMatrixArray<double> system_matrix_;
+    
     
     //Vector<double>      solution_error;
     //Vector<double>      solution_exact;

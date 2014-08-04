@@ -15,7 +15,7 @@
 #include <deal.II/lac/solver_bicgstab.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/iterative_inverse.h>
-#include <deal.II/lac/sparse_direct.h>
+//#include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/eigen.h>
 #include <deal.II/numerics/matrix_tools.h>
 
@@ -50,6 +50,7 @@
 
 #define _USE_MATH_DEFINES       //we are using M_PI
 #include <cmath>
+#include <vector>
 
 #include "model_base.hh"
 #include "xmodel.hh"
@@ -74,8 +75,7 @@ XModel::XModel ()
     hanging_nodes(true),
     output_triangulation(nullptr)
 {
-  name_ = "Default_XFEM_Model";
-  dof_handler = new DoFHandler<2>();
+    constructor_init();
 }
 
 XModel::XModel (const std::string &name, 
@@ -95,7 +95,7 @@ XModel::XModel (const std::string &name,
     output_triangulation(nullptr)
     
 {
-  dof_handler = new DoFHandler<2>();
+    constructor_init();
 }
 
 XModel::XModel (const std::vector<Well*> &wells, 
@@ -116,16 +116,23 @@ XModel::XModel (const std::vector<Well*> &wells,
     output_triangulation(nullptr)
     
 {
-  //DBGMSG("XModel constructor, wells_size: %d\n",this->wells.size());
-  dof_handler = new DoFHandler<2>();
-  r_enr.resize(wells.size());
+    constructor_init();
+}
+
+void XModel::constructor_init()
+{
+    dof_handler = new DoFHandler<2>();
+    r_enr.resize(wells.size());
+    system_matrix_.initialize(n_aquifers_, n_aquifers_);
+    if(name_ == "") name_ = "Default_XFEM_Model";
 }
 
 
 XModel::~XModel()
 {
-  for(unsigned int i=0; i < xdata.size(); i++)
-    delete xdata[i];
+    for(unsigned int i=0; i < xdata_.size(); i++)   //n_aquifers
+        for(unsigned int j=0; j < xdata_[j].size(); j++)    //n_enriched_cells
+            delete xdata_[i][j];
   
   if(dof_handler != nullptr)
     delete dof_handler;
@@ -258,7 +265,7 @@ void XModel::refine_grid()
 
 
 //------------------------------------------------------------------------------ FIND ENRICHED CELLS
-void XModel::find_enriched_cells()
+void XModel::find_enriched_cells(unsigned int m)
 {
   DBGMSG("find_enriched_cells: wells_size: %d\n",wells.size());
   MASSERT(wells.size() > 0, "No wells are defined in vector of wells");
@@ -314,9 +321,9 @@ void XModel::find_enriched_cells()
         triangulation->clear_user_flags();
         
         if(enrichment_method_ == Enrichment_method::sgfem)
-          enrich_cell_sgfem(cell, w, enriched_dof_indices, n_global_enriched_dofs);
+          enrich_cell_sgfem(cell, w, enriched_dof_indices, n_global_enriched_dofs,m);
         else
-          enrich_cell(cell, w, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
+          enrich_cell(cell, w, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
         
         break;
       }
@@ -332,30 +339,31 @@ void XModel::find_enriched_cells()
     std::cout << "Total number of dofs: " << n_enriched_dofs+dof_handler->n_dofs() << std::endl;
   //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
-  DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata.size(), triangulation->n_active_cells());
+  DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata_[m].size(), triangulation->n_active_cells());
   //print_xdata();
 }
 
 void XModel::print_xdata()
 {
   //printing enriched nodes and dofs
-  for(unsigned int i=0; i < xdata.size(); i++)
+  for(unsigned int m=0; m < xdata_.size(); m++)
+  for(unsigned int i=0; i < xdata_[m].size(); i++)
   {
-    std::cout << "(" << setw(5) << xdata[i]->get_cell()->index() << ") ";
-    for(unsigned int xw=0; xw < xdata[i]->n_wells(); xw++)
+    std::cout << "(" << setw(5) << xdata_[m][i]->get_cell()->index() << ") ";
+    for(unsigned int xw=0; xw < xdata_[m][i]->n_wells(); xw++)
     {
-      std::cout << " w=" << setw(3) << xw << " well center: " << setw(7) << xdata[i]->get_well(xw)->center() << "\tglobal_enrich_dofs: [";
+      std::cout << " w=" << setw(3) << xw << " well center: " << setw(7) << xdata_[m][i]->get_well(xw)->center() << "\tglobal_enrich_dofs: [";
       
       for(unsigned int j=0; j < fe.dofs_per_cell; j++)
-        std::cout << std::setw(4) << xdata[i]->global_enriched_dofs(xw)[j] << "  ";
+        std::cout << std::setw(4) << xdata_[m][i]->global_enriched_dofs(xw)[j] << "  ";
       std::cout << "]   [";
       
       for(unsigned int j=0; j < fe.dofs_per_cell; j++)
-        std::cout << std::setw(4) << xdata[i]->weights(xw)[j] << "  ";
+        std::cout << std::setw(4) << xdata_[m][i]->weights(xw)[j] << "  ";
       std::cout << "]";
       
-      std::cout << "  n_qpoints=" <<  xdata[i]->q_points(xw).size() << 
-      "  boundary: " << xdata[i]->get_cell()->at_boundary() << std::endl;
+      std::cout << "  n_qpoints=" <<  xdata_[m][i]->q_points(xw).size() << 
+      "  boundary: " << xdata_[m][i]->get_cell()->at_boundary() << std::endl;
     }
   }
 }
@@ -366,7 +374,8 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
                            const unsigned int &well_index,
                            std::vector<unsigned int> &enriched_dof_indices,
                            std::vector<unsigned int> &enriched_weights,
-                           unsigned int &n_global_enriched_dofs
+                           unsigned int &n_global_enriched_dofs,
+                           unsigned int m
                          )
 {
   //std::cout << "CALL enrich_cell on: " << cell->index();
@@ -509,20 +518,20 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
     if(cell->user_pointer() == nullptr)
     {
       if(q_points_to_add)
-      xdata.push_back(new XDataCell(cell, 
+      xdata_[m].push_back(new XDataCell(cell, 
                                     wells[well_index], 
                                     well_index, 
                                     local_enriched_dofs, 
                                     local_enriched_node_weights, 
                                     points));
       else
-      xdata.push_back(new XDataCell(cell, 
+      xdata_[m].push_back(new XDataCell(cell, 
                                     wells[well_index], 
                                     well_index, 
                                     local_enriched_dofs, 
                                     local_enriched_node_weights));
     
-      cell->set_user_pointer(xdata.back());
+      cell->set_user_pointer(xdata_[m].back());
     }
     else
     {
@@ -591,7 +600,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
             //std::cout << "\tFace=" << face_no << " subface=" << subface_no 
             //          << " entering cell=" << neighbor_child->index() << std::endl;
             // entering on the neighbor's children behind the current face
-            enrich_cell(neighbor_child, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
+            enrich_cell(neighbor_child, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
           }
           //*/
       }
@@ -614,13 +623,13 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t same refine level: " 
             //          << neighbor->level() << std::endl;
-            enrich_cell(neighbor, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
+            enrich_cell(neighbor, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
           } 
         else
           //is coarser
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
-            enrich_cell(neighbor, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs);
+            enrich_cell(neighbor, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
           }
       }
   }
@@ -630,7 +639,8 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
 void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
                            const unsigned int &well_index,
                            std::vector<unsigned int> &enriched_dof_indices,
-                           unsigned int &n_global_enriched_dofs
+                           unsigned int &n_global_enriched_dofs,
+                           unsigned int m
                          )
 {
   //std::cout << "CALL enrich_cell on: " << cell->index();
@@ -755,20 +765,20 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
     if(cell->user_pointer() == nullptr)
     {
       if(q_points_to_add)
-      xdata.push_back(new XDataCell(cell, 
+      xdata_[m].push_back(new XDataCell(cell, 
                                     wells[well_index], 
                                     well_index, 
                                     local_enriched_dofs, 
                                     local_enriched_node_weights, 
                                     points));
       else
-      xdata.push_back(new XDataCell(cell, 
+      xdata_[m].push_back(new XDataCell(cell, 
                                     wells[well_index], 
                                     well_index, 
                                     local_enriched_dofs, 
                                     local_enriched_node_weights));
     
-      cell->set_user_pointer(xdata.back());
+      cell->set_user_pointer(xdata_[m].back());
     }
     else
     {
@@ -837,7 +847,7 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
             //std::cout << "\tFace=" << face_no << " subface=" << subface_no 
             //          << " entering cell=" << neighbor_child->index() << std::endl;
             // entering on the neighbor's children behind the current face
-            enrich_cell_sgfem(neighbor_child, well_index, enriched_dof_indices, n_global_enriched_dofs);
+            enrich_cell_sgfem(neighbor_child, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
           }
           //*/
       }
@@ -860,122 +870,148 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t same refine level: " 
             //          << neighbor->level() << std::endl;
-            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs);
+            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
           } 
         else
           //is coarser
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
-            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs);
+            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
           }
       }
   }
 }
 
+void XModel::setup_system()
+{
+    /// block and vector size initialization
+    block_matrix.resize(n_aquifers_);
+    block_comm_matrix.resize(n_aquifers_);
+    
+    block_solution.reinit(n_aquifers_);
+    block_system_rhs.reinit(n_aquifers_);
+    
+    system_matrix_.reinit(n_aquifers_, n_aquifers_);
+  
+    for(unsigned int m=0; m < xdata_.size(); m++)
+        for(unsigned int x=0; x < xdata_[m].size(); x++)
+            delete xdata_[m][x];
+  
+    xdata_.clear();
+    xdata_.resize(n_aquifers_);
+ 
+    tria_pointers_.resize(n_aquifers_);
+    dof_handler->initialize(*triangulation,fe);
+    if(hanging_nodes)
+    {
+        //HANGING NODES
+        //clearing after the last refinement cycle
+        hanging_node_constraints.clear();
+        //making hanging nodes
+        DoFTools::make_hanging_node_constraints (*dof_handler,
+                                                hanging_node_constraints);
+        //finalizing hanging nodes for this dof_handler
+        hanging_node_constraints.close();
+        //hanging_node_constraints.print(std::cout);
+        //std::cout << "number of constrains: " << hanging_node_constraints.n_constraints() << std::endl;
+    }
+}
 
 
 //------------------------------------------------------------------------------------------- SETUP    
-void XModel::setup_system ()
+void XModel::assemble_system ()
 {
-  //before using block_sp_pattern again, block_matrix must be cleared
-  //to destroy pointer to block_sp_pattern
-  //else the copy constructor will destroy block_sp_pattern
-  //and block_matrix would point to nowhere!!
-  block_matrix = 0.0;
-  block_matrix.clear();
-  
-  for(unsigned int x=0; x < xdata.size(); x++)
-    delete xdata[x];
-  
-  xdata.clear();
-  n_enriched_dofs = 0;
-  triangulation->clear_user_data();
-  //all data from previous run are cleared
-  
-  
-  dof_handler->initialize(*triangulation,fe);
-
-  //find cells which lies within the enrichment radius of the wells
-  find_enriched_cells();
-  
-  
-  //adding well dofs to xdata
-  for(unsigned int x=0; x < xdata.size(); x++)
-  {
-    std::vector<unsigned int> well_dof_indices(xdata[x]->n_wells(), 0);
-    for(unsigned int w=0; w < xdata[x]->n_wells(); w++)
+    for(unsigned int m = 0; m < n_aquifers_; m++)
     {
-      //DBGMSG("setup-well_dof_indices: wi=%d \n", xdata[x]->get_well_index(w));
-      well_dof_indices[w] = dof_handler->n_dofs() + n_enriched_dofs + xdata[x]->get_well_index(w);
-    }
-    xdata[x]->set_well_dof_indices(well_dof_indices);
-  }
-  
-  if(hanging_nodes)
-  {
-    //HANGING NODES
-    //clearing after the last refinement cycle
-    hanging_node_constraints.clear();
-    //making hanging nodes
-    DoFTools::make_hanging_node_constraints (*dof_handler,
-                                             hanging_node_constraints);
-    //finalizing hanging nodes for this dof_handler
-    hanging_node_constraints.close();
-    //hanging_node_constraints.print(std::cout);
-    //std::cout << "number of constrains: " << hanging_node_constraints.n_constraints() << std::endl;
-  }
-  
-  //BLOCK SPARSITY PATTERN
-  //inicialization of (temporary) BlockCompressedSparsityPattern, BlockVector
-  const unsigned int blocks_dimension = 3;
-  unsigned int n[blocks_dimension] = 
-                      { dof_handler->n_dofs(), //n1-block(0) unenriched dofs
-                        n_enriched_dofs,      //n2-block(1) enriched dofs
-                        wells.size()          //n3-block(2) average pressures on wells
-                      };
-                    
-  BlockCompressedSparsityPattern block_c_sparsity(blocks_dimension, blocks_dimension);
-  for(unsigned int i=0; i < blocks_dimension; i++)
-    for(unsigned int j=0; j < blocks_dimension; j++)
-      block_c_sparsity.block(i,j).reinit(n[i],n[j]);
-    
-  block_c_sparsity.collect_sizes();
-
-      
-  const unsigned int dofs_per_cell = fe.dofs_per_cell;
-  std::vector<unsigned int> local_dof_indices(dofs_per_cell);
-  unsigned int n_well_block = n[0] + n[1];
-  
-  DoFHandler<2>::active_cell_iterator
-    cell = dof_handler->begin_active(),
-    endc = dof_handler->end();
-  for (; cell!=endc; ++cell)
-  {
-    cell->get_dof_indices(local_dof_indices);
-    
-    for (unsigned int i=0; i<dofs_per_cell; ++i)
-    {
-      for (unsigned int j=0; j<dofs_per_cell; ++j)
-      {
-        //block A
-        block_c_sparsity.block(0,0).add(local_dof_indices[i],local_dof_indices[j]);
-      }
+        DBGMSG("######### aquifer %d assembly ##########\n",m);
+        setup_subsystem(m);
+        assemble_subsystem(m);
+        system_matrix_.enter(block_matrix[m],m,m);
     }
     
-    if (cell->user_pointer() != nullptr)
-    { 
-      //A *a=static_cast<A*>(cell->user_pointer()); //from DEALII (TriaAccessor)
-      XDataCell *cell_xdata = static_cast<XDataCell*>( cell->user_pointer() );
-      
-      for(unsigned int w=0; w < cell_xdata->n_wells(); w++)
-      {
-        for(unsigned int k=0; k < dofs_per_cell; k++)
+    assemble_communication();
+    system_matrix_.print_latex(cout);
+    block_system_rhs.print(cout);
+    
+    if(output_options_ & OutputOptions::output_sparsity_pattern)
+    {
+        //prints whole BlockSparsityPattern
+        std::ofstream out1 (output_dir_+"block_sp_pattern.1");
+        block_sp_pattern.print_gnuplot (out1);
+
+//         //prints SparsityPattern of the block (0,0)
+//         std::ofstream out2 (output_dir_+"00_sp_pattern.1");
+//         block_sp_pattern.block(0,0).print_gnuplot (out2);
+    }
+}
+
+void XModel::setup_subsystem(unsigned int m)
+{
+    //all data from previous run are cleared
+    triangulation->clear_user_data();
+ 
+    n_enriched_dofs = 0;
+    //find cells which lies within the enrichment radius of the wells
+    find_enriched_cells(m);
+  
+  
+    //adding well dofs to xdata
+    for(unsigned int x=0; x < xdata_[m].size(); x++)
+    {
+        std::vector<unsigned int> well_dof_indices(xdata_[m][x]->n_wells(), 0);
+        for(unsigned int w=0; w < xdata_[m][x]->n_wells(); w++)
         {
-          {
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
+            //DBGMSG("setup-well_dof_indices: wi=%d \n", xdata[x]->get_well_index(w));
+            well_dof_indices[w] = dof_handler->n_dofs() + n_enriched_dofs + xdata_[m][x]->get_well_index(w);
+        }
+        xdata_[m][x]->set_well_dof_indices(well_dof_indices);
+    }
+  
+    //before using block_sp_pattern again, block_matrix must be cleared
+    //to destroy pointer to block_sp_pattern
+    //else the copy constructor will destroy block_sp_pattern
+    //and block_matrix would point to nowhere!!
+    if(! block_matrix[m].empty()) block_matrix[m].clear();
+    //block_matrix[m] = 0.0;
+    
+    unsigned int n_fem = dof_handler->n_dofs(),
+                 n_xfem = n_enriched_dofs,
+                 n_wells = wells.size(),
+                 n_well_block = n_fem + n_xfem;
+    unsigned int dimension = n_fem + n_xfem + n_wells;
+
+    CompressedSparsityPattern block_c_sparsity(dimension, dimension);
+    
+    const unsigned int dofs_per_cell = fe.dofs_per_cell;
+    std::vector<unsigned int> local_dof_indices(dofs_per_cell);
+  
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+        cell->get_dof_indices(local_dof_indices);
+    
+        for (unsigned int i=0; i<dofs_per_cell; ++i)
+        for (unsigned int j=0; j<dofs_per_cell; ++j)
+        {
+            //block A
+            block_c_sparsity.add(local_dof_indices[i],local_dof_indices[j]);
+        }
+    
+        if (cell->user_pointer() != nullptr)
+        { 
+            //A *a=static_cast<A*>(cell->user_pointer()); //from DEALII (TriaAccessor)
+            XDataCell *cell_xdata = static_cast<XDataCell*>( cell->user_pointer() );
+      
+            for(unsigned int w=0; w < cell_xdata->n_wells(); w++)
             {
-              if(cell_xdata->global_enriched_dofs(w)[k] != 0)
-              {
+                for(unsigned int k=0; k < dofs_per_cell; k++)
+                {
+                    for (unsigned int i=0; i<dofs_per_cell; ++i)
+                    {
+                        if(cell_xdata->global_enriched_dofs(w)[k] != 0)
+                        {
                 //block R_transpose
                 block_c_sparsity.add(local_dof_indices[i], cell_xdata->global_enriched_dofs(w)[k]);
                 //block R
@@ -984,7 +1020,7 @@ void XModel::setup_system ()
                 block_c_sparsity.add(cell_xdata->global_enriched_dofs(w)[k], n_well_block + cell_xdata->get_well_index(w));
                 //block C - enriched dofs
                 block_c_sparsity.add(n_well_block + cell_xdata->get_well_index(w), cell_xdata->global_enriched_dofs(w)[k]);
-              }
+                        }
               
               //block S
               for(unsigned int ww=0; ww < cell_xdata->n_wells(); ww++)
@@ -994,67 +1030,45 @@ void XModel::setup_system ()
                 block_c_sparsity.add(cell_xdata->global_enriched_dofs(w)[i], 
                                      cell_xdata->global_enriched_dofs(ww)[k]);
               }
-            }
-          }
-          //block C, C_transpose - unenriched dofs
-          if(cell_xdata->q_points(w).size() > 0)        //does the well cross the cell?
-          {
-            block_c_sparsity.add(local_dof_indices[k], n_well_block + cell_xdata->get_well_index(w));
-            block_c_sparsity.add(n_well_block + cell_xdata->get_well_index(w), local_dof_indices[k]);
-          }
-        }
-      }
-    }
-  }
-  
-  //diagonal pattern in the block (2,2)
-  for(unsigned int w = 0; w < wells.size(); w++)
-    block_c_sparsity.block(2,2).add(w,w);
-  
-  if(hanging_nodes)
-  {
-    //condensing hanging nodes
-    hanging_node_constraints.condense(block_c_sparsity);
-  }
-  
-  //copy from (temporary) BlockCompressedSparsityPattern to (main) BlockSparsityPattern
-  block_sp_pattern.copy_from(block_c_sparsity);
- 
-  //reinitialization of block_matrix
-  block_matrix.reinit(block_sp_pattern);
-  
-  //BLOCK VECTOR - SOLUTION, RHS REINITIALIZATION, filling zeros
-  //two blocks in vectors
-  block_solution.reinit(blocks_dimension);
-  block_system_rhs.reinit(blocks_dimension);
-  
-  //reinitialization of block_solution 
-  //(N,fast=false) .. vector is filled with zeros
-  for(unsigned int i=0; i < blocks_dimension; i++)
-  {
-    block_solution.block(i).reinit(n[i]);
-    block_system_rhs.block(i).reinit(n[i]);
-  }
-  
-  block_solution.collect_sizes();
-  block_system_rhs.collect_sizes();
-  
-  
-  //prints number of nozero elements in block_c_sparsity
-  std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
-  
-  if(output_options_ & OutputOptions::output_sparsity_pattern)
-  {
-    //prints whole BlockSparsityPattern
-    std::ofstream out1 (output_dir_+"block_sp_pattern.1");
-    block_sp_pattern.print_gnuplot (out1);
+                    } // for i
 
-    //prints SparsityPattern of the block (0,0)
-    std::ofstream out2 (output_dir_+"00_sp_pattern.1");
-    block_sp_pattern.block(0,0).print_gnuplot (out2);
-  }
+                //block C, C_transpose - unenriched dofs
+                if(cell_xdata->q_points(w).size() > 0)        //does the well cross the cell?
+                {
+                    block_c_sparsity.add(local_dof_indices[k], n_well_block + cell_xdata->get_well_index(w));
+                    block_c_sparsity.add(n_well_block + cell_xdata->get_well_index(w), local_dof_indices[k]);
+                }
+                          } // for k
+        } // for xdata->n_wells
+    } // if user_pointer
+    } // for cells
   
+    //diagonal pattern in the block (2,2)
+    for(unsigned int w = 0; w < wells.size(); w++)
+        block_c_sparsity.add(n_well_block + w,n_well_block + w);
   
+    if(hanging_nodes)
+    {
+        //condensing hanging nodes
+        hanging_node_constraints.condense(block_c_sparsity);
+    }
+  
+    triangulation->save_user_pointers(tria_pointers_[m]);
+    // end for n_aquifers_ //*****************************************************
+  
+    //copy from (temporary) BlockCompressedSparsityPattern to (main) BlockSparsityPattern
+    block_sp_pattern.copy_from(block_c_sparsity);
+ 
+    //reinitialization of block_matrix
+    block_matrix[m].reinit(block_sp_pattern);
+ 
+    //prints number of nozero elements in block_c_sparsity
+    std::cout << "nozero elements in block_sp_pattern: " << block_sp_pattern.n_nonzero_elements() << std::endl;
+  
+//       //reinitialization of block_solution 
+    block_solution.block(m).reinit(dimension);
+    block_system_rhs.block(m).reinit(dimension);
+    
   //DBGMSG("Printing sparsity pattern: \n");
   //block_sp_pattern.print(std::cout);
   //std::cout << "\n\n";
@@ -1062,26 +1076,26 @@ void XModel::setup_system ()
 
 
 
-void XModel::assemble_system ()
+void XModel::assemble_subsystem (unsigned int m)
 {
-  XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
-  DBGMSG("XData inicialization done - node values computed.\n");
+    XDataCell::initialize_node_values(node_enrich_values, xdata_[m], wells.size());
+    DBGMSG("XData inicialization done - node values computed.\n");
   
-  const unsigned int dofs_per_cell = fe.dofs_per_cell;
-  const unsigned int n_q_points    = quadrature_formula.size();
+    const unsigned int dofs_per_cell = fe.dofs_per_cell;
+    const unsigned int n_q_points    = quadrature_formula.size();
 
-  FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
-  Vector<double>       cell_rhs (dofs_per_cell);        //HOMOGENOUS NEUMANN -> = 0, else source term
-  std::vector<unsigned int> local_dof_indices (dofs_per_cell);
+    FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
+    Vector<double>       cell_rhs (dofs_per_cell);        //HOMOGENOUS NEUMANN -> = 0, else source term
+    std::vector<unsigned int> local_dof_indices (dofs_per_cell);
   
-  //for checking number of active cells (there used to be a problem in adaptivity)
-  unsigned int count = 0;
+    //for checking number of active cells (there used to be a problem in adaptivity)
+    unsigned int count = 0;
 
-  DoFHandler<2>::active_cell_iterator
-    cell = dof_handler->begin_active(),
-    endc = dof_handler->end();
-  for (; cell!=endc; ++cell)
-  {
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
     count++;
     fe_values.reinit (cell);
     cell_matrix = 0;
@@ -1106,13 +1120,13 @@ void XModel::assemble_system ()
       for (unsigned int i=0; i < dofs_per_cell; ++i)
         for (unsigned int j=0; j < dofs_per_cell; ++j)
           for (unsigned int q_point=0; q_point < n_q_points; ++q_point)
-            cell_matrix(i,j) += ( transmisivity[0] *
+            cell_matrix(i,j) += ( transmisivity_[m] *
                                   fe_values.shape_grad (i, q_point) *
                                   fe_values.shape_grad (j, q_point) *
                                   fe_values.JxW (q_point)
                                 );
       //FILLING MATRIX BLOCK A
-      block_matrix.add(local_dof_indices, cell_matrix);
+      block_matrix[m].add(local_dof_indices, cell_matrix);
           
       if(rhs_function != nullptr)
       {
@@ -1124,7 +1138,8 @@ void XModel::assemble_system ()
             rhs_function->value(fe_values.quadrature_point(q_point)) *   // 0 for homohenous neumann
             fe_values.JxW (q_point));
         } 
-        block_system_rhs.add(local_dof_indices, cell_rhs);
+
+        block_system_rhs.block(m).add(local_dof_indices, cell_rhs);
       }
       
     }    
@@ -1177,13 +1192,13 @@ void XModel::assemble_system ()
       {
         case Enrichment_method::xfem_ramp: 
           //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-            adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+            adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity_[m]);
           break;
         case Enrichment_method::xfem_shift:
-          adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity_[m]);
           break;
         case Enrichment_method::sgfem:
-          adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+          adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity_[m]);
           break;
       }
       //printing enriched nodes and dofs
@@ -1195,44 +1210,48 @@ void XModel::assemble_system ()
 //       std::cout << "]" << std::endl;
       
       //FILLING MATRIX BLOCKs
-      block_matrix.add(enrich_dof_indices,enrich_cell_matrix);
-      block_system_rhs.add(enrich_dof_indices,enrich_cell_rhs);
+      block_matrix[m].add(enrich_dof_indices,enrich_cell_matrix);
+      block_system_rhs.block(m).add(enrich_dof_indices,enrich_cell_rhs);
     } //end for(cells)
   }
   
-  for (unsigned int w = 0; w < wells.size(); w++)
-  {
-    //addition to block (2,2) ... matrix E
-    block_matrix.block(2,2).add(w,w,wells[w]->perm2aquitard());
+    unsigned int w_idx = block_matrix[m].n() - wells.size();
+    for (unsigned int w = 0; w < wells.size(); w++)
+    {
+        //addition to block (2,2) ... matrix E
+        //TODO: sum of two perm2aquitard constants
+        block_matrix[m].add(w_idx,w_idx,2*wells[w]->perm2aquitard());
+        //addition to rhs at the top aquifer
+        if(m == 0)
+            block_system_rhs.block(m)(w_idx) = wells[w]->perm2aquitard() * wells[w]->pressure();
+        w_idx++;
+    }
     
-    //addition to rhs
-    block_system_rhs.block(2)(w) = wells[w]->perm2aquitard() * wells[w]->pressure();
-  }
-    
-  DBGMSG("N_active_cells checkout(on triangulation,integrated): %d \t %d\n", triangulation->n_active_cells() ,count);
+    DBGMSG("N_active_cells checkout(on triangulation,integrated): %d \t %d\n", triangulation->n_active_cells() ,count);
   
 //   DBGMSG("Printing block matrix:\n");
-//   //block_matrix.block(0,0).print_formatted(std::cout);
+//   //block_matrix[m].block(0,0).print_formatted(std::cout);
 //   std::cout << "\n\n";
-//   block_matrix.print_formatted(std::cout);
+//   block_matrix[m].print_formatted(std::cout);
 //   std::cout << "\n\n";
-//   block_system_rhs.print(std::cout);
-  //block_matrix.block(2,2).print_formatted(std::cout);
-  
-  assemble_dirichlet();
+//   block_matrix[m].block(2,2).print_formatted(std::cout);
+    //if(m == 0)
+    //block_matrix[m].print(cout);
+    assemble_dirichlet(m);
+    DBGMSG("block_matrix[%d]:\n",m);
+    block_matrix[m].print(cout);
   //assemble_reduce_known();
   
-  if(hanging_nodes)
-  {
-    hanging_node_constraints.condense(block_matrix);
-    hanging_node_constraints.condense(block_system_rhs);
-  }
-    
+    if(hanging_nodes)
+    {
+        hanging_node_constraints.condense(block_matrix[m]);
+        hanging_node_constraints.condense(block_system_rhs.block(m));
+    }
 }
 
 
 
-void XModel::assemble_reduce_known()
+void XModel::assemble_reduce_known(unsigned int m)
 {
     std::map<unsigned int,double> known_values;
     
@@ -1249,13 +1268,41 @@ void XModel::assemble_reduce_known()
         known_values[offset+w] = wells[w]->pressure();
     }
     
-    MatrixTools::apply_boundary_values(known_values,
-                                       block_matrix,
-                                       block_solution, 
-                                       block_system_rhs,
-                                       true
-                                      );
+    //TODO: cannot do (block_matrix, vector, vector)
+//     MatrixTools::apply_boundary_values(known_values,
+//                                        block_matrix[m],
+//                                        block_solution[m], 
+//                                        block_system_rhs[m],
+//                                        true
+//                                       );
 }
+
+void XModel::assemble_communication()
+{
+    unsigned int size = block_matrix[0].n(),
+                 offset = size - wells.size();
+
+    CompressedSparsityPattern c_sparsity(size, size);
+    for (unsigned int j=offset; j<size; ++j)
+        c_sparsity.add(j,j);
+
+    comm_sp_pattern.copy_from(c_sparsity);
+    
+    for(unsigned int m = 0; m < n_aquifers_-1; m++)
+    {
+        block_comm_matrix[m].reinit(comm_sp_pattern);
+        
+        for (unsigned int w=0; w < wells.size(); w++)
+            block_comm_matrix[m].add(w+offset, w+offset, -wells[w]->perm2aquitard());
+        
+        DBGMSG("block_comm_matrix[%d]:\n",m);
+        block_comm_matrix[m].print(cout);
+        
+        system_matrix_.enter(block_comm_matrix[m], m, m+1);
+        system_matrix_.enter(block_comm_matrix[m], m+1, m);
+    }
+}
+
                                
     
 void XModel::solve ()
@@ -1263,8 +1310,8 @@ void XModel::solve ()
   //how to do things for BLOCK objects
   //http://www.dealii.org/archive/dealii/msg02097.html
   
-  SolverControl	solver_control(solver_max_iter_, solver_tolerance_);
-  PrimitiveVectorMemory<BlockVector<double> > vector_memory;
+    SolverControl	solver_control(solver_max_iter_, solver_tolerance_);
+    GrowingVectorMemory<BlockVector<double> > vector_memory;
  
   
   /*
@@ -1315,39 +1362,37 @@ void XModel::solve ()
   //SolverBicgstab<BlockVector<double> > solver_bicg(solver_control,vector_memory);
   SolverCG<BlockVector<double> > solver_cg(solver_control, vector_memory);
   
-  PreconditionJacobi<BlockSparseMatrix<double> > preconditioning;
-  preconditioning.initialize(block_matrix, 1.0);
+    // block Jacobi preconditioning
+    BlockTrianglePrecondition<double> preconditioning(n_aquifers_);
+    
+    unsigned int size = block_matrix[0].n();
+    SparsityPattern sp_pattern;
+    CompressedSparsityPattern c_sparsity(size, size);
+    for (unsigned int j=0; j<size; ++j)
+        c_sparsity.add(j,j);
+    
+    sp_pattern.copy_from(c_sparsity);
+    
+    std::vector<SparseMatrix<double> > precond_mat(n_aquifers_);
+    for(unsigned int m = 0; m < n_aquifers_; m++)
+    {
+        precond_mat[m].reinit(sp_pattern);
+        
+        for (unsigned int j=0; j<size; ++j)
+            precond_mat[m].add(j,j, 1.0/block_matrix[m](j,j));
+        preconditioning.enter(precond_mat[m], m, m);
+    }
 
-  solver_cg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
-  //solver_bicg.solve(block_matrix, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
+  solver_cg.solve(system_matrix_, block_solution, block_system_rhs, preconditioning); //PreconditionIdentity());
   
   solver_iterations_ = solver_control.last_step();
   
-  std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " << setprecision(4) << solver_control.last_value() << std::endl;
+  std::cout << std::scientific << "Solver: steps: " << solver_control.last_step() << "\t residuum: " 
+            << setprecision(4) << solver_control.last_value() << std::endl;
   //*/
  
-      
+    preconditioning.clear();
   
-  //NOT for BLOCK things
-  // generate a @p PreconditionSelector
-  //PreconditionSelector<SparseMatrix<double>, Vector<double> >
-  //  preconditioning("jacobi", 1.);
-  //preconditioning.use_matrix(block_matrix);
-
-  
-  
-  /*
-  ReductionControl inner_control (4000, 1.e-16, 1.e-2);
-  PreconditionJacobi<BlockSparseMatrix<double> > inner_precondition;
-  inner_precondition.initialize(block_matrix, 1.0);
-  IterativeInverse<BlockVector<double> > precondition;
-  precondition.initialize (block_matrix, inner_precondition);
-  precondition.solver.select("cg");
-  precondition.solver.set_control(inner_control);
-  SolverControl outer_control(1000, 1.e-12);
-  SolverRichardson<BlockVector<double> > outer_iteration(outer_control);
-  outer_iteration.solve (block_matrix, block_solution, block_system_rhs, precondition);
-  //*/
   
   /*
   // DIRECT SOLVER
@@ -1357,21 +1402,17 @@ void XModel::solve ()
   block_solution = block_system_rhs;
   //*/
   
-  
+  //TODO: do it after blocks
   if(hanging_nodes)
   {
-    hanging_node_constraints.distribute(block_solution);
+    //hanging_node_constraints.distribute(block_solution);
   }
   
-  for (unsigned int w=0; w < wells.size(); ++w)
-      std::cout << setprecision(12) << "value of H" << w << " = " << block_solution.block(2)[w] << std::endl;
+//   for (unsigned int w=0; w < wells.size(); ++w)
+//       std::cout << setprecision(12) << "value of H" << w << " = " << block_solution[0].block(2)[w] << std::endl;
   
-  //DBGMSG("Printing solution:\n");
-  //block_solution.print(std::cout);;
-  //block_solution.block(0).print(std::cout);
-  //std::cout << "\n\n";
-  //block_solution.block(1).print(std::cout);
-  //*/
+  DBGMSG("Printing solution:\n");
+  block_solution.print(std::cout);
 }
 
 
@@ -1380,9 +1421,10 @@ void XModel::output_results (const unsigned int cycle)
     // MATRIX OUTPUT
     if(output_options_ & OutputOptions::output_matrix)
     {
+        //TODO: output whole system matrix
         std::stringstream matrix_name;
         matrix_name << "matrix_" << cycle;
-        write_block_sparse_matrix(block_matrix,matrix_name.str());
+        //write_block_sparse_matrix(block_matrix[0],matrix_name.str());
     }
   
     
@@ -1403,7 +1445,7 @@ void XModel::output_results (const unsigned int cycle)
     {
         DataOut<2> data_out;
         data_out.attach_dof_handler (*dof_handler);
-        Vector<double> dummys_solution(block_solution.block(0).size());
+        Vector<double> dummys_solution(dof_handler->n_dofs());
         data_out.add_data_vector (dummys_solution, "xfem_grid");
         data_out.build_patches (0);
         std::ofstream output (filename.str()+".vtk");
@@ -1456,12 +1498,15 @@ void XModel::output_results (const unsigned int cycle)
   if(output_options_ & OutputOptions::output_solution)
   {
   DBGMSG("tria: %d  %d \n",triangulation->n_refinement_steps(), triangulation->n_levels());
-  
+  for(unsigned int m = 0; m<n_aquifers_; m++)
+  {
   if(output_triangulation) delete output_triangulation;
   
   output_triangulation = new PersistentTriangulation<2>(coarse_tria);
   PersistentTriangulation<2> &output_grid = *output_triangulation;
   
+  triangulation->clear_user_pointers();
+  triangulation->load_user_pointers(tria_pointers_[m]); //reload proper xdata
   output_grid.copy_triangulation(*triangulation);
   output_grid.restore();
   output_grid.clear_user_flags();
@@ -1470,10 +1515,9 @@ void XModel::output_results (const unsigned int cycle)
   DoFHandler<2> temp_dof_handler;
   temp_dof_handler.initialize(output_grid,temp_fe);
    
-  //triangulation->load_user_pointers(tria_pointers); 
-  //triangulation->load_user_flags(tria_flags);
-  
-  dist_unenriched = block_solution.block(0);
+  Vector<double>::iterator first = block_solution.block(m).begin();
+  Vector<double>::iterator last = first + dof_handler->n_dofs();
+  dist_unenriched = Vector<double>(first, last);
   dist_solution = dist_unenriched;
   
   double tolerance = output_element_tolerance_;
@@ -1485,8 +1529,9 @@ void XModel::output_results (const unsigned int cycle)
       //MASSERT(0,"Not implemented yet.");
       for(unsigned int n = 0; n < iterations; n++)
       {
-        DBGMSG("output [%d]:\n", n);
-        if( recursive_output<Enrichment_method::xfem_ramp>(tolerance, output_grid, temp_dof_handler, temp_fe, n) )
+        DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
+        if( recursive_output<Enrichment_method::xfem_ramp>(tolerance, output_grid, temp_dof_handler, 
+                                                           temp_fe, n, m) )
           break;
       }
       break;
@@ -1494,8 +1539,9 @@ void XModel::output_results (const unsigned int cycle)
     case Enrichment_method::xfem_shift:
       for(unsigned int n = 0; n < iterations; n++)
       {
-        DBGMSG("output [%d]:\n", n);
-        if( recursive_output<Enrichment_method::xfem_shift>(tolerance, output_grid, temp_dof_handler, temp_fe, n) )
+        DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
+        if( recursive_output<Enrichment_method::xfem_shift>(tolerance, output_grid, temp_dof_handler, 
+                                                            temp_fe, n, m) )
           break;
       }
       break;
@@ -1503,11 +1549,13 @@ void XModel::output_results (const unsigned int cycle)
     case Enrichment_method::sgfem:
       for(unsigned int n = 0; n < iterations; n++)
       {
-        DBGMSG("output [%d]:\n", n);
-        if( recursive_output<Enrichment_method::sgfem>(tolerance, output_grid, temp_dof_handler, temp_fe, n) )
+        DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
+        if( recursive_output<Enrichment_method::sgfem>(tolerance, output_grid, temp_dof_handler, 
+                                                       temp_fe, n, m) )
           break;
       }
   }
+  } //for m
   } //if output_solution
 }
 
@@ -1551,16 +1599,19 @@ void XModel::run (const unsigned int cycle)
 
 
 
-void XModel::find_dofs_enriched_cells(std::vector<DoFHandler<2>::active_cell_iterator> &cells, const unsigned int &dof_index)
+void XModel::find_dofs_enriched_cells(std::vector<DoFHandler<2>::active_cell_iterator> &cells, 
+                                      const unsigned int &dof_index,
+                                      unsigned int m
+                                     )
 {
   cells.clear();
-  for(unsigned int i=0; i < xdata.size(); i++)
+  for(unsigned int i=0; i < xdata_[m].size(); i++)
   {
-    for(unsigned int w=0; w < xdata[i]->n_wells(); w++)
-      for(unsigned int k=0; k < xdata[i]->global_enriched_dofs(w).size(); k++)
+    for(unsigned int w=0; w < xdata_[m][i]->n_wells(); w++)
+      for(unsigned int k=0; k < xdata_[m][i]->global_enriched_dofs(w).size(); k++)
       {
-        if(xdata[i]->global_enriched_dofs(w)[k] == dof_index)
-          cells.push_back(xdata[i]->get_cell());
+        if(xdata_[m][i]->global_enriched_dofs(w)[k] == dof_index)
+          cells.push_back(xdata_[m][i]->get_cell());
       }
   }
 }
@@ -1584,7 +1635,7 @@ void XModel::get_dof_func(const std::vector< Point< 2 > >& points,
     
   std::vector<DoFHandler<2>::active_cell_iterator> cells(GeometryInfo<2>::faces_per_cell);  
   // finds all cells (maximum 4) that has given dof at its node
-  find_dofs_enriched_cells(cells, dof_index);
+  find_dofs_enriched_cells(cells, dof_index, 0);
   
   const unsigned int dofs_per_cell = fe.dofs_per_cell;
 
@@ -1780,7 +1831,7 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
     for(unsigned int j=0; j < dofs_per_cell; j++)
     {
       local_shape_values[j] = fe.shape_value(j, unit_point);
-      dist_unenriched[p] += block_solution(local_dof_indices[j]) *
+      dist_unenriched[p] += block_solution.block(0)(local_dof_indices[j]) *
                             local_shape_values[j];
     }
 
@@ -1805,7 +1856,7 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
             }
             for(unsigned int k = 0; k < n_vertices; k++)
             {
-              dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
+              dist_enriched[p] += block_solution.block(0)(cell_xdata->global_enriched_dofs(w)[k]) *
                                   ramp *
                                   local_shape_values[k] *
                                   (xshape - cell_xdata->get_well(w)->global_enrich_value(cell_and_point.first->vertex(k))); //shifted                      
@@ -1820,7 +1871,7 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
             }
             for(unsigned int k = 0; k < n_vertices; k++)
             {
-              dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
+              dist_enriched[p] += block_solution.block(0)(cell_xdata->global_enriched_dofs(w)[k]) *
                                   ramp *
                                   local_shape_values[k] *
                                   xshape;                      
@@ -1838,7 +1889,7 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
             for(unsigned int k = 0; k < n_vertices; k++)
             {
               if(cell_xdata->global_enriched_dofs(w)[k] != 0)
-              dist_enriched[p] += block_solution(cell_xdata->global_enriched_dofs(w)[k]) *
+              dist_enriched[p] += block_solution.block(0)(cell_xdata->global_enriched_dofs(w)[k]) *
                                   local_shape_values[k] *
                                   (xshape - xshape_inter);
                                   
@@ -1859,9 +1910,10 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     // MATRIX OUTPUT
     if(output_options_ & OutputOptions::output_matrix)
     {
+        //TODO: output whole system matrix
         std::stringstream matrix_name;
         matrix_name << "matrix_" << cycle;
-        write_block_sparse_matrix(block_matrix,matrix_name.str());
+        //write_block_sparse_matrix(block_matrix[0],matrix_name.str());
     }
       // MESH OUTPUT
     if(output_options_ & OutputOptions::output_gmsh_mesh)
@@ -1889,7 +1941,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
         filename << output_dir_ << "xfem_mesh_" << cycle;
         DataOut<2> data_out;
         data_out.attach_dof_handler (*dof_handler);
-        Vector<double> dummys_solution(block_solution.block(0).size());
+        Vector<double> dummys_solution(dof_handler->n_dofs());
         data_out.add_data_vector (dummys_solution, "xfem_grid");
         data_out.build_patches (0);
         std::ofstream output (filename.str()+".vtk");
@@ -1997,9 +2049,10 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
     // MATRIX OUTPUT
     if(output_options_ & OutputOptions::output_matrix)
     {
+        //TODO: output whole system matrix
         std::stringstream matrix_name;
         matrix_name << "matrix_" << cycle;
-        write_block_sparse_matrix(block_matrix,matrix_name.str());
+        //write_block_sparse_matrix(block_matrix[0],matrix_name.str());
     }
   
   //triangulation for distributing solution onto domain
@@ -2195,8 +2248,8 @@ void XModel::test_method(ExactBase* exact_solution)
     
     // Set the solution - dofs
     
-    unsigned int dofs_per_cell = fe.dofs_per_cell,
-                 index = 0;
+    unsigned int dofs_per_cell = fe.dofs_per_cell;
+                 //index = 0;
                  
     XDataCell * local_xdata;
              
@@ -2215,7 +2268,7 @@ void XModel::test_method(ExactBase* exact_solution)
         
         for(unsigned int i=0; i < dofs_per_cell; i++)
         {
-            block_solution(local_dof_indices[i]) = exact_solution->value(cell->vertex(i));
+            block_solution.block(0)(local_dof_indices[i]) = exact_solution->value(cell->vertex(i));
 //             if(cell->index() == 0)
 //                 DBGMSG("cell %d, dof %d, value: %f\n",cell->index(), local_dof_indices[i], block_solution(local_dof_indices[i]));
         }
@@ -2227,13 +2280,14 @@ void XModel::test_method(ExactBase* exact_solution)
             for(unsigned int k = 0; k < dofs_per_cell; k++) //M_w
             { 
                 if(local_xdata->global_enriched_dofs(w)[k] != 0)
-                    block_solution(local_xdata->global_enriched_dofs(w)[k]) = exact_solution->a();
+                    block_solution.block(0)(local_xdata->global_enriched_dofs(w)[k]) = exact_solution->a();
 //                 if(cell->index() == 0)
 //                     DBGMSG("cell %d, dof %d, value: %f\n",cell->index(), local_xdata->global_enriched_dofs(w)[k], block_solution(local_xdata->global_enriched_dofs(w)[k]));
             }
         }
     }
-    block_solution.block(2)[0] = wells[0]->pressure();
+    //TODO: fix index
+    block_solution.block(0)[block_solution.block(0).size()-1] = wells[0]->pressure();
     
     //BlockVector<double> temp_solution = block_solution;
     
@@ -2252,8 +2306,8 @@ void XModel::test_method(ExactBase* exact_solution)
     residuum.collect_sizes();
     
     // A*x
-    block_matrix.vmult(residuum,block_solution);
-    residuum.add(-1,block_system_rhs);
+//     block_matrix[0].vmult(residuum,block_solution);
+//     residuum.add(-1,block_system_rhs);
     
     std::stringstream filename;
         filename << output_dir_ << "residuum.txt";
@@ -2342,16 +2396,16 @@ double XModel::well_pressure(unsigned int w)
 {
     MASSERT(block_solution.size() >= w, "Solution not computed.");
     
-    return block_solution.block(2)[w];
+    return block_solution.block(0)[block_solution.block(0).size() - wells.size() + w];
 }
 
 
 double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level, unsigned int pol_degree)
 {  
-    for(unsigned int i=0; i < xdata.size(); i++)
-        delete xdata[i];
+    for(unsigned int i=0; i < xdata_[0].size(); i++)
+        delete xdata_[0][i];
     
-    xdata.clear();
+    xdata_[0].clear();
     make_grid();
 
     clock_t start, stop;
@@ -2361,8 +2415,8 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
     MASSERT((start = clock())!=-1, "Measure time error.");
 
     dof_handler->initialize(*triangulation,fe);
-    find_enriched_cells();
-    XDataCell::initialize_node_values(node_enrich_values, xdata, wells.size());
+    find_enriched_cells(0);
+    XDataCell::initialize_node_values(node_enrich_values, xdata_[0], wells.size());
   
     const unsigned int dofs_per_cell = fe.dofs_per_cell;
     std::vector<unsigned int> local_dof_indices (dofs_per_cell);
@@ -2414,35 +2468,3 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
     //*/
     return rel_error;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

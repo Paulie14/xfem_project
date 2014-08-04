@@ -597,7 +597,7 @@ void test_convergence_square(std::string output_dir)
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
          enrichment_radius = 50.0,
-         well_pressure = 50*Parameters::pressure_at_top;
+         well_pressure = 10;//50*Parameters::pressure_at_top;
          
   unsigned int n_well_q_points = 200,
                initial_refinement = 2;
@@ -644,7 +644,7 @@ void test_convergence_square(std::string output_dir)
                                 | ModelBase::output_solution
                                 | ModelBase::output_error);
   
-  XModel_simple xmodel(well);  
+  XModel_simple xmodel(well, "", 2);  
   xmodel.set_name(test_name + "sgfem"); 
   xmodel.set_enrichment_method(Enrichment_method::sgfem);
 //   xmodel.set_name(test_name + "xfem_shift");
@@ -662,8 +662,8 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
-                          //| ModelBase::output_solution
-                          //| ModelBase::output_decomposed
+                          | ModelBase::output_solution
+                          | ModelBase::output_decomposed
                           //| ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
@@ -1551,7 +1551,7 @@ void test_adaptive_integration2(std::string output_dir)
             table.set_scientific("rel_error",true);
         }
         // write the table in different streams
-        table.write_text(cout);
+        table.write_text(std::cout);
         std::stringstream table_filename;
         table_filename << output_path << "table_" << i;
         std::ofstream out_file;

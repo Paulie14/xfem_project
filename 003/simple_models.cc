@@ -209,7 +209,7 @@ void XModel_simple::refine_grid()
     //DBGMSG("refinement: %d\n",ref);
     for (; cell!=endc; ++cell)
     {
-      if(cell->at_boundary() || (cell->level() > xdata[0]->get_cell()->level()))
+      if(cell->at_boundary() || (cell->level() > xdata_[0][0]->get_cell()->level()))
       //if(cell->at_boundary() || (cell->center().distance(center) > (enrichment_radius+enriched_cell_diameter) && (cell->level() > 4)))
       //if(cell->center().distance(center) > (r_enr[0]+enriched_cell_diameter)) //cell->at_boundary())
       {
@@ -224,7 +224,7 @@ void XModel_simple::refine_grid()
 
 
 
-void XModel_simple::assemble_dirichlet()
+void XModel_simple::assemble_dirichlet(unsigned int m)
 {
   MASSERT(dirichlet_function != NULL, "Dirichlet BC function has not been set.\n");
   MASSERT(dof_handler != NULL, "DoF Handler object does not exist.\n");
@@ -269,19 +269,55 @@ void XModel_simple::assemble_dirichlet()
                                             *dirichlet_function,
                                             boundary_values);
   
-    
-    // Setting the enriched part boundary condition
-    ExactBase * exact_solution = static_cast<ExactSolution*>( dirichlet_function );
+//     std::map::iterator it = boundary_values.begin(),
+//      it_end = boundary_values.end();
   
-    XDataCell * local_xdata;
-    unsigned int dofs_per_cell = fe.dofs_per_cell;
-    std::vector<unsigned int> local_dof_indices (dofs_per_cell);   
+//     SparseMatrix<double>::iterator mat_it, mat_it_end, mat_diag,
+//                                    row_it, row_it_end;
+//     unsigned int row, column, i;
+//     
+//     for(auto &it: boundary_values)
+//     {
+//         row = it.first;
+//         mat_diag = block_matrix[m].diag_element(row);
+//         column = mat_diag->column();
+//         
+//         for(i=0; i<block_matrix[m].m(); i++)
+//         {
+//             if(row == i) continue;
+//             row_it = block_matrix[m].begin(i);
+//             row_it_end = block_matrix[m].end(i);
+//             
+//             double coef = block_matrix[m](i, column) / mat_diag->value();
+//             for(; row_it != row_it_end; row_it++)
+//             {
+//                 row_it->value() = row_it->value() - coef * block_matrix[m](row,row_it->column());
+//             }
+//         }
+//            
+//         mat_it = block_matrix[m].begin(row);
+//         mat_it_end = block_matrix[m].end(row);
+//         for(; mat_it != mat_it_end; mat_it++)
+//         {
+//             mat_it->value() = 0.0;  // set zero in all row entries
+//         }
+//         block_matrix[m].diag_element(it.first) = 1.0;  //diagonal entry of the matrix
+//         block_system_rhs.block(m)(it.first) = it.second;    // set the value to the RHS
+//         
+//     }
     
-    DoFHandler<2>::active_cell_iterator
-        cell = dof_handler->begin_active(),
-        endc = dof_handler->end();
-    for (; cell!=endc; ++cell)
-    {
+//     // Setting the enriched part boundary condition
+//     ExactBase * exact_solution = static_cast<ExactSolution*>( dirichlet_function );
+//   
+//     XDataCell * local_xdata;
+//     unsigned int dofs_per_cell = fe.dofs_per_cell;
+//     std::vector<unsigned int> local_dof_indices (dofs_per_cell);   
+//     
+//     DoFHandler<2>::active_cell_iterator
+//         cell = dof_handler->begin_active(),
+//         endc = dof_handler->end();
+//     for (; cell!=endc; ++cell)
+//     {
         //DBGMSG("cell: %d\n",cell->index());
         // is there is NOT a user pointer on the cell == is not enriched?
         //if(cell->at_boundary())
@@ -322,7 +358,7 @@ void XModel_simple::assemble_dirichlet()
 //                 }
 //             }
 //         }
-     }
+//      }
     //*/
     
    /*
@@ -382,11 +418,12 @@ void XModel_simple::assemble_dirichlet()
       }
     }
   */
+   
    DBGMSG("boundary_values size = %d\n",boundary_values.size());
    MatrixTools::apply_boundary_values (boundary_values,
-                                       block_matrix,
-                                       block_solution,
-                                       block_system_rhs,
+                                       block_matrix[m],
+                                       block_solution.block(m),
+                                       block_system_rhs.block(m),
                                        true
                                       );
    
@@ -468,7 +505,7 @@ void Model_simple::refine_grid()
 
 
 
-void Model_simple::assemble_dirichlet()
+void Model_simple::assemble_dirichlet(unsigned int m)
 {
   MASSERT(dirichlet_function != NULL, "Dirichlet BC function has not been set.\n");
   MASSERT(dof_handler != NULL, "DoF Handler object does not exist.\n");

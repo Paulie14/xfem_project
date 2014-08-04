@@ -135,8 +135,8 @@ public:
   
   ///Getter of transmisivity
   ///@param m_aquifer is the number aquifer.
-  inline double get_transmisivity(const unsigned int &m_aquifer) const
-  {return transmisivity[m_aquifer];}
+  inline double transmisivity(const unsigned int &m_aquifer) const
+  {return transmisivity_[m_aquifer];}
   
   /// Returns model name.
   inline std::string name() const
@@ -250,7 +250,7 @@ protected:
    * It can be overriden to assemble Dirichlet boundary condition.
    * This cannot be done the same for all models, if we will consider enrichment at the boundary in the future.
    */
-  virtual void assemble_dirichlet() 
+  virtual void assemble_dirichlet(unsigned int m) 
   {std::cout << "No Dirichlet BC is applied." << std::endl; };
 
   //@}
@@ -286,7 +286,7 @@ protected:
   unsigned int n_aquifers_;
   
   ///transmisivity of the aquifer
-  std::vector<double> transmisivity;
+  std::vector<double> transmisivity_;
 
   ///@name System
   //@{

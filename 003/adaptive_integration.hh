@@ -153,7 +153,7 @@ class Adaptive_integration
       * @param exact_solution is the functor representing the exact solution
       */   
     template<Enrichment_method::Type EnrType> 
-    double integrate_l2_diff(const BlockVector<double> &solution, const Function<2> &exact_solution);
+    double integrate_l2_diff(const Vector<double> &solution, const Function<2> &exact_solution);
     
 //     /** OBSOLETE First version of XFEM (without shift).
 //      * Does everything inside - no XFEValues.
@@ -588,7 +588,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
 
 
 template<Enrichment_method::Type EnrType> 
-double Adaptive_integration::integrate_l2_diff(const BlockVector<double> &solution, const Function<2> &exact_solution)
+double Adaptive_integration::integrate_l2_diff(const Vector<double> &solution, const Function<2> &exact_solution)
 {  
     unsigned int n_wells = xdata->n_wells(),              // number of wells affecting the cell
                  dofs_per_cell = fe->dofs_per_cell,
