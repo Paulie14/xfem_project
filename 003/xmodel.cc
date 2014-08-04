@@ -926,7 +926,7 @@ void XModel::assemble_system ()
         DBGMSG("######### aquifer %d assembly ##########\n",m);
         setup_subsystem(m);
         assemble_subsystem(m);
-        system_matrix_.enter(block_matrix[m],m,m);
+        system_matrix_.enter(block_matrix[m],n_aquifers_-m-1,n_aquifers_-m-1);
     }
     
     assemble_communication();
@@ -1219,8 +1219,9 @@ void XModel::assemble_subsystem (unsigned int m)
     for (unsigned int w = 0; w < wells.size(); w++)
     {
         //addition to block (2,2) ... matrix E
+        double temp_val = wells[w]->perm2aquitard() + wells[w]->perm2aquitard();
         //TODO: sum of two perm2aquitard constants
-        block_matrix[m].add(w_idx,w_idx,2*wells[w]->perm2aquitard());
+        block_matrix[m].add(w_idx,w_idx,temp_val);
         //addition to rhs at the top aquifer
         if(m == 0)
             block_system_rhs.block(m)(w_idx) = wells[w]->perm2aquitard() * wells[w]->pressure();
@@ -1298,8 +1299,8 @@ void XModel::assemble_communication()
         DBGMSG("block_comm_matrix[%d]:\n",m);
         block_comm_matrix[m].print(cout);
         
-        system_matrix_.enter(block_comm_matrix[m], m, m+1);
-        system_matrix_.enter(block_comm_matrix[m], m+1, m);
+        system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-1, n_aquifers_-m-2);
+        system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-2, n_aquifers_-m-1);
     }
 }
 
