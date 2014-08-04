@@ -1151,7 +1151,7 @@ void XModel::assemble_subsystem (unsigned int m)
       Vector<double>       enrich_cell_rhs; 
   
   
-      Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
+      Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping(),m);
       
       //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
       //unsigned int refinement_level = 12;
@@ -1220,13 +1220,13 @@ void XModel::assemble_subsystem (unsigned int m)
     {
         //addition to block (2,2) ... matrix E
         double temp_val;
-        if(m == 0) temp_val = wells[w]->perm2aquitard();
-        else temp_val = wells[w]->perm2aquitard() + wells[w]->perm2aquitard();
-        //TODO: sum of two perm2aquitard constants
+        if(m == 0) temp_val = wells[w]->perm2aquitard(m);
+        else temp_val = wells[w]->perm2aquitard(m) + wells[w]->perm2aquitard(m-1);
+
         block_matrix[m].add(w_idx,w_idx,temp_val);
         //addition to rhs at the top aquifer
         if(m == 0)
-            block_system_rhs.block(m)(w_idx) = wells[w]->perm2aquitard() * wells[w]->pressure();
+            block_system_rhs.block(m)(w_idx) = wells[w]->perm2aquitard(m) * wells[w]->pressure();
         w_idx++;
     }
     
@@ -1296,7 +1296,7 @@ void XModel::assemble_communication()
         block_comm_matrix[m].reinit(comm_sp_pattern);
         
         for (unsigned int w=0; w < wells.size(); w++)
-            block_comm_matrix[m].add(w+offset, w+offset, -wells[w]->perm2aquitard());
+            block_comm_matrix[m].add(w+offset, w+offset, -wells[w]->perm2aquitard(m));
         
         //DBGMSG("block_comm_matrix[%d]:\n",m);
         //block_comm_matrix[m].print(cout);
@@ -2439,7 +2439,7 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
         MASSERT(cell->user_pointer() != nullptr, "Not enriched cell.");
   
         
-        Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping());
+        Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping(),0);
       
         unsigned int t;
         for(t=0; t < level; t++)

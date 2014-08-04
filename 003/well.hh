@@ -4,6 +4,8 @@
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/dofs/dof_tools.h>
 
+#include "massert.h"
+
 using namespace dealii;
 
 /** @brief Class representing the well.
@@ -13,11 +15,14 @@ class Well
 {
   public:
     
-    ///Default constructor.
+    /// Default constructor.
     Well () 
       {}
     
-    ///main constructor with well's parameters definition
+    /// Main constructor with well's geometry parameters definition.
+    Well (double r, Point<2> cent);
+    
+    /// Additional simple constructor.
     Well (double r, Point<2> cent, double perm2fer, double perm2tard);
       
     ///constructor
@@ -34,13 +39,15 @@ class Well
     inline Point<2> center()
     {return center_;}
     
-    /// returns permeability to aquifer
-    inline double perm2aquifer()
-    {return perm2aquifer_;}
+    /// Returns permeability to @p m-th aquifer.
+    inline double perm2aquifer(unsigned int m)
+    {   MASSERT(m < perm2aquifer_.size(), "Aquifer index exceeded."); 
+        return perm2aquifer_[m]; }
     
-    /// returns permeability to aquitard
-    inline double perm2aquitard()
-    {return perm2aquitard_;}
+    /// Returns permeability to @p m-th aquitard.
+    inline double perm2aquitard(unsigned int m)
+    {   MASSERT(m < perm2aquitard_.size(), "Aquitard index exceeded."); 
+        return perm2aquitard_[m]; }
   
     /// returns pressure in the well
     inline double pressure()
@@ -57,12 +64,22 @@ class Well
   
     /// @name Setters
     //@{
-    /// sets permeability to aquifer
-    inline void set_perm2aquifer(const double &perm)
+    /// Sets permeability to @p m-th aquifer.
+    inline void set_perm2aquifer(unsigned int m, double perm)
+    {   MASSERT(m < perm2aquifer_.size(), "Aquifer index exceeded."); 
+        perm2aquifer_[m] = perm;}
+    
+    /// Sets permeability to @p m-th aquitard.
+    inline void set_perm2aquitard(unsigned int m, double perm)
+    {   MASSERT(m < perm2aquitard_.size(), "Aquitard index exceeded."); 
+        perm2aquitard_[m] = perm;}
+    
+    /// Sets permeability to all aquifers.
+    inline void set_perm2aquifer(std::vector<double> perm)
     { perm2aquifer_ = perm;}
     
-    /// sets permeability to aquitard
-    inline void set_perm2aquitard(const double &perm)
+    /// Sets permeability to all aquitards.
+    inline void set_perm2aquitard(std::vector<double> perm)
     { perm2aquitard_ = perm;}
     
     /// sets pressure
@@ -95,6 +112,9 @@ class Well
     /// radius of the well
     double radius_;
     
+    /// pressure at the top of the well (Dirichlet boundary condition)
+    double pressure_;
+    
     /// position of the center of the well
     /** There is a reason that there are no setting methods. 
      *  Models can be run in cycles - if triangulation is not changed
@@ -103,13 +123,10 @@ class Well
     Point<2> center_;
     
     /// permeability between the well and aquifer
-    double perm2aquifer_;
+    std::vector<double> perm2aquifer_;
     
     /// permeability between in the well between aquitards
-    double perm2aquitard_;
-    
-    /// pressure at the top of the well (Dirichlet boundary condition)
-    double pressure_;
+    std::vector<double> perm2aquitard_;
     
     /// points placed around the circle by @p evaluate_q_points function
     std::vector<Point<2> > q_points_;

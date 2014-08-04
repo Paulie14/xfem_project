@@ -103,9 +103,10 @@ void Square::transform_to_real_space(const DoFHandler< 2  >::active_cell_iterato
 
 Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_iterator& cell, 
                                            const dealii::FE_Q< 2 >& fe,
-                                           const Mapping<2>& mapping
+                                           const Mapping<2>& mapping,
+                                           unsigned int m
                                           )
-  : cell(cell), fe(&fe), mapping (&mapping),
+  : m_(m), cell(cell), fe(&fe), mapping (&mapping),
     cell_mapping(cell->vertex(0), cell->vertex(3)),
     dirichlet_function(nullptr),
     rhs_function(nullptr),

@@ -1,21 +1,29 @@
 #include "well.hh"
 
-Well::Well(double r, Point< 2 > cent, double perm2fer, double perm2tard)
+Well::Well(double r, Point< 2 > cent)
 : radius_(r), 
-  center_(cent), 
-  perm2aquifer_(perm2fer), 
-  perm2aquitard_(perm2tard)
+  pressure_(0),
+  center_(cent)
 {
-  pressure_ = 0;
+    perm2aquifer_.resize(1);
+    perm2aquitard_.resize(1);
 }
 
+Well::Well(double r, Point< 2 > cent, double perm2fer, double perm2tard)
+: radius_(r), 
+  pressure_(0),
+  center_(cent)
+{
+    perm2aquifer_.push_back(perm2fer);
+    perm2aquitard_.push_back(perm2tard);
+}
 
 Well::Well(Well* well)
-: radius_(well->radius()), 
-  center_(well->center()), 
-  perm2aquifer_(well->perm2aquifer()), 
-  perm2aquitard_(well->perm2aquitard()),
-  pressure_(well->pressure())
+: radius_(well->radius_), 
+  pressure_(well->pressure_),
+  center_(well->center_), 
+  perm2aquifer_(well->perm2aquifer_), 
+  perm2aquitard_(well->perm2aquitard_)
 {}
 
 

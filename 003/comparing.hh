@@ -50,6 +50,8 @@ namespace Solution
         Well *well_; 
         ///Constants used in computation @p value.
         double radius_, p_dirichlet_, a_, b_;
+        /// Index of aquifer. Only m_=0 is used.
+        unsigned int m_;
     };
 
     

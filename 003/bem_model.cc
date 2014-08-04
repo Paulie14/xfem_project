@@ -361,7 +361,7 @@ void BemModel::assemble_system()
                         //number of proper well according to material id
                         unsigned int w = c_mat - 2;
                         //RHS except the mean value of pressure on the well bc = sigma*H
-                        system_rhs(c_i) -= ( wells[w]->perm2aquifer()  *
+                        system_rhs(c_i) -= ( wells[w]->perm2aquifer(0)  *
                                              wells[w]->pressure()  *
                                              fe_v.shape_value(j,q)         *
                                              omega_function(R)              *
@@ -369,7 +369,7 @@ void BemModel::assemble_system()
                       
                         //addition of the mean value of the pressure on the well = sigma*u_average
                         system_matrix(c_i,dof_handler.n_dofs() + w)
-                                        -= ( wells[w]->perm2aquifer() * 
+                                        -= ( wells[w]->perm2aquifer(0) * 
                                              omega_function(R)           *
                                              fe_v.shape_value(j,q)        *
                                              fe_v.JxW(q) );  
@@ -417,7 +417,7 @@ void BemModel::assemble_system()
                         //number of proper well according to material id
                         unsigned int w = c_mat - 2;
                         //RHS except the mean value of pressure on the well bc = sigma*H
-                        system_rhs(c_i) -= ( wells[w]->perm2aquifer()   *
+                        system_rhs(c_i) -= ( wells[w]->perm2aquifer(0)   *
                                              wells[w]->pressure()   *
                                              fe_v_singular.shape_value(j,q) *
                                              omega_function(R)               *
@@ -425,7 +425,7 @@ void BemModel::assemble_system()
                       
                         //addition of the mean value of the pressure on the well = sigma*u_average
                         system_matrix(c_i,dof_handler.n_dofs() + w)
-                                        -= ( wells[w]->perm2aquifer()   * 
+                                        -= ( wells[w]->perm2aquifer(0)   * 
                                              omega_function(R)             *
                                              fe_v_singular.shape_value(j,q) *
                                              fe_v_singular.JxW(q) );  
@@ -549,7 +549,7 @@ void BemModel::get_solution_at_points(const std::vector< Point< 2 > > &points, V
   q_ja[0] = 0.0;
   for(unsigned int w=0; w < number_of_wells; w++)
   {
-    q_ja[w+1] = wells[w]->perm2aquifer() * ( wells[w]->pressure() -
+    q_ja[w+1] = wells[w]->perm2aquifer(0) * ( wells[w]->pressure() -
                                                bem_solution[dof_handler.n_dofs() + w] );
   }
   

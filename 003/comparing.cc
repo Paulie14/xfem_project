@@ -228,11 +228,13 @@ Solution::ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
   : Function< 2 >(),
     well_(well),
     radius_(radius),
-    p_dirichlet_(p_dirichlet)
+    p_dirichlet_(p_dirichlet),
+    m_(0)
 {
 //   a_ = (well_->pressure() - p_dirichlet) / (std::log(well_->radius() / radius));
 //   b_ = p_dirichlet - a_ * std::log(radius);
-    a_ = (well_->radius()*well_->perm2aquifer()*(p_dirichlet_-well_->pressure())) / (1.0 - well_->radius()*well_->perm2aquifer()*std::log(well_->radius()/radius_));
+    a_ = (well_->radius()*well_->perm2aquifer(m_)*(p_dirichlet_-well_->pressure())) 
+          / (1.0 - well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_));
     b_ = p_dirichlet - a_ * std::log(radius);
 }
 

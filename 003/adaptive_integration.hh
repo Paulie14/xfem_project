@@ -109,7 +109,8 @@ class Adaptive_integration
       */ 
     Adaptive_integration(const DoFHandler<2>::active_cell_iterator &cell, 
                          const FE_Q<2> &fe,
-                         const Mapping<2>& mapping
+                         const Mapping<2>& mapping,
+                         unsigned int m
                         );
     
     ///Getter for current level of refinement
@@ -241,6 +242,9 @@ class Adaptive_integration
     static const QGauss<2> gauss_4;
     
   private:
+    /// Index of aquifer on which we integrate.
+    unsigned int m_;
+    
     ///Current cell to integrate
     const DoFHandler<2>::active_cell_iterator cell;
     
@@ -533,7 +537,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
         for (unsigned int i=0; i < n_w_dofs; ++i)
           for (unsigned int j=0; j < n_w_dofs; ++j)
           {
-              cell_matrix(i,j) += ( well->perm2aquifer() *
+              cell_matrix(i,j) += ( well->perm2aquifer(m_) *
                                     shape_val_vec[i] *
                                     shape_val_vec[j] *
                                     jxw);

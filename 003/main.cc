@@ -616,9 +616,9 @@ void test_convergence_square(std::string output_dir)
   
   
   Well *well = new Well( well_radius,
-                         well_center,
-                         perm2fer, 
-                         perm2tard);
+                         well_center);
+  well->set_perm2aquifer({perm2fer, perm2fer, perm2fer});
+  well->set_perm2aquitard({perm2tard, perm2tard, perm2tard});
   well->set_pressure(well_pressure);
   well->evaluate_q_points(n_well_q_points);
   
@@ -1443,7 +1443,7 @@ void test_adaptive_integration(std::string output_dir)
   cell->set_user_pointer(xdata);
   fe_values.reinit(cell);
 
-  Adaptive_integration adapt(cell, fe,fe_values.get_mapping());
+  Adaptive_integration adapt(cell, fe,fe_values.get_mapping(),0);
   
   for(unsigned int i; i < 10; i++)
     adapt.refine_edge();

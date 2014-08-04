@@ -609,6 +609,7 @@ void Model::add_data_to_cell (const DoFHandler<2>::active_cell_iterator cell, We
 
 void Model::assemble_system ()
 {
+  unsigned int m=0;
   // set update flags
   UpdateFlags update_flags  = update_gradients | update_JxW_values;
   if (rhs_function) update_flags = update_flags | update_values | update_quadrature_points;
@@ -729,7 +730,7 @@ void Model::assemble_system ()
           for (unsigned int i=0; i < wm; ++i)
             for (unsigned int j=0; j < wm; ++j)
             { 
-              well_cell_matrix(i,j) += ( wells[w]->perm2aquifer() *
+              well_cell_matrix(i,j) += ( wells[w]->perm2aquifer(m) *
                                          shape_value[i] *
                                          shape_value[j] *
                                          jxw );
@@ -755,10 +756,10 @@ void Model::assemble_system ()
   for (unsigned int w = 0; w < wells.size(); w++)
   {
     //addition to block (1,1) ... matrix D
-    block_matrix.block(1,1).add(w, w, wells[w]->perm2aquitard() );
+    block_matrix.block(1,1).add(w, w, wells[w]->perm2aquitard(m) );
   
     //addition to rhs
-    block_system_rhs.block(1)(w) = wells[w]->perm2aquitard() * wells[w]->pressure();
+    block_system_rhs.block(1)(w) = wells[w]->perm2aquitard(m) * wells[w]->pressure();
   } //end of iteration over wells
  
 

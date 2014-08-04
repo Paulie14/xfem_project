@@ -263,7 +263,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
         }
         else
         { 
-            Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping());
+            Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping(),m);
             
             //unsigned int refinement_level = 15;
             for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
