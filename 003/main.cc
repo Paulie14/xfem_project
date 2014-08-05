@@ -1632,7 +1632,7 @@ void test_two_aquifers(std::string output_dir)
                n_well_q_points = 200;
   
   std::vector<double> transmisivity_vec = {0.1, 0.1};
-  std::vector<double> perm2fer_1 = {0.1, 1e6};
+  std::vector<double> perm2fer_1 = {1e6, 0.1};
   std::vector<double> perm2tard_1 = {1e10, 1e10};
   std::vector<double> perm2fer_2 = {1e6, 1e6};
   std::vector<double> perm2tard_2 = {1e10, 1e10};

@@ -928,7 +928,8 @@ void XModel::assemble_system ()
         std::cout << "######### aquifer" << m << " assembly ########## T = " << transmisivity_[m] << std::endl;
         setup_subsystem(m);
         assemble_subsystem(m);
-        system_matrix_.enter(block_matrix[m],n_aquifers_-m-1,n_aquifers_-m-1);
+        //system_matrix_.enter(block_matrix[m],n_aquifers_-m-1,n_aquifers_-m-1);
+        system_matrix_.enter(block_matrix[m],m,m);
     }
     
     assemble_communication();
@@ -1303,8 +1304,10 @@ void XModel::assemble_communication()
         //DBGMSG("block_comm_matrix[%d]:\n",m);
         //block_comm_matrix[m].print(cout);
         
-        system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-1, n_aquifers_-m-2);
-        system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-2, n_aquifers_-m-1);
+//         system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-1, n_aquifers_-m-2);
+//         system_matrix_.enter(block_comm_matrix[m], n_aquifers_-m-2, n_aquifers_-m-1);
+        system_matrix_.enter(block_comm_matrix[m], m+1, m);
+        system_matrix_.enter(block_comm_matrix[m], m, m+1);
     }
 }
 
