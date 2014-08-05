@@ -346,7 +346,7 @@ class XModel : public ModelBase
     std::vector<std::vector<void *> > tria_pointers_;
     
     ///vector of global enrichment function values at nodes of the triangulation
-    std::vector<std::map<unsigned int, double> > node_enrich_values;
+    std::vector<std::vector<std::map<unsigned int, double> > > node_enrich_values;
     
     ///Number of enriched degrees of freedom
     unsigned int n_enriched_dofs;

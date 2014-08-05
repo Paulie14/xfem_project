@@ -4,6 +4,7 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_accessor.h>
 
+#include "system.hh"
 #include "well.hh"
 
 /** @brief Base class for data distributed umong cells.
@@ -200,7 +201,10 @@ class XDataCell : public DataCellBase
        */
       inline double node_enrich_value(unsigned int local_well_index, unsigned int local_vertex_index) const
       {
-        return node_values->operator[](local_well_index).at(cell_->vertex_index(local_vertex_index));
+//         DBGMSG("N=%d, loc_w=%d, glob_w=%d, Nw=%d, loc_i=%d, i=%d\n",node_values->size(), local_well_index, wells_indices_[local_well_index], 
+//                (*node_values)[local_well_index].size(),
+//                local_vertex_index, cell_->vertex_index(local_vertex_index));
+        return node_values->operator[](wells_indices_[local_well_index]).at(cell_->vertex_index(local_vertex_index));
       }
       
       /** Writes local DoFs in given vector: wells*[FE dofs, Xdofs, Wdofs]

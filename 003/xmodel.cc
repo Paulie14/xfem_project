@@ -131,7 +131,7 @@ void XModel::constructor_init()
 XModel::~XModel()
 {
     for(unsigned int i=0; i < xdata_.size(); i++)   //n_aquifers
-        for(unsigned int j=0; j < xdata_[j].size(); j++)    //n_enriched_cells
+        for(unsigned int j=0; j < xdata_[i].size(); j++)    //n_enriched_cells
             delete xdata_[i][j];
   
   if(dof_handler != nullptr)
@@ -899,6 +899,8 @@ void XModel::setup_system()
   
     xdata_.clear();
     xdata_.resize(n_aquifers_);
+    node_enrich_values.clear();
+    node_enrich_values.resize(n_aquifers_);
  
     tria_pointers_.resize(n_aquifers_);
     dof_handler->initialize(*triangulation,fe);
@@ -1078,7 +1080,7 @@ void XModel::setup_subsystem(unsigned int m)
 
 void XModel::assemble_subsystem (unsigned int m)
 {
-    XDataCell::initialize_node_values(node_enrich_values, xdata_[m], wells.size());
+    XDataCell::initialize_node_values(node_enrich_values[m], xdata_[m], wells.size());
     DBGMSG("XData inicialization done - node values computed.\n");
   
     const unsigned int dofs_per_cell = fe.dofs_per_cell;
@@ -2423,7 +2425,7 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
 
     dof_handler->initialize(*triangulation,fe);
     find_enriched_cells(0);
-    XDataCell::initialize_node_values(node_enrich_values, xdata_[0], wells.size());
+    XDataCell::initialize_node_values(node_enrich_values[0], xdata_[0], wells.size());
   
     const unsigned int dofs_per_cell = fe.dofs_per_cell;
     std::vector<unsigned int> local_dof_indices (dofs_per_cell);

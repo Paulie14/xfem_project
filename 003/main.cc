@@ -1614,6 +1614,113 @@ void test_adaptive_integration2(std::string output_dir)
 }
 
 
+void test_two_aquifers(std::string output_dir)
+{
+  std::cout << "\n\n:::::::::::::::: TWO AQUIFERS TEST ::::::::::::::::\n\n" << std::endl;
+  
+  //------------------------------SETTING----------------------------------
+  std::string test_name = "two_aquifers_";
+  
+  double p_a = 10.0,    //area of the model
+         p_b = 10.0,
+         well_radius = 0.02,
+         enrichment_radius = 2.0,
+         input_pressure = 5;
+         
+  unsigned int n_aquifers = 2, 
+               initial_refinement = 5,
+               n_well_q_points = 200;
+  
+  std::vector<double> transmisivity_vec = {0.1, 0.1};
+  std::vector<double> perm2fer_1 = {0.1, 1e6};
+  std::vector<double> perm2tard_1 = {1e10, 1e10};
+  std::vector<double> perm2fer_2 = {1e6, 1e6};
+  std::vector<double> perm2tard_2 = {1e10, 1e10};
+  
+  //--------------------------END SETTING----------------------------------
+  
+  Point<2> down_left(-p_a,-p_a);
+  Point<2> up_right(p_a, p_a);
+  std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+  
+  
+  //vector of wells
+  std::vector<Well*> wells;
+  
+  wells.push_back( new Well( Parameters::radius,
+                             Point<2>(-5.0,-1.1)));
+  wells[0]->set_pressure(input_pressure);
+  wells[0]->set_perm2aquifer(perm2fer_1);
+  wells[0]->set_perm2aquitard(perm2tard_1);
+  
+  wells.push_back( new Well( Parameters::radius,
+                             Point<2>(5.0,1.0)));
+  wells[1]->set_pressure(-2.0);
+  wells[1]->set_perm2aquifer(perm2fer_2);
+  wells[1]->set_perm2aquitard(perm2tard_2);  
+  
+  for(unsigned int w=0; w < wells.size(); w++)
+  {
+    wells[w]->evaluate_q_points(n_well_q_points);
+  }
+  
+  
+  XModel xmodel(wells, "",n_aquifers);  
+  xmodel.set_name(test_name + "sgfem");
+  xmodel.set_enrichment_method(Enrichment_method::sgfem);
+//   xmodel.set_name(test_name + "xfem_shift");
+//   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+  
+  xmodel.set_output_dir(output_dir);
+  xmodel.set_area(down_left,up_right);
+  xmodel.set_transmisivity(transmisivity_vec);
+  xmodel.set_initial_refinement(initial_refinement);                                      
+  xmodel.set_enrichment_radius(enrichment_radius);
+  xmodel.set_grid_create_type(ModelBase::rect);
+  //xmodel.set_dirichlet_function(dirichlet);
+  xmodel.set_adaptivity(true);
+  xmodel.set_output_options(ModelBase::output_gmsh_mesh
+                          | ModelBase::output_solution
+                          | ModelBase::output_decomposed
+                          //| ModelBase::output_adaptive_plot
+                          //| ModelBase::output_error
+                           );
+  
+  unsigned int n_cycles = 1;
+  
+  TableHandler table;
+  
+  for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
+    { 
+      table.add_value("Cycle",cycle);
+ 
+      std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
+      
+      xmodel.run (cycle);  
+      
+      std::cout << "===== XModel_simple finished =====" << std::endl;
+      
+      table.add_value("dofs",xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
+      table.add_value("enriched dofs",xmodel.get_number_of_dofs().second);
+      table.add_value("Iterations",xmodel.solver_iterations());
+      
+      //table.add_value("XFEM-time",xmodel.get_last_run_time());
+      //table.set_precision("XFEM-time", 3);
+
+      
+      //write the table every cycle (to have at least some results if program fails)
+      table.write_text(std::cout);
+      xmodel.output_results(cycle);
+//       std::ofstream out_file;
+//       out_file.open(output_dir + xmodel.name() + ".tex");
+//       table.write_tex(out_file);
+//       out_file.close();
+    } 
+  //*/
+  std::cout << "\n\n:::::::::::::::: MULTIPLE WELLS TEST END ::::::::::::::::\n\n" << std::endl;
+  
+}
+
 int main ()
 {
   std::string input_dir = "../input/";
@@ -1626,9 +1733,10 @@ int main ()
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-  test_convergence_square(output_dir);
+//   test_convergence_square(output_dir);
 //   test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
+  test_two_aquifers(output_dir);
   //test_output(output_dir);
   return 0;
 }
