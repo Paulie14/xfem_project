@@ -3,6 +3,7 @@
 Well::Well(double r, Point< 2 > cent)
 : radius_(r), 
   pressure_(0),
+  pressure_set_(false),
   center_(cent)
 {
     perm2aquifer_.resize(1);
@@ -12,6 +13,7 @@ Well::Well(double r, Point< 2 > cent)
 Well::Well(double r, Point< 2 > cent, double perm2fer, double perm2tard)
 : radius_(r), 
   pressure_(0),
+  pressure_set_(false),
   center_(cent)
 {
     perm2aquifer_.push_back(perm2fer);
@@ -21,6 +23,7 @@ Well::Well(double r, Point< 2 > cent, double perm2fer, double perm2tard)
 Well::Well(Well* well)
 : radius_(well->radius_), 
   pressure_(well->pressure_),
+  pressure_set_(well->pressure_set_),
   center_(well->center_), 
   perm2aquifer_(well->perm2aquifer_), 
   perm2aquitard_(well->perm2aquitard_)

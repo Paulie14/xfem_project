@@ -51,11 +51,17 @@ class Well
   
     /// returns pressure in the well
     inline double pressure()
-    {return pressure_;}
+    {   MASSERT(pressure_set_, "Pressure not set.");
+        return pressure_; }
     
-    /// returns pressure in the well
+    /// returns pressure in the well (piezometric help)
     inline double pressure(const Point<2> &p)
-    {return pressure_ - p[1];}
+    {   MASSERT(pressure_set_, "Pressure not set.");
+        return pressure_ - p[1]; }
+    
+    /// Is true if the pressure at the top is set.
+    inline bool is_pressure_set()
+    {return pressure_set_;}
     
     inline const std::vector<Point<2> > &q_points()
     {return q_points_;}
@@ -83,8 +89,10 @@ class Well
     { perm2aquitard_ = perm;}
     
     /// sets pressure
-    inline void set_pressure(const double &press)
-    { pressure_ = press;}
+    inline void set_pressure(double press)
+    {   pressure_ = press;
+        pressure_set_ = true;
+    }
     //@}
     
     
@@ -114,6 +122,9 @@ class Well
     
     /// pressure at the top of the well (Dirichlet boundary condition)
     double pressure_;
+    
+    /// Flag is true if the pressure at the top is set.
+    bool pressure_set_;
     
     /// position of the center of the well
     /** There is a reason that there are no setting methods. 
