@@ -209,11 +209,6 @@ class XModel : public ModelBase
     inline void set_enrichment_method (Enrichment_method::Type enrichment_method)
     { enrichment_method_ = enrichment_method;}
     //@}
-    
-    //returns vector of support points 
-    //void get_support_points (std::vector<Point<2> > &support_points);
-    //output results from another model but computed on the model mesh
-    //void output_foreign_results(const unsigned int cycle,const Vector<double> &foreign_solution);
 
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution) override;
 
@@ -242,8 +237,8 @@ class XModel : public ModelBase
     // Print the list of Xdata
     void print_xdata();
     
-    // Sets known dofs. For testing only.
-    void assemble_reduce_known(unsigned int m);
+    // Sets known dofs. For testing only. Does not work any more.
+//     void assemble_reduce_known(unsigned int m);
     
     //Computes error in comparision to another solution
     //void compute_solution_error();
@@ -291,8 +286,7 @@ class XModel : public ModelBase
     void find_dofs_enriched_cells(std::vector<DoFHandler<2>::active_cell_iterator> &cells, 
                                   const unsigned int &dof_index,
                                   unsigned int m
-                                 );
-    
+                                 );  
     
     /** Computes chosen shape function at specified points.
      * @param points is the vector of points where we want to evaluate
@@ -324,15 +318,9 @@ class XModel : public ModelBase
     //Type of well compuation. How do we consider the well.
     Well_computation::Type well_computation_;
         
-    /** path to computational mesh
-     * temporary, should be removed (only for output)
-     */
-    std::string mesh_file;
-    
-    ///path to computational mesh
-    std::string coarse_grid_file;
-    ///path to refinement flag file
-    std::string ref_flags_file;
+    std::string mesh_file;          ///< Path to output computational mesh. Should be removed.
+    std::string coarse_grid_file;   ///< Path to computational coarse mesh.
+    std::string ref_flags_file;     ///< Path to refinement flag file of the computational mesh.
     
     ///User defined enrichment radius.
     double rad_enr;
@@ -341,19 +329,14 @@ class XModel : public ModelBase
     ///It may be different for each wells.
     std::vector<double> r_enr;
     
-    ///vector of data for enriched cells
-    std::vector<std::vector<XDataCell*> > xdata_;
-    
-    std::vector<std::vector<void *> > tria_pointers_;
+    std::vector<std::vector<XDataCell*> > xdata_;       ///< Vector of data for enriched cells.
+    std::vector<std::vector<void *> > tria_pointers_;   ///< Vector of cell_pointers (XDataCell) of the tria.
     
     ///vector of global enrichment function values at nodes of the triangulation
     std::vector<std::vector<std::map<unsigned int, double> > > node_enrich_values;
     
     ///Number of enriched degrees of freedom
     unsigned int n_enriched_dofs;
-    
-    //number of quadrature points on well
-    //const unsigned int n_well_qpoints;
     
     ///2d triangulation of the aquifer
     PersistentTriangulation<2> *triangulation;
@@ -377,36 +360,21 @@ class XModel : public ModelBase
     ///is true if hanging nodes are present in the triangulation
     bool hanging_nodes;
 
-    ///Sparsity pattern of the system matrix.
-    SparsityPattern                 block_sp_pattern;
-    std::vector<SparsityPattern>    comm_sp_pattern;
-    ///System Matrix
+    SparsityPattern               block_sp_pattern; ///< Shared sparsity pattern for a block.
+    std::vector<SparsityPattern>  comm_sp_pattern;  ///< Shared sparsity patterns for a communication block.
+
     std::vector<SparseMatrix<double> >  block_matrix;      ///< Block diagonal aquifer matrices.
     std::vector<SparseMatrix<double> >  block_comm_matrix; ///< Communication matrices F_i.
     
-    ///Solution vector (unenriched, enriched and well degrees of freedom)
-    BlockVector<double> block_solution;
-    ///Right hand side
-    BlockVector<double> block_system_rhs;
+    BlockMatrixArray<double> system_matrix_;    ///< System matrix.
+    BlockVector<double> block_solution;         ///< Solution vector.
+    BlockVector<double> block_system_rhs;       ///< Right hand side.
     
+    Vector<double> dist_unenriched;     ///< Output vector - unenriched part of solution.
+    Vector<double> dist_enriched;       ///< Output vector - enriched part of solution.
+    Vector<double> dist_solution;       ///< Output vector - complete solution.
     
-    //GrowingVectorMemory<Vector<double> > memory_vector_;
-    BlockMatrixArray<double> system_matrix_;
-    
-    
-    //Vector<double>      solution_error;
-    //Vector<double>      solution_exact;
-    
-    ///Output vector - unenriched part of solution
-    Vector<double> dist_unenriched;
-    ///Output vector - enriched part of solution
-    Vector<double> dist_enriched;
-    ///Output vector - complete solution
-    Vector<double> dist_solution;
-    
-    //output
-    PersistentTriangulation<2>* output_triangulation;
-      
+    PersistentTriangulation<2>* output_triangulation;   ///< Output triangulation (adaptively refined).
 };
 
 #include "xmodel_impl.hh"

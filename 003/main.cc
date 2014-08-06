@@ -599,7 +599,6 @@ void test_convergence_square(std::string output_dir)
          enrichment_radius = 50.0,
          well_pressure = 50*Parameters::pressure_at_top;
   
-  std::vector<double> transmisivity_vec = {1.0, 1.0, 1.0};
   unsigned int n_well_q_points = 200,
                initial_refinement = 2;
          
@@ -617,8 +616,8 @@ void test_convergence_square(std::string output_dir)
   
   Well *well = new Well( well_radius,
                          well_center);
-  well->set_perm2aquifer({perm2fer, perm2fer, perm2fer});
-  well->set_perm2aquitard({perm2tard, perm2tard, perm2tard});
+  well->set_perm2aquifer({perm2fer, perm2fer});
+  well->set_perm2aquitard({perm2tard, 0.0});
   well->set_pressure(well_pressure);
   well->evaluate_q_points(n_well_q_points);
   
@@ -645,7 +644,7 @@ void test_convergence_square(std::string output_dir)
                                 | ModelBase::output_solution
                                 | ModelBase::output_error);
   
-  XModel_simple xmodel(well, "", 3);  
+  XModel_simple xmodel(well, "");  
   xmodel.set_name(test_name + "sgfem"); 
   xmodel.set_enrichment_method(Enrichment_method::sgfem);
 //   xmodel.set_name(test_name + "xfem_shift");
@@ -655,8 +654,7 @@ void test_convergence_square(std::string output_dir)
   
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
-  //xmodel.set_transmisivity(transmisivity,0);
-  xmodel.set_transmisivity(transmisivity_vec);
+  xmodel.set_transmisivity(transmisivity,0);
   xmodel.set_initial_refinement(initial_refinement);                                     
   xmodel.set_enrichment_radius(enrichment_radius);
   xmodel.set_grid_create_type(ModelBase::rect);
@@ -664,8 +662,8 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
-                          | ModelBase::output_solution
-                          | ModelBase::output_decomposed
+                          //| ModelBase::output_solution
+                          //| ModelBase::output_decomposed
                           //| ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
@@ -1734,10 +1732,10 @@ int main ()
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-//   test_convergence_square(output_dir);
+  test_convergence_square(output_dir);
 //   test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
-  test_two_aquifers(output_dir);
+//   test_two_aquifers(output_dir);
   //test_output(output_dir);
   return 0;
 }

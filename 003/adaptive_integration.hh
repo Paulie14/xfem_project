@@ -312,9 +312,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                                       std::vector<unsigned int> &local_dof_indices,
                                       const double &transmisivity)
 {  
-  DBGMSG("Adaptive integration on cell %d. Center: [%f,%f].\n", cell->index(), cell->center()[0], cell->center()[1]);
- 
-               
+  //DBGMSG("Adaptive integration on cell %d. Center: [%f,%f].\n", cell->index(), cell->center()[0], cell->center()[1]);
+
   /*getting dof's indices : 
    * [ FEM(dofs_per_cell), 
    *   n_wells * [SGFEM / XFEM(maximum of n_wells*dofs_per_cell), 

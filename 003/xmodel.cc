@@ -910,7 +910,6 @@ void XModel::setup_system()
     node_enrich_values.resize(n_aquifers_);
  
     //prepare clean vector for cell pointers (pointer to xdata)
-    //TODO: delete - pointers in xdata_ can be used
     tria_pointers_.clear();
     tria_pointers_.resize(n_aquifers_); 
     
@@ -1112,119 +1111,123 @@ void XModel::assemble_subsystem (unsigned int m)
         cell_matrix = 0;
         cell_rhs = 0;		//HOMOGENOUS NEUMANN -> = 0
     
-    /*
-    //printing Jakobi determinants, fe_values flag must be set in constructors: update_jacobians
-    //Jakobi determinant is constant for all quadrature points sofar
-    DBGMSG("Jakobian unenriched cell(%d): ", cell->index());
-    for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
-    {
-      std::cout << "  " << fe_values.jacobian(q_point).determinant();
-    }
-    std::cout <<"\n";
-    //*/
-      
-    if (cell->user_pointer() == nullptr)
-    {
-      cell->get_dof_indices (local_dof_indices);
-    
-      //INTEGRALS FOR BLOCK(0,0) ... matrix A
-      for (unsigned int i=0; i < dofs_per_cell; ++i)
-        for (unsigned int j=0; j < dofs_per_cell; ++j)
-          for (unsigned int q_point=0; q_point < n_q_points; ++q_point)
-            cell_matrix(i,j) += ( transmisivity_[m-1] *
-                                  fe_values.shape_grad (i, q_point) *
-                                  fe_values.shape_grad (j, q_point) *
-                                  fe_values.JxW (q_point)
-                                );
-      //FILLING MATRIX BLOCK A
-      block_matrix[m].add(local_dof_indices, cell_matrix);
-          
-      if(rhs_function != nullptr)
-      {
-        // HOMOGENOUS NEUMANN -> = 0, else source term
-        for (unsigned int i=0; i<dofs_per_cell; ++i)
+        /*
+        //printing Jakobi determinants, fe_values flag must be set in constructors: update_jacobians
+        //Jakobi determinant is constant for all quadrature points sofar
+        DBGMSG("Jakobian unenriched cell(%d): ", cell->index());
         for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
         {
-          cell_rhs(i) += (fe_values.shape_value (i, q_point) *
-            rhs_function->value(fe_values.quadrature_point(q_point)) *   // 0 for homohenous neumann
-            fe_values.JxW (q_point));
-        } 
-
-        block_system_rhs.block(m).add(local_dof_indices, cell_rhs);
-      }
-      
-    }    
-    else
-    {
-      
-      FullMatrix<double>   enrich_cell_matrix;
-      std::vector<unsigned int> enrich_dof_indices; //dof indices of enriched and unrenriched dofs
-      Vector<double>       enrich_cell_rhs; 
-  
-  
-      Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping(),m);
-      
-      //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
-      //unsigned int refinement_level = 12;
-      unsigned int t;
-      for(t=0; t < adaptive_integration_refinement_level_; t++)
-      {
-        //DBGMSG("refinement level: %d\n", t);
-        if ( ! adaptive_integration.refine_edge())
-            break;
-      }
-      
-      if (output_options_ & OutputOptions::output_adaptive_plot)
-      {
-        stringstream dir_name;
-        dir_name << output_dir_ << "/adaptref_" << cycle_ << "/";
-        DIR *dir;
-        dir = opendir(dir_name.str().c_str());
-        if(dir == NULL) {
-            int ret = mkdir(dir_name.str().c_str(), 0777);
-
-            if(ret != 0) {
-                xprintf(Err, "Couldn't create directory: %s\n", dir_name.str().c_str());
-            }
-        } else {
-            closedir(dir);
+        std::cout << "  " << fe_values.jacobian(q_point).determinant();
         }
-        //output only cells which have well inside
-        //if(t == adaptive_integration_refinement_level_-1)
-//         (output_dir, false, true) must be set to unit coordinates and to show on screen 
-        adaptive_integration.gnuplot_refinement(dir_name.str());
-      }
+        std::cout <<"\n";
+        //*/
       
-      //sets the dirichlet and source function
-      if(dirichlet_function || rhs_function)
-        adaptive_integration.set_functors(dirichlet_function, rhs_function);
-      
-      switch(enrichment_method_)
-      {
-        case Enrichment_method::xfem_ramp: 
-          //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-            adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity_[m-1]);
-          break;
-        case Enrichment_method::xfem_shift:
-          adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity_[m-1]);
-          break;
-        case Enrichment_method::sgfem:
-          adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity_[m-1]);
-          break;
-      }
-      //printing enriched nodes and dofs
-//       DBGMSG("Printing dof_indices:  [");
-//       for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
-//       {
-//           std::cout << std::setw(3) << enrich_dof_indices[a] << "  ";
-//       }
-//       std::cout << "]" << std::endl;
-      
-      //FILLING MATRIX BLOCKs
-      block_matrix[m].add(enrich_dof_indices,enrich_cell_matrix);
-      block_system_rhs.block(m).add(enrich_dof_indices,enrich_cell_rhs);
+        if (cell->user_pointer() == nullptr)
+        {
+            cell->get_dof_indices (local_dof_indices);
+        
+            //INTEGRALS FOR BLOCK(0,0) ... matrix A
+            for (unsigned int i=0; i < dofs_per_cell; ++i)
+            for (unsigned int j=0; j < dofs_per_cell; ++j)
+            for (unsigned int q_point=0; q_point < n_q_points; ++q_point)
+                cell_matrix(i,j) += ( transmisivity_[m-1] *
+                                    fe_values.shape_grad (i, q_point) *
+                                    fe_values.shape_grad (j, q_point) *
+                                    fe_values.JxW (q_point)
+                                    );
+            //FILLING MATRIX BLOCK A
+            block_matrix[m].add(local_dof_indices, cell_matrix);
+                
+            if(rhs_function != nullptr)
+            {
+                // HOMOGENOUS NEUMANN -> = 0, else source term
+                for (unsigned int i=0; i<dofs_per_cell; ++i)
+                for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+                    cell_rhs(i) += (fe_values.shape_value (i, q_point) *
+                                rhs_function->value(fe_values.quadrature_point(q_point))
+                                * fe_values.JxW (q_point));
+
+                block_system_rhs.block(m).add(local_dof_indices, cell_rhs);
+            }
+        }    
+        else
+        {
+            FullMatrix<double>   enrich_cell_matrix;
+            std::vector<unsigned int> enrich_dof_indices; //dof indices of enriched and unrenriched dofs
+            Vector<double>       enrich_cell_rhs; 
+        
+            Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping(),m);
+            
+            //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
+            //unsigned int refinement_level = 12;
+            unsigned int t;
+            for(t=0; t < adaptive_integration_refinement_level_; t++)
+            {
+                //DBGMSG("refinement level: %d\n", t);
+                if ( ! adaptive_integration.refine_edge())
+                    break;
+            }
+            
+            if (output_options_ & OutputOptions::output_adaptive_plot)
+            {
+                stringstream dir_name;
+                dir_name << output_dir_ << "/adaptref_" << cycle_ << "/";
+                DIR *dir;
+                dir = opendir(dir_name.str().c_str());
+                if(dir == NULL) {
+                    int ret = mkdir(dir_name.str().c_str(), 0777);
+
+                    if(ret != 0) {
+                        xprintf(Err, "Couldn't create directory: %s\n", dir_name.str().c_str());
+                    }
+                } else {
+                    closedir(dir);
+                }
+                //output only cells which have well inside
+                //if(t == adaptive_integration_refinement_level_-1)
+        //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
+                adaptive_integration.gnuplot_refinement(dir_name.str());
+            }
+            
+            //sets the dirichlet and source function
+            if(dirichlet_function || rhs_function)
+                adaptive_integration.set_functors(dirichlet_function, rhs_function);
+            
+            switch(enrichment_method_)
+            {
+                case Enrichment_method::xfem_ramp: 
+                    //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+                    adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, 
+                                                                                 enrich_cell_rhs, 
+                                                                                 enrich_dof_indices, 
+                                                                                 transmisivity_[m-1]);
+                break;
+                case Enrichment_method::xfem_shift:
+                adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, 
+                                                                              enrich_cell_rhs, 
+                                                                              enrich_dof_indices, 
+                                                                              transmisivity_[m-1]);
+                break;
+                case Enrichment_method::sgfem:
+                adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, 
+                                                                         enrich_cell_rhs, 
+                                                                         enrich_dof_indices, 
+                                                                         transmisivity_[m-1]);
+                break;
+            }
+            //printing enriched nodes and dofs
+        //       DBGMSG("Printing dof_indices:  [");
+        //       for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
+        //       {
+        //           std::cout << std::setw(3) << enrich_dof_indices[a] << "  ";
+        //       }
+        //       std::cout << "]" << std::endl;
+            
+                //FILLING MATRIX BLOCKs
+            block_matrix[m].add(enrich_dof_indices,enrich_cell_matrix);
+            block_system_rhs.block(m).add(enrich_dof_indices,enrich_cell_rhs);
+        } //else
     } //end for(cells)
-  }
   
     unsigned int w_idx = block_matrix[m].n() - wells.size();
     for (unsigned int w = 0; w < wells.size(); w++)
@@ -1232,7 +1235,6 @@ void XModel::assemble_subsystem (unsigned int m)
         //addition to block (2,2) ... matrix E
         double temp_val = wells[w]->perm2aquitard(m) + wells[w]->perm2aquitard(m-1);
         block_matrix[m].add(w_idx,w_idx,temp_val);
-        
         w_idx++;
     }
     
@@ -1245,11 +1247,10 @@ void XModel::assemble_subsystem (unsigned int m)
 //   std::cout << "\n\n";
 //   block_matrix[m].block(2,2).print_formatted(std::cout);
     //if(m == 0)
-    //block_matrix[m].print(cout);
+//     block_matrix[m].print(cout);
     assemble_dirichlet(m);
-    DBGMSG("block_matrix[%d]:\n",m);
-    block_matrix[m].print(cout);
-  //assemble_reduce_known();
+//     DBGMSG("block_matrix[%d]:\n",m);
+//     block_matrix[m].print(cout);
   
     if(hanging_nodes)
     {
@@ -1260,38 +1261,36 @@ void XModel::assemble_subsystem (unsigned int m)
 
 
 
-void XModel::assemble_reduce_known(unsigned int m)
-{
-    std::map<unsigned int,double> known_values;
-    
-//     for(XDataCell *loc_xdata: xdata)
+// void XModel::assemble_reduce_known(unsigned int m)
+// {
+//     std::map<unsigned int,double> known_values;
+//     
+// //     for(XDataCell *loc_xdata: xdata)
+// //     {
+// //         if(loc_xdata->q_points().size() > 0)
+// //         {
+// //             
+// //         }
+// //     }
+//     unsigned int offset = dof_handler->n_dofs() + n_enriched_dofs;
+//     for(unsigned int w=0; w < wells.size(); w++)
 //     {
-//         if(loc_xdata->q_points().size() > 0)
-//         {
-//             
-//         }
+//         known_values[offset+w] = wells[w]->pressure();
 //     }
-    unsigned int offset = dof_handler->n_dofs() + n_enriched_dofs;
-    for(unsigned int w=0; w < wells.size(); w++)
-    {
-        known_values[offset+w] = wells[w]->pressure();
-    }
-    
-    //TODO: cannot do (block_matrix, vector, vector)
-//     MatrixTools::apply_boundary_values(known_values,
-//                                        block_matrix[m],
-//                                        block_solution[m], 
-//                                        block_system_rhs[m],
-//                                        true
-//                                       );
-}
+//     
+//     //TODO: cannot do (block_matrix, vector, vector)
+// //     MatrixTools::apply_boundary_values(known_values,
+// //                                        block_matrix[m],
+// //                                        block_solution[m], 
+// //                                        block_system_rhs[m],
+// //                                        true
+// //                                       );
+// }
 
 void XModel::assemble_communication()
 {
     unsigned int size = block_matrix[1].n(),
                  offset = size - wells.size();
-
-    comm_sp_pattern.resize(3);
                 
     CompressedSparsityPattern c_sparsity0(size, size),                  //communication between aquifers
                               c_sparsity1(wells.size(), size),          //communication on the top
@@ -1303,6 +1302,7 @@ void XModel::assemble_communication()
         c_sparsity2.add(j, j);
     }
 
+    comm_sp_pattern.resize(3);
     comm_sp_pattern[0].copy_from(c_sparsity0);
     comm_sp_pattern[1].copy_from(c_sparsity1);
     comm_sp_pattern[2].copy_from(c_sparsity2);
@@ -1315,7 +1315,7 @@ void XModel::assemble_communication()
             block_comm_matrix[m].set(w+offset, w+offset, -wells[w]->perm2aquitard(m));
         
         //DBGMSG("block_comm_matrix[%d]:\n",m);
-        block_comm_matrix[m].print(cout);
+        //block_comm_matrix[m].print(cout);
         
         system_matrix_.enter(block_comm_matrix[m], m+1, m);
         system_matrix_.enter(block_comm_matrix[m], m, m+1);
@@ -1344,7 +1344,6 @@ void XModel::assemble_communication()
             block_system_rhs.block(1)(w_idx) = block_system_rhs.block(1)(w_idx) 
                                                // elimination_coef * mat_diag = -1
                                                + perm2aquitard * wells[w]->pressure();
-            block_system_rhs.block(1).print(cout);
             block_matrix[0].set(w,w,1.0);
             block_solution.block(0)(w) = wells[w]->pressure();
             block_system_rhs.block(0)(w) = wells[w]->pressure();
@@ -1356,10 +1355,10 @@ void XModel::assemble_communication()
         }
         w_idx++;
     }   
-    //DBGMSG("block_comm_matrix[%d]:\n",0);
-    block_comm_matrix[0].print(cout);    
-    block_matrix[0].print(cout);    
-    block_matrix[1].print(cout);
+//     DBGMSG("block_comm_matrix[%d]:\n",0);
+//     block_comm_matrix[0].print(cout);    
+//     block_matrix[0].print(cout);    
+//     block_matrix[1].print(cout);
     system_matrix_.enter(block_matrix[0], 0, 0);
     system_matrix_.enter(block_comm_matrix[0], 0, 1);
     system_matrix_.enter(block_comm_matrix[0], 1, 0, 1.0, true);
@@ -1523,8 +1522,8 @@ void XModel::solve ()
 //   for (unsigned int w=0; w < wells.size(); ++w)
 //       std::cout << setprecision(12) << "value of H" << w << " = " << block_solution[0].block(2)[w] << std::endl;
   
-  DBGMSG("Printing solution:\n");
-  block_solution.print(std::cout);
+//   DBGMSG("Printing solution:\n");
+//   block_solution.print(std::cout);
   precond_mat.clear();
 }
 
@@ -1596,120 +1595,70 @@ void XModel::output_results (const unsigned int cycle)
   
   
   
-  //WRITE THE DATA ON ADAPTIVELY REFINED MESH
-  
-  //saving flags and pointers
-  //std::vector<void *> tria_pointers(triangulation->n_active_cells());
-  //std::vector<bool> tria_flags(triangulation->n_active_cells());
-  
-  //triangulation->save_user_pointers(tria_pointers);
-  //triangulation->clear_user_pointers();
-  //triangulation->save_user_flags(tria_flags);
-  //triangulation->clear_user_flags();
-  
-  
-  if(output_options_ & OutputOptions::output_solution)
-  {
-  DBGMSG("tria: %d  %d \n",triangulation->n_refinement_steps(), triangulation->n_levels());
-  for(unsigned int m = 1; m <= n_aquifers_; m++)
-  {
-  if(output_triangulation) delete output_triangulation;
-  
-  output_triangulation = new PersistentTriangulation<2>(coarse_tria);
-  PersistentTriangulation<2> &output_grid = *output_triangulation;
-  
-  triangulation->clear_user_data();
-  triangulation->load_user_pointers(tria_pointers_[m-1]); //reload proper xdata
-  output_grid.copy_triangulation(*triangulation);
-  output_grid.restore();
-  output_grid.clear_user_flags();
-  
-  FE_Q<2> temp_fe(1);
-  DoFHandler<2> temp_dof_handler;
-  temp_dof_handler.initialize(output_grid,temp_fe);
-   
-  Vector<double>::iterator first = block_solution.block(m).begin();
-  Vector<double>::iterator last = first + dof_handler->n_dofs();
-  dist_unenriched = Vector<double>(first, last);
-  dist_solution = dist_unenriched;
-  
-  double tolerance = output_element_tolerance_;
-  unsigned int iterations = 30;
-  
-  switch(enrichment_method_)
-  {
-    case Enrichment_method::xfem_ramp: 
-      //MASSERT(0,"Not implemented yet.");
-      for(unsigned int n = 0; n < iterations; n++)
-      {
-        DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
-        if( recursive_output<Enrichment_method::xfem_ramp>(tolerance, output_grid, temp_dof_handler, 
-                                                           temp_fe, n, m) )
-          break;
-      }
-      break;
-      
-    case Enrichment_method::xfem_shift:
-      for(unsigned int n = 0; n < iterations; n++)
-      {
-        DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
-        if( recursive_output<Enrichment_method::xfem_shift>(tolerance, output_grid, temp_dof_handler, 
-                                                            temp_fe, n, m) )
-          break;
-      }
-      break;
-      
-    case Enrichment_method::sgfem:
-      for(unsigned int n = 0; n < iterations; n++)
-      {
-        DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
-        if( recursive_output<Enrichment_method::sgfem>(tolerance, output_grid, temp_dof_handler, 
-                                                       temp_fe, n, m) )
-          break;
-      }
-  }
-  } //for m
-  } //if output_solution
+    //WRITE THE DATA ON ADAPTIVELY REFINED MESH
+    if(output_options_ & OutputOptions::output_solution)
+    {
+        DBGMSG("tria: %d  %d \n",triangulation->n_refinement_steps(), triangulation->n_levels());
+        for(unsigned int m = 1; m <= n_aquifers_; m++)
+        {
+            if(output_triangulation) delete output_triangulation;
+            
+            output_triangulation = new PersistentTriangulation<2>(coarse_tria);
+            PersistentTriangulation<2> &output_grid = *output_triangulation;
+            
+            triangulation->clear_user_data();
+            triangulation->load_user_pointers(tria_pointers_[m-1]); //reload proper xdata
+            output_grid.copy_triangulation(*triangulation);
+            output_grid.restore();
+            output_grid.clear_user_flags();
+            
+            FE_Q<2> temp_fe(1);
+            DoFHandler<2> temp_dof_handler;
+            temp_dof_handler.initialize(output_grid,temp_fe);
+            
+            Vector<double>::iterator first = block_solution.block(m).begin();
+            Vector<double>::iterator last = first + dof_handler->n_dofs();
+            dist_unenriched = Vector<double>(first, last);
+            dist_solution = dist_unenriched;
+            
+            double tolerance = output_element_tolerance_;
+            unsigned int iterations = 30;
+            
+            switch(enrichment_method_)
+            {
+                case Enrichment_method::xfem_ramp: 
+                //MASSERT(0,"Not implemented yet.");
+                for(unsigned int n = 0; n < iterations; n++)
+                {
+                    DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
+                    if( recursive_output<Enrichment_method::xfem_ramp>(
+                                    tolerance, output_grid, temp_dof_handler, temp_fe, n, m) )
+                    break;
+                }
+                break;
+                
+                case Enrichment_method::xfem_shift:
+                for(unsigned int n = 0; n < iterations; n++)
+                {
+                    DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
+                    if( recursive_output<Enrichment_method::xfem_shift>(
+                                    tolerance, output_grid, temp_dof_handler, temp_fe, n, m) )
+                    break;
+                }
+                break;
+                
+                case Enrichment_method::sgfem:
+                for(unsigned int n = 0; n < iterations; n++)
+                {
+                    DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
+                    if( recursive_output<Enrichment_method::sgfem>(
+                                    tolerance, output_grid, temp_dof_handler, temp_fe, n, m) )
+                    break;
+                }
+            } // switch
+        } //for m
+    } //if output_solution
 }
-
-
-
-/*                              
-void XModel::run (const unsigned int cycle)
-{
-  if(cycle == 0)
-    make_grid();
-  else if (is_adaptive)
-    refine_grid();
-  std::cout << "Number of active cells:       "
-            << triangulation->n_active_cells()
-            << std::endl;
-  std::cout << "Total number of cells: "
-            << triangulation->n_cells()
-            << std::endl;
-  
-  
-
-  clock_t start, stop;
-  double t = 0.0;
-
-  // Start timer 
-  MASSERT((start = clock())!=-1, "Measure time error.");
-
-
-  if (triangulation_changed == true)
-    setup_system();
-  assemble_system();
-
-  solve();
- 
-  // Stop timer 
-  stop = clock();
-  t = (double) (stop-start)/CLOCKS_PER_SEC;
-  printf("Run time: %f\n", t);
-}
-*/
-
 
 
 void XModel::find_dofs_enriched_cells(std::vector<DoFHandler<2>::active_cell_iterator> &cells, 
@@ -2512,7 +2461,6 @@ void XModel::test_method(ExactBase* exact_solution)
 double XModel::well_pressure(unsigned int w)
 {
     MASSERT(block_solution.size() >= w, "Solution not computed.");
-    
     return block_solution.block(0)[block_solution.block(0).size() - wells.size() + w];
 }
 

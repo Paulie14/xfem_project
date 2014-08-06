@@ -95,8 +95,6 @@ class Model_simple : public Model
     /// Destructor
     virtual ~Model_simple ();
 
-    //virtual void run (const unsigned int cycle);
-
   protected:
     
     ///Virtual method overriden.
