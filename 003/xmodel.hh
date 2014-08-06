@@ -231,6 +231,7 @@ class XModel : public ModelBase
     void assemble_system () override;
     void solve ();
    
+    void assemble_dirichlet(unsigned int m) override;
     void setup_subsystem (unsigned int m);
     void assemble_subsystem (unsigned int m);
     void assemble_communication ();
@@ -377,8 +378,8 @@ class XModel : public ModelBase
     bool hanging_nodes;
 
     ///Sparsity pattern of the system matrix.
-    SparsityPattern        block_sp_pattern;
-    SparsityPattern        comm_sp_pattern;
+    SparsityPattern                 block_sp_pattern;
+    std::vector<SparsityPattern>    comm_sp_pattern;
     ///System Matrix
     std::vector<SparseMatrix<double> >  block_matrix;      ///< Block diagonal aquifer matrices.
     std::vector<SparseMatrix<double> >  block_comm_matrix; ///< Communication matrices F_i.

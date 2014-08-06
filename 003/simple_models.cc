@@ -263,19 +263,19 @@ void XModel_simple::assemble_dirichlet(unsigned int m)
   //*/
 
     std::map<unsigned int,double> boundary_values;
-    if(m == 0)
-            VectorTools::interpolate_boundary_values (*dof_handler,
-                                            0,
-                                            //XModel_simple::Dirichlet_pressure(wells[0]),
-                                            ZeroFunction<2>(),
-                                            boundary_values);
-    else if(m == n_aquifers_-1)
+//     if(m == n_aquifers_)
+//             VectorTools::interpolate_boundary_values (*dof_handler,
+//                                             0,
+//                                             //XModel_simple::Dirichlet_pressure(wells[0]),
+//                                             ZeroFunction<2>(),
+//                                             boundary_values);
+//     else if(m == 1)
             VectorTools::interpolate_boundary_values (*dof_handler,
                                             0,
                                             //XModel_simple::Dirichlet_pressure(wells[0]),
                                             *dirichlet_function,
                                             boundary_values);
-    else return;
+//     else return;
     
 //     std::map::iterator it = boundary_values.begin(),
 //      it_end = boundary_values.end();

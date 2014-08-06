@@ -1628,14 +1628,15 @@ void test_two_aquifers(std::string output_dir)
          input_pressure = 5;
          
   unsigned int n_aquifers = 2, 
-               initial_refinement = 5,
+               initial_refinement = 3,
                n_well_q_points = 200;
   
   std::vector<double> transmisivity_vec = {0.1, 0.1};
-  std::vector<double> perm2fer_1 = {1e6, 0.1};
-  std::vector<double> perm2tard_1 = {1e10, 1e10};
-  std::vector<double> perm2fer_2 = {1e6, 1e6};
-  std::vector<double> perm2tard_2 = {1e10, 1e10};
+  // top / aq1 / aq2
+  std::vector<double> perm2fer_1 = {1e6, 0.0, 1e6};
+  std::vector<double> perm2tard_1 = {1e10, 1e10, 0.0};
+  std::vector<double> perm2fer_2 = {0.0, 1e6, 1e6};
+  std::vector<double> perm2tard_2 = {1e10, 1e10, 0.0};
   
   //--------------------------END SETTING----------------------------------
   
@@ -1655,7 +1656,7 @@ void test_two_aquifers(std::string output_dir)
   
   wells.push_back( new Well( Parameters::radius,
                              Point<2>(5.0,1.0)));
-  wells[1]->set_pressure(-2.0);
+  //wells[1]->set_pressure(0.0);
   wells[1]->set_perm2aquifer(perm2fer_2);
   wells[1]->set_perm2aquitard(perm2tard_2);  
   
