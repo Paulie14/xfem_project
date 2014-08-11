@@ -18,3 +18,8 @@ doc_diplomka
   - error measurement
   - new adaptive output
   - new convergence tables
+
+  
+003:
+  - remove well mapping on unit cell and do it in real space
+  - multiple aquifer

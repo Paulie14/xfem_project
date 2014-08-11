@@ -47,6 +47,7 @@
 
 %% The amssymb package provides various useful mathematical symbols
 \usepackage{amssymb}
+\usepackage{amsmath}
 %% The amsthm package provides extended theorem environments
 %% \usepackage{amsthm}
 
@@ -59,9 +60,12 @@
 
 %commands:
 \newcommand{\fig}[1]{\hyperref[#1]{Fig.\ref{#1}}}
+\newcommand{\figpath}{../graphics/}
 
 %math:
 \newcommand{\dd}{\; \mathrm{d}}
+\newcommand{\R}{\mathbf{R}}
+\newcommand{\bx}{\mathbf{x}}
 
 \begin{document}
 
@@ -102,11 +106,12 @@
 \begin{abstract}
 %% Text of abstract
 In this work we demonstrate usage of Partition of Unity (PU) methods to improve approximation of singularities 
-in the solution of the Poisson equation. The model that we solve describes a steady flow of water in an aquifer
-which consists of porous media. The aquifer is perforated by wells and boreholes which are often represented
-as point sources considering their small diameter and the vast size of the aquifer. This brings singularities 
-into the solution. The extended and stable generalized finite element method (XFEM and SGFEM) were implemented 
-to solve the problem and a proper adaptive integration strategy was developed to gain optimal convergence rates.
+in the solution of the Poisson equation. Our model describes a steady flow of water in a system of aquifers
+which consist of porous media. The aquifers are perforated by wells and boreholes which are often represented
+as point sources considering their small diameter in comparision with the vast size of the aquifer. This 
+brings singularities into the solution. The extended and stable generalized finite element method 
+(XFEM and SGFEM) were implemented to solve the problem and a proper adaptive integration strategy was 
+developed to gain optimal convergence rates.
 \end{abstract}
 
 \begin{keyword}
@@ -142,67 +147,309 @@ In this work we use PU (Partition of Unity) methods to overcome these problems a
 %quasi-three-dimensional model of multi-aquifer system 
 two-dimensinal aquifer model containing hydro-geological wells which cause singularities in solution. 
 We follow the work of~\cite{gracie} who have already used the XFEM (eXtended FEM) on a~similar model. 
-However, we focus mainly on the study and improvement of the PU methods, in particular the XFEM (and its 
-corrected version) and the SGFEM. 
+However, we focus mainly on the study and improvement of the PU methods, in particular the XFEM and its 
+corrected version, e.g.~\cite{cxfem},  and the SGFEM, \cite{sgfem} and \cite{sgfem2013}. 
  
-All the implementation was done in C++ language using the Deal II library~\citep{deal}, the finite element library.
+The implementation was done in C++ language using the Deal II library~\citep{deal}, the finite element library.
+which does not support any enrichment techniques at the moment.
+
+We briefly describe the model in the beginning of the article, set the problem and go through the
+PU methods in more details. Then we show some numerical aspects of the problem which we must deal with, 
+especially the adaptive integration in section \ref{sec:integration}. Results, convergence of methods and
+conditioning of the algebraic system are discussed right after and further research goals are pointed out 
+at the end. 
 
 \section{Model}
 \label{sec:model}
-We consider steady flow in a system of aquifers (2D layers of given thickness) which are separated by layers with low permeability (aquitards). 
-We suppose the aquitards to be impermeable and so we do about the outer boundary of the aquifers to prescribe homogeneous Neumann 
-boundary condition there. 
+We consider a steady flow in a system of aquifers (2D layers of given thickness) which are separated by 
+impermeable layers (aquitards). The aquifers are connected by wells which act as sources
+or sinks in the domain of each aquifer. The pressure in the aquifers is further governed by the boundary 
+condition of the aquifers which can be of Dirichlet type or be homogenous of Neumann type.
 
-The distribution of pressure head in $m$-th aquifer is described by Poisson equation
-\begin{equation} 
--T^m\Delta{}h^m = f^m  \qquad \textrm{on } \Theta^m,\; \forall m=1,\dots,M, \label{eqn:poisson}
-\end{equation}
-where $T^m\, [\textrm{m}^2\textrm{s}^{-1}]$ denotes transmisivity, $h^m\, [\textrm{m}]$ pressure head 
-and $f^m\, [\textrm{m}\textrm{s}^{-1}]$ source density. Equation (\ref{eqn:poisson}) is derived from the Darcy law and
-the continuity equation for incompressible fluid.
+The distribution of the pressure head in $m$-th aquifer on its domain $\Omega^m\subset\R^2$ is described by 
+Poisson equation and boundary conditions
+\begin{eqnarray} \label{eqn:poisson}
+-T^m\Delta{}h^m &=& f^m \qquad \textrm{on } \Omega^m,\; \forall m=1,\dots,M, \\
+h^m|_{\Gamma^m_D} &=& h^m_D \\
+-T^m\nabla h^m|_{\Gamma^m_N} &=& 0
+\end{eqnarray}
+where $T^m\, [\textrm{m}^2\textrm{s}^{-1}]$ denotes transmisivity (scalar for simplicity), 
+$h^m\, [\textrm{m}]$ pressure head, $f^m\, [\textrm{m}\textrm{s}^{-1}]$ source density and exclusive 
+boundary parts $\Gamma^m_D \cup \Gamma^m_N = \partial\Omega$ of the aquifer. 
+Equation \eqref{eqn:poisson} is derived from the Darcy law and the continuity equation 
+for incompressible fluid.
 
-The communication between aquifers is possible only through wells which can be seen as 1D problems governed by following equation
+The communication between aquifers is possible only through wells. We can prescribe the flow balance equation 
+\begin{eqnarray}
+  Q^m_w &=& Q^m_{w,in} - Q^m_{w,out}, \textrm{ where} \label{eqn:well_flows} \\
+  Q^m_w &\ldots& \textrm{flow into aquifer across the well boundary,} \nonumber\\
+  Q^m_{w,in} &\ldots& \textrm{flow from upper aquifer,} \nonumber\\
+  Q^m_{w,out} &\ldots& \textrm{flow into lower aquifer.} \nonumber
+\end{eqnarray}
+\begin{figure}[!htb]
+  %\vspace{-15pt}
+  %TODO: add arrow (flow) to the top
+  \begin{center}         
+    \def\svgwidth{0.5\textwidth}
+    \input{\figpath well_communcation.pdf_tex}
+  \end{center}
+  \caption{Flow balance in the well.}
+  \label{fig:well_flows}
+\end{figure}
+
+\fig{fig:well_flows} presents the equation \eqref{eqn:well_flows} and denotes the flows $Q^m_{w,\cdot}$ by red arrows.
+We can look at the flows in the balance equation as 1D problems which are governed by a difference of pressure
+heads and a transition coefficient. Using this idea, we can substitute the flows in the equation 
+\eqref{eqn:well_flows} and get
 \begin{eqnarray} 
-\int_{\partial{}B_w^m}\sigma_w^m \left(h^m - H_w^m\right) \, \mathrm{d}\mathbf{x} = c_w^{m+1}\left( H^m_w-H_w^{m+1}\right) - c^m_w\left( H^{m-1}_w-H^m_w \right),
-\label{eqn:well_eqs_test} \\
- \forall m=1,\dots,M \;\textrm{ and } \forall w=1,\dots,W, \nonumber
+\int_{B_w^m}\sigma_w^m \left(h^m - H_w^m\right) \dd\bx 
+  = c_w^{m+1}\left( H^m_w-H_w^{m+1}\right) - c^m_w\left( H^{m-1}_w-H^m_w \right), \label{eqn:well_balance} \\
+ \forall m=1,\dots,M \;\textrm{ and } \forall w\in\mathcal{W}=\{1,\dots,W\}, \nonumber
 \end{eqnarray}
 where $\sigma^m_w\, [\textrm{m}\textrm{s}^{-1}]$ denotes the permeability coefficient between $w$-th well and $m$-th aquifer, 
 $H_w^m$ pressure head in the well $w$ at the level of $m$-th aquifer, $c^m_w\, [\textrm{m}^2\textrm{s}^{-1}]$ 
-permeability of the well $w$ between aquifers and finally $\partial{}B^m_w$ is the boundary of the well.
-The equation (\ref{eqn:well_eqs_test}) puts the flow in and out of the well on right hand side and the flow through
-the well boundary on the left hand side in balance.
+permeability of the well $w$ between aquifers and finally $B^m_w$ is the boundary of the well.
 
-The transfer between wells and aquifers can be treated in two ways. There is a well boundary integral on the left hand side of (\ref{eqn:well_eqs_test}) 
-and it represents flow over the boundary of the well. Second variant uses a surface integral in (\ref{eqn:well_eqs_test}) which represents flow source
-in the area of aquifer and well cross-section (the units of $\sigma^m_w$ then changes). The same integral appears also in the weak formulation 
-of (\ref{eqn:poisson}) -- as a boundary integral in the first variant or as a part of the source term in the second variant.
-Both variants were tested in the work with nearly identical results, only the second approach simplifies the implementation and slightly speeds up the assembly.
+The problem is now to find set of functions $h^m\in C^2(\Omega)\cap{C}^1(\bar\Omega)$ and set of pressure 
+values in the wells $H^m_w\in\R$, for all $m\in\{1,\ldots,M\}$ and $w\in\mathcal{W}$ that
+satisfy the equations \eqref{eqn:poisson} and \eqref{eqn:well_balance}.
 
+Note that if the lower end of well is considered isolated from below, the coefficient must be set $c^1_w = 0$.
+With $c^m_w = 0$ we can also simulate the end of the well $w$ at the level of aquifer $m$.
 
+We mention yet the equation \eqref{eqn:well_balance} for $m=M+1$ which is one level above the upmost aquifer
+and is adjusted to the form
+\begin{equation} \label{eqn:well_balance_top}
+  c^M_w\left( H^{M}_w-H^{M+1}_w \right) = 0.
+\end{equation}
+The pressure at the top of the well $H^{M+1}_w$ can be set as an input value or, if not set, can be gained 
+as part of the solution from the equation \eqref{eqn:well_balance_top}, see $H^4$ in \fig{fig:well_flows}.
 
-\section{PUM methods}
+\subsection{Weak formulation}
+Denoting $a^m(\cdot, \cdot)$ a bilinear form 
+\begin{equation} \label{eqn:bilinear_form_a}
+  a^m(u,v) = \int \limits_{\Omega^m} T^m \nabla u \cdot \nabla v \dd\bx
+        + \sum \limits_{w\in \mathcal{W}} \int \limits_{B^m_w} \sigma^m_w u v \dd\bx,
+\end{equation}
+we can write the weak form of \eqref{eqn:poisson}
+\begin{equation} \label{eqn:weak_form}
+  a^m(h^m,v^m) - \int_{B_w^m}\sigma_w^m H_w^m v^m \dd\bx
+  = \int \limits_{\Omega^m} f^mv^m% - \int \limits_{\Omega^m} T^m \nabla h^m_D \nabla v^m \dd\mathbf{x},
+  \quad \forall m=1,\ldots,M,
+\end{equation}
+where the functions $h^m$ and test functions $v^m$ are from standard Sobolev spaces $H^1_0(\Omega^m)$,
+considering $h^m|_{\partial\Omega^m}=0$ for simplicity.
+The unknowns $H^m_w$ in \eqref{eqn:well_balance} are constants thus we can imagine that the test functions of 
+$H^m_w$ are also constants, chosen to be equal one, and so \eqref{eqn:well_balance} is not modified.
+
+\section{Discretization}
 \label{sec:pum_methods}
+We can now proceed to the choice of the enrichment and discretize the equations
+\eqref{eqn:weak_form} and \eqref{eqn:well_balance}.
+
+\subsection{Enrichment function}
+The enrichment function in general can be obtained from the knowledge of the solution character or 
+from solution of a simple local problem which will provide us the function.
+In our case the simple problem is finding pressure distribution in a circular domain $\Omega$ with one well 
+placed at the center. It can be easily proved that the function
+%
+\begin{equation} \label{eqn:solution_form}
+  h = a \log(r_w)+b
+\end{equation}
+%
+is the solution of a Laplace equation $-T \Delta h = 0$, just by putting the function into the equation. 
+Argument $r_w$ of the logarithm is the distance from the well center
+%
+\begin{equation*}
+      r_w(\bx) = \|\bx - \xi_w\|= \sqrt{(x-x_w)^2+(y-y_w)^2}.
+\end{equation*}
+%
+We see in \eqref{eqn:solution_form} the logarithmic dependence of the pressure head on the distance from 
+the well. If we represented the well only by a~point, the pressure head would go to infinity while closing 
+to the point (singularity $\lim \limits_{r\rightarrow 0} \log r= -\infty$). Instead, we keep in mind the
+radius of the well $R_w$ and introduce (global) enrichment function
+%
+\begin{equation}
+\label{eqn:enrich_func}
+s_w(\bx) = 
+  \begin{cases}
+  \log(r_w(\bx)), & r_w > R_w\\
+  \log(R_w), & r_w \le R_w\\
+  \end{cases}.
+\end{equation}
+%
+and its gradient
+\begin{equation} \label{eqn:xgrad_func}
+\nabla s_w(\bx) = 
+  \begin{cases}  
+    \frac{\bx - \bx_w}{r_w^2(\bx)} & r_w>R_w \\
+    0 & r_w \leq R_w
+  \end{cases}.
+\end{equation}
+See \fig{fig:enrich_func}.
+\begin{figure}[!htb]
+  %\vspace{-15pt}
+  %TODO: do not forget to replace the notation of the enrichment function
+  \begin{center}         
+    \def\svgwidth{0.5\textwidth}
+    \input{\figpath enrich_func.pdf_tex}
+  \end{center}
+  \caption{The enrichment function.}
+  \label{fig:enrich_func}
+\end{figure}
+
+%TODO: define enrichment zone    
+    
+\subsection{Partition of unity methods}
+Let's imagine that we have only one aquifer so we can omit the upper index $m$ in this section.
+In fact, it is appropriate to do so in some notations because we do consider the same triangulation for every
+aquifer in our implementation.
+
+Let $N_\alpha(\bx)$, $\alpha\in\mathcal{I}=\{1,\ldots,N\}$ be the standard linear finite element shape 
+functions associated with the node $\bx_\alpha$ of the triangulation. 
+In \textbf{standard XFEM}, we write the solution in the form
+\begin{equation} \label{eqn:xfem_standard_form}
+  h(\bx) = \sum \limits_{\alpha\in\mathcal{I}}a_\alpha N_\alpha(\bx)
+    + \sum \limits_{w\in\mathcal{W}} \sum \limits_{\alpha\in\mathcal{I}^e_w} b_{\alpha w} \phi_{\alpha w}(\bx),
+\end{equation}
+where $a_\alpha$ are the standard FE degrees of freedom and $b_{\alpha w}$ are degrees of freedom coming from
+enrichment of the well $w$. The index set $\mathcal{I}^e_w$ includes all nodes enriched by the well $w$, which
+means that we have several enrichment functions and each can enrich different nodes.
+The local enrichment functions $\phi_{\alpha w}$ in \eqref{eqn:xfem_standard_form} are defined
+in the following way
+\begin{equation} \label{eqn:xfem_enrich}
+    \phi_{\alpha w} = N_\alpha(\bx)L_{\alpha w}(\bx), \quad \alpha\in\mathcal{I}^e_w, w\in\mathcal{W},
+\end{equation}
+where simply the enrichment function $L_{\alpha w}(\bx) = s_w(\bx)$.
+%TODO: define test functions, refer to the weak form
+
+\subsubsection{Corrected XFEM}
+The corrected XFEM \citep{cxfem} deals with the convergence problem on blending elements and 
+introduces the \textbf{ramp function}
+%\begin{equation} \label{eqn:ramp_function}
+\begin{eqnarray} \label{eqn:ramp_function}
+  G_w(\bx) &=& \sum \limits_{\alpha\in\mathcal{I}_w^e} N_\alpha(\bx)    \\
+  &=& 
+  \begin{cases}
+    0 & \textrm{ on unenriched elements}    \\
+    1 & \textrm{ on elements where all nodes are enriched}    \\
+    ramp & \textrm{ on elements where some of the nodes are enriched}    \\
+  \end{cases} \nonumber
+%   \quad \textrm{ on } \tau, \textrm{ such that } \bx,\bx_\alpha\in\tau, \\
+%   g_{\alpha w} &=&
+%   \begin{cases}
+%     1 & \textrm{ if } \alpha \textrm{ is enriched by } w \\
+%     0 & \textrm{ otherwise. }
+%   \end{cases}
+\end{eqnarray}
+%\end{equation}
+It also extends the set of enriched nodes, denoted by $\mathcal{J}^e$, by enriching (unenriched) nodes 
+on elements, where only some of the nodes are in $\mathcal{I}^e$. Thus $\mathcal{I}^e\subset\mathcal{J}^e$ 
+and there are more enriched nodes.
+The enrichment function changes into the form
+\begin{equation} \label{eqn:xfem_ramp}
+    L_{\alpha w} = G_w(\bx) s_{w}(\bx), \quad \alpha\in\mathcal{J}^e, w\in\mathcal{W}.
+\end{equation}
+They further suggests the \textbf{shifted} enrichment functions in order to preserve the property of standard 
+FE approximation at nodes $h(\bx_\alpha)=a_\alpha$; the value at the node is equal the corresponding degree
+of freedom. The enrichment functions must be then zero at the nodes which is satisfied in the form
+\begin{equation} \label{eqn:xfem_shift}
+    L_{\alpha w} = G_w(\bx) \left[s_w(\bx) - s_w(\bx_\alpha)\right],
+    \quad \alpha\in\mathcal{J}^e, w\in\mathcal{W}.
+\end{equation} 
+The property of the shifted formulation enables us to prescribe Dirichlet boundary condition such that
+$a_\alpha = h_D(\bx_\alpha)$.
+
+\subsubsection{SGFEM}
+Finally we present the \textbf{SGFEM}, according to \cite{sgfem2013}. The enrichment function is defined
+as the substraction of the global enrichment function and its interpolation 
+\begin{equation} \label{eqn:sgfem_enrich}
+    L_{\alpha w} = \left[s_w(\bx) - \pi_\tau (s_w)(\bx)\right],
+    \quad \textrm{ on } \tau,\; \alpha\in\mathcal{I}^e, w\in\mathcal{W}.
+\end{equation} 
+where the interpolantion $\pi_\tau$ is built using the finite element shape functions
+associated with nodes $\mathcal{I}(\tau)$ of the element $\tau$
+\begin{equation} \label{eqn:sgfem_interpolation}
+    \pi_\tau (s_w)(\bx) = \sum\limits_{\beta\in\mathcal{I}(\tau)} s_w(\bx_\beta) N_\beta(\bx).
+    %\quad \textrm{ on } \tau,\; \alpha\in\mathcal{I}^e, w\in\mathcal{W}.
+\end{equation}
+Of course $\alpha\in\mathcal{I}(\tau)$ in \eqref{eqn:sgfem_enrich}.
+Notice that there are no additional enriched nodes on blending elements, like in $\mathcal{J}^e$ in 
+\eqref{eqn:xfem_ramp} and \eqref{eqn:xfem_shift}, and no ramp function is involved.
+
+\subsection{Assembly}
+Having the enrichment functions defined, the enriched nodes set and the equations discretized, we can approach
+the assembly of the linear system. The system has this block pattern 
+\begin{equation}
+  \begin{pmatrix}
+  \mathbf{E}^{M+1} &               &                     & \bar{\mathbf{F}}^{M+1}   & &&&&\\
+                   & \mathbf{K}^M  & \bar{\mathbf{R}}^M  & \bar{\mathbf{C}}^M       & &&&&\\
+                   & \mathbf{R}^M  & \mathbf{S}^M        & \bar{\mathbf{D}}^M       & &\ddots&&&\\
+  \mathbf{F}^{M+1} & \mathbf{C}^M  & \mathbf{D}^M        & \mathbf{E}^M             & &&&&\\
+  &&&& \ddots &&&& \\
+  &&&& & \mathbf{E}^2 &              &                    & \bar{\mathbf{F}}^2 \\
+  &&&\ddots& &              & \mathbf{K}^1 & \bar{\mathbf{R}}^1 & \bar{\mathbf{C}}^1 \\
+  &&&& &              & \mathbf{R}^1 & \mathbf{S}^1       & \bar{\mathbf{D}}^1 \\
+  &&&& & \mathbf{F}^2 & \mathbf{C}^1 & \mathbf{D}^1       & \mathbf{E}^1 \\
+  \end{pmatrix}
+  \begin{pmatrix}
+    \mathbf{H}^{M+1} \\
+    \mathbf{a}^{M} \\
+    \mathbf{b}^{M} \\
+    \mathbf{H}^{M} \\
+    \mathbf{\vdots} \\
+    \mathbf{H}^{2} \\
+    \mathbf{a}^{1} \\
+    \mathbf{b}^{1} \\
+    \mathbf{H}^{1} \\
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \mathbf{f}^{M+1}_H \\
+    \mathbf{f}^{M}_a \\
+    \mathbf{f}^{M}_b \\
+    \mathbf{f}^{M}_H \\
+    \mathbf{\vdots} \\
+    \mathbf{f}^{2}_H \\
+    \mathbf{f}^{1}_a \\
+    \mathbf{f}^{1}_b \\
+    \mathbf{f}^{1}_H \\
+  \end{pmatrix}
+\end{equation}
+where $\mathbf{K}^m$ is the matrix of the standard FE approximation, $\mathbf{S}^m$ is the matrix of the 
+enrichment, $\mathbf{R}^m$ relates standard FE and enrichment,  $\mathbf{E}^m$ is the matrix associated with 
+unknown pressures in the wells and 
+$\mathbf{C}^m$, $\mathbf{D}^m$ and $\mathbf{F}^m$ are communication matrices: standard FE -- well, 
+enrichment -- well and well -- well, respectively. The whole system is symmetric.
+
+The entries of the matrices are 
+
+\begin{eqnarray}
+  K^m &=& \left[a^m(N^m_\alpha, N^m_\beta)\right]   ,\qquad \forall \alpha,\beta\in \mathcal{I} \label{eqn:k_entry}\\
+  S^m &=& \left[a^m(\phi^m_{\alpha k}, \phi^m_{\beta j})\right]     ,\qquad \forall \alpha,\beta\in \mathcal{I}^e,\; \forall k,j\in\mathcal{W} \label{eqn:s_entry}\\
+  R^m &=& \left[a^m(N^m_{\alpha}, \phi^m_{\beta j})\right]      ,\qquad \forall \alpha\in \mathcal{I},\; \forall\beta\in\mathcal{I}^e,\; \forall j\in\mathcal{W} \label{eqn:r_entry}\\
+  C^m_{w\alpha} &=&-\int\limits_{B^m_w} \sigma^m_w N^m_\alpha   ,\qquad \forall \alpha\in \mathcal{I},\; \forall w\in\mathcal{W}\\
+  D^m_{w\alpha j} &=&-\int\limits_{B^m_w} \sigma^m_w \phi^m_{\alpha j}  ,\qquad \forall \alpha\in \mathcal{I}^e,\; \forall w\in\mathcal{W}\\
+  \rm{diag}(\mathbf{E}^m)_w &=&\int\limits_{B^m_w} \sigma^m_w + c^{m+1}_w   ,\qquad \forall w\in\mathcal{W}\\
+  \rm{diag}(\mathbf{F}^m)_w &=& -c^m_w ,\qquad \forall w\in\mathcal{W}
+\end{eqnarray}
 
 \section{Integration on enriched elements}
 \label{sec:integration}
-
-The higher requirements on integration precision
-%TODO: integration of term in what equation
+In order to compute the entries of matrices \eqref{eqn:s_entry} and \eqref{eqn:r_entry} we need to integrate
+the expressions containing the enrichment functions. These of course can be non-polynomial, like they are 
+in our case. The standard quadrature rules are not appropriate any more, as they are constructed to integrate 
+precisely polynomials up to a given degree. The higher requirements on integration precision
 are the price for using enrichment functions and a coarse mesh.
-We need to deal with integration of enrichment functions which can be non-polynomial, as they are in our case. 
-The standard quadrature rules are not appropriate any more, as they are constructed to integrate precisely 
-polynomials up to a given degree. 
 
-There are two aspects which the adaptive integration must handle properly and integrate precisely enough:
+There are two aspects which the integration must handle properly and compute precisely enough:
 \begin{itemize}
-  \item the singularity and the steep gradient of the pressure head in the vicinity of a well,
+  \item the steep gradient of the pressure head in the vicinity of a well (the singularity),
   \item the weak discontinuity of the pressure head at the well edge (jump in the pressure head gradient).
 \end{itemize}
 
 %TODO: better quadrature for log is not proper in our case as the function may be different according to hydrogeologist
-One of the approaches to improve integration is local element refinement. We remind that the refinement helps
-only placing more quadrature points in the element and does not bring any more degrees of freedom in the 
+One of the approaches to improve integration is local element refinement. We remind that the refinement only enables
+placing more quadrature points in the element and does not bring any more degrees of freedom in the 
 system. We will discuss the criterions for adaptive refinement, suggest improvement and compare our solution
 with the original one in this subsection. We will refer also some of the convergence results which will be 
 shown later in \ref{sec:results}.
@@ -246,7 +493,7 @@ control the significance of the criterion.
 
 In this way, the elements in which the well does not lie are also refined as you can see in 
 \fig{fig:adapt_ref_b}. The quadrature points are then distributed more 'smoothly' around the well and the
-gradients can be computed more accurately. 
+integrals with gradients can be computed more accurately. 
 
 In \fig{fig:adapt_refinement_norm} you can see the $L_2$ norms of the error on the enriched elements which 
 were computed also using the corresponding adaptive integration. Notice the scale of the improved version -- 
@@ -277,15 +524,15 @@ an experiment on integrating the characteristic function of the well with our ad
 The domain $\Omega$ is a square $4\times4$ out of which a circle of radius 1.0 is cut off. The characteristic 
 function is considered
 \begin{equation}
-  \chi(\mathbf{x}) = \left\{
+  \chi(\bx) = \left\{
     \begin{array}{l l}
-      0 & \quad \textrm{if } \mathbf{x} \textrm{ is inside the circle}\\
+      0 & \quad \textrm{if } \bx \textrm{ is inside the circle}\\
       1 & \quad \textrm{otherwise}
   \end{array} \right.
 \end{equation}
 and the integral 
 \begin{equation}
-  \int_{\Omega}\chi(\mathbf{x}) \dd\mathbf{x} = 4^2 - \pi
+  \int_{\Omega}\chi(\bx) \dd\bx = 4^2 - \pi
 \end{equation}
 is equal the area of the square minus the area of the circle.
 
@@ -314,18 +561,57 @@ both in the original (14793) and improved version (14819).
   \label{fig:adapt_ref_convergence}
 \end{figure}
 
-
-* non-optimal convergence rate with the approach of [gracie] and their integration scheme 3-4
-
-* the above can be improved by using higher order quadrature rules (6-6)
-
-* problem is that we do not represent the well edge and mainly its surrounding well enough
-
-* introduce element refinement criterion: the comparision of element size and its minimal vertex distance 
-  from the well
+%TODO:
+% * non-optimal convergence rate with the approach of [gracie] and their integration scheme 3-4
+% 
+% * the above can be improved by using higher order quadrature rules (6-6)
+% 
+% * problem is that we do not represent the well edge and mainly its surrounding well enough
 
 \section{Results}
 \label{sec:results}
+
+\subsection{Analytical solution}
+To measure convergence an analytic solution is needed. 
+%TODO: why only single aquifer problems
+Let's start with a Laplace problem on a circular disk
+with a single well in the center
+\begin{eqnarray} \label{eqn:laplace_problem}
+    -T \Delta h = 0 \nonumber\\
+    h|_{\partial\Omega} = P_D \\
+    h|_{B_w} = P_w \nonumber
+\end{eqnarray}
+where the pressure $P_w$ at the well edge $B_w$ and the pressure $P_D$ at the boundary are given.
+Remind the function \eqref{eqn:solution_form} $h=\log(r_w)+b$ (which we used to define the enrichment function) 
+and find the constants $a,b$ using the boundary conditions such that \eqref{eqn:solution_form} is the solution 
+of \eqref{eqn:laplace_problem}.
+We obtain $a,b$ by solving
+\begin{eqnarray*}
+  a\log(R_w) + b = P_w, \\
+  a\log(R) + b = P_D,
+\end{eqnarray*}
+where $R$ is radius of the domain and $R_w$ is the well radius.
+The solution of \eqref{eqn:laplace_problem}, which we shall use as the reference, is then
+\begin{equation} \label{eqn:laplace_solution}
+  h=a\log(r_w)+b \qquad \textrm{ with } a=\frac{P_w}{\log\left(\frac{R_w}{R}\right)}, \; b=-a\log R
+\end{equation}
+
+Second problem we solve is a Poisson problem
+\begin{eqnarray} \label{eqn:poisson_problem}
+    -T \Delta h = TU\omega^2\sin(\omega x) \nonumber\\
+    h|_{\partial\Omega} = P_D + U\sin(\omega x)\\
+    h|_{B_w} = P_w. \nonumber
+\end{eqnarray}
+where $U$ and $\omega$ are given
+%where $U$ is the amplitude and $\omega$ is the angular frequency 
+and the solution 
+\begin{equation} \label{eqn:poisson_solution}
+  h=a\log(r_w)+b+U\sin(\omega x),
+\end{equation}
+with $a,b$ being the same as in \eqref{eqn:laplace_solution}, is obtained the same way as above.
+
+\section{Convergence on Laplace problem}
+\section{Convergence on Poisson problem with sinusoidal source}
 
 \section{Summary}
 \label{sec:summary}
