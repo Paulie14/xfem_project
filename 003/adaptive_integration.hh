@@ -490,7 +490,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
       shape_val_vec.resize(n_w_dofs,0);  //unenriched, enriched, well
     
-      std::vector<double > shape_val_averige(n_w_dofs+n_wells,0);
+//       std::vector<double > shape_val_averige(n_w_dofs+n_wells,0);
       
       //cycle over quadrature points inside the cell
       //DBGMSG("n_q:%d\n",xdata->q_points(w).size());
@@ -536,7 +536,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
         for (unsigned int i=0; i < n_w_dofs; ++i)
           for (unsigned int j=0; j < n_w_dofs; ++j)
           {
-              cell_matrix(i,j) += ( well->perm2aquifer(m_) *
+              cell_matrix(i,j) += ( well->perm2aquifer(m_-1) *
                                     shape_val_vec[i] *
                                     shape_val_vec[j] *
                                     jxw);
