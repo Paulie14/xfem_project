@@ -12,7 +12,8 @@
    */
 struct Enrichment_method
 {
-  typedef enum {xfem_ramp,   ///< XFEM method with ramp function only
+  typedef enum {xfem,        ///< standard XFEM
+                xfem_ramp,   ///< XFEM method with ramp function only
                 xfem_shift,  ///< XFEM method with ramp funciton and shift
                 sgfem        ///< SGFEM method
   } Type;

@@ -1,8 +1,15 @@
 #include "xfevalues.hh"
 #include "system.hh"
 
+//************************************************************************************************** prepare()
 template<>
-void XFEValues<Enrichment_method::xfem_shift>::prepare()
+void XFEValues<Enrichment_method::xfem>::prepare()
+{
+    // do nothing
+}
+
+template<>
+void XFEValues<Enrichment_method::xfem_ramp>::prepare()
 {
   //ramp function
   double ramp;
@@ -24,7 +31,7 @@ void XFEValues<Enrichment_method::xfem_shift>::prepare()
 }
 
 template<>
-void XFEValues<Enrichment_method::xfem_ramp>::prepare()
+void XFEValues<Enrichment_method::xfem_shift>::prepare()
 {
   //ramp function
   double ramp;
@@ -64,8 +71,21 @@ void XFEValues<Enrichment_method::sgfem>::prepare()
   }
 }
 
+//***************************************************************************************** enrichment_value()
 template<>
-double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned int function_no, const unsigned int w, const unsigned int q)
+double XFEValues<Enrichment_method::xfem>::enrichment_value(const unsigned int function_no, 
+                                                            const unsigned int w, 
+                                                            const unsigned int q)
+{ 
+  MASSERT(update_quadrature_points & this->get_update_flags(), "'update_quadrature_points' flag was not set!");
+  return  this->shape_value(function_no,q) *                                    //FE shape function
+          q_enrich_values_[w][q];                                               //NOT shifted
+}
+
+template<>
+double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned int function_no, 
+                                                                 const unsigned int w, 
+                                                                 const unsigned int q)
 { 
   MASSERT(update_quadrature_points & this->get_update_flags(), "'update_quadrature_points' flag was not set!");
   return  this->shape_value(function_no,q) *                                    //FE shape function
@@ -74,7 +94,9 @@ double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned 
 }
 
 template<>
-double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned int function_no, const unsigned int w, const unsigned int q)
+double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned int function_no, 
+                                                                  const unsigned int w, 
+                                                                  const unsigned int q)
 { 
   MASSERT(update_quadrature_points & this->get_update_flags(), "'update_quadrature_points' flag was not set!");
   return  this->shape_value(function_no,q) *                                    //FE shape function
@@ -83,7 +105,9 @@ double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned
 }
 
 template<>
-double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int function_no, const unsigned int w, const unsigned int q)
+double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int function_no, 
+                                                             const unsigned int w, 
+                                                             const unsigned int q)
 {
   MASSERT(update_quadrature_points & this->get_update_flags(), "'update_quadrature_points' flag was not set!");
   MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape function for this node undefined.");
@@ -92,8 +116,22 @@ double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int 
 }
 
 
+//************************************************************************************ enrichment_value(point)
 template<>
-double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned int function_no, const unsigned int w, const Point<2> p)
+double XFEValues<Enrichment_method::xfem>::enrichment_value(const unsigned int function_no, 
+                                                            const unsigned int w, 
+                                                            const Point<2> p)
+{
+  Point<2> unit_point = this->get_mapping().transform_real_to_unit_cell(cell_,p);
+    
+  return  this->get_fe().shape_value(function_no,unit_point) *
+          xdata_->get_well(w)->global_enrich_value(p);
+}
+
+template<>
+double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned int function_no, 
+                                                                 const unsigned int w, 
+                                                                 const Point<2> p)
 {
   Point<2> unit_point = this->get_mapping().transform_real_to_unit_cell(cell_,p);
   
@@ -108,7 +146,9 @@ double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned 
 }
 
 template<>
-double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned int function_no, const unsigned int w, const Point<2> p)
+double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned int function_no, 
+                                                                  const unsigned int w, 
+                                                                  const Point<2> p)
 {
   Point<2> unit_point = this->get_mapping().transform_real_to_unit_cell(cell_,p);
   
@@ -124,7 +164,9 @@ double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned
 }
 
 template<>
-double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int function_no, const unsigned int w, const Point<2> p)
+double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int function_no, 
+                                                             const unsigned int w, 
+                                                             const Point<2> p)
 {
   MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape function for this node undefined.");
   Point<2> unit_point = this->get_mapping().transform_real_to_unit_cell(cell_,p);
@@ -138,9 +180,24 @@ double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int 
           (xdata_->get_well(w)->global_enrich_value(p) - interpolation);
 }
 
+//****************************************************************************************** enrichment_grad()
+template<>
+Tensor<1,2> XFEValues<Enrichment_method::xfem>::enrichment_grad(const unsigned int function_no, 
+                                                                const unsigned int w, 
+                                                                const unsigned int q)
+{ 
+  return  shape_grad(function_no,q) *
+          q_enrich_values_[w][q]
+          +
+          shape_value(function_no,q) *
+          xdata_->get_well(w)->global_enrich_grad(this->quadrature_point(q))
+          ;
+}
 
 template<>
-Tensor<1,2> XFEValues<Enrichment_method::xfem_ramp>::enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q)
+Tensor<1,2> XFEValues<Enrichment_method::xfem_ramp>::enrichment_grad(const unsigned int function_no, 
+                                                                     const unsigned int w, 
+                                                                     const unsigned int q)
 {
   double xshape = q_enrich_values_[w][q];
   Tensor<1,2> ramp_grad;
@@ -163,7 +220,9 @@ Tensor<1,2> XFEValues<Enrichment_method::xfem_ramp>::enrichment_grad(const unsig
 
 
 template<>
-Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q)
+Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsigned int function_no, 
+                                                                      const unsigned int w, 
+                                                                      const unsigned int q)
 {
   
   double xshape_shifted = q_enrich_values_[w][q] - xdata_->node_enrich_value(w,function_no);
@@ -187,7 +246,9 @@ Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsi
 
 
 template<>
-Tensor<1,2> XFEValues<Enrichment_method::sgfem>::enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q)
+Tensor<1,2> XFEValues<Enrichment_method::sgfem>::enrichment_grad(const unsigned int function_no, 
+                                                                 const unsigned int w, 
+                                                                 const unsigned int q)
 {
   MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape grad function for this node undefined.");
   

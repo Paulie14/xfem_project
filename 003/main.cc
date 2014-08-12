@@ -616,7 +616,9 @@ void test_convergence_square(std::string output_dir)
   
   Well *well = new Well( well_radius,
                          well_center);
-  well->set_perm2aquifer({perm2fer, perm2fer});
+//   well->set_perm2aquifer({perm2fer, perm2fer});
+//   well->set_perm2aquitard({perm2tard, 0.0});
+  well->set_perm2aquifer(0,perm2fer);
   well->set_perm2aquitard({perm2tard, 0.0});
   well->set_pressure(well_pressure);
   well->evaluate_q_points(n_well_q_points);
@@ -644,13 +646,15 @@ void test_convergence_square(std::string output_dir)
                                 | ModelBase::output_solution
                                 | ModelBase::output_error);
   
-  XModel_simple xmodel(well, "");  
-  xmodel.set_name(test_name + "sgfem"); 
-  xmodel.set_enrichment_method(Enrichment_method::sgfem);
-//   xmodel.set_name(test_name + "xfem_shift");
-//   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
-//     xmodel.set_name(test_name + "xfem_ramp");
-//     xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
+  XModel_simple xmodel(well, ""); 
+//     xmodel.set_name(test_name + "xfem");
+//     xmodel.set_enrichment_method(Enrichment_method::xfem);
+    xmodel.set_name(test_name + "xfem_ramp");
+    xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
+//     xmodel.set_name(test_name + "xfem_shift");
+//     xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//     xmodel.set_name(test_name + "sgfem"); 
+//     xmodel.set_enrichment_method(Enrichment_method::sgfem);
   
   xmodel.set_output_dir(output_dir);
   xmodel.set_area(down_left,up_right);
@@ -662,8 +666,8 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
-                          //| ModelBase::output_solution
-                          //| ModelBase::output_decomposed
+                          | ModelBase::output_solution
+                          | ModelBase::output_decomposed
                           //| ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
@@ -790,9 +794,9 @@ void test_convergence_square(std::string output_dir)
         {
             xmodel.compute_interpolated_exact(exact_solution);
             xmodel.output_results(cycle);
-//             ExactModel* exact = new ExactModel(exact_solution);
-//             exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
-//             delete exact;
+            ExactModel* exact = new ExactModel(exact_solution);
+            exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+            delete exact;
         } 
     }   // for cycle
       
@@ -810,8 +814,8 @@ void test_convergence_sin(std::string output_dir)
   //------------------------------SETTING----------------------------------
   std::string test_name = "sin_square_convergence_";
   bool fem_create = false,
-       fem = true,
-       xfem = false,
+       fem = false,
+       xfem = true,
        ex = false;
   
   double p_a = 10.0,    //area of the model
@@ -820,7 +824,7 @@ void test_convergence_sin(std::string output_dir)
          //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
          radius = p_a*std::sqrt(2),
          well_radius = 0.02,
-         perm2fer = Parameters::perm2fer, 
+         perm2fer = 1e-2,//Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
          enrichment_radius = 4.0,
@@ -843,10 +847,10 @@ void test_convergence_sin(std::string output_dir)
   
   
   Well *well = new Well( well_radius,
-                         well_center,
-                         perm2fer, 
-                         perm2tard);
+                         well_center);
   well->set_pressure(well_pressure);
+  well->set_perm2aquifer(0,perm2fer);
+  well->set_perm2aquitard({perm2tard, 0.0});
   well->evaluate_q_points(n_well_q_points);
   
   ExactSolution1 *exact_solution = new Solution::ExactSolution1(well, radius, k_wave_num, amplitude);
@@ -874,10 +878,10 @@ void test_convergence_sin(std::string output_dir)
     
   
   XModel_simple xmodel(well);  
-  xmodel.set_name(test_name + "sgfem");
-  xmodel.set_enrichment_method(Enrichment_method::sgfem);
-//   xmodel.set_name(test_name + "xfem_shift");
-//   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//   xmodel.set_name(test_name + "sgfem");
+//   xmodel.set_enrichment_method(Enrichment_method::sgfem);
+  xmodel.set_name(test_name + "xfem_shift");
+  xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
 //   xmodel.set_name(test_name + "xfem_ramp");
 //   xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
   
@@ -890,25 +894,13 @@ void test_convergence_sin(std::string output_dir)
   xmodel.set_dirichlet_function(dirichlet_square);
   xmodel.set_rhs_function(rhs_function);
   xmodel.set_adaptivity(true);
-  //xmodel.set_well_computation_type(Well_computation::sources);
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
                           | ModelBase::output_solution
                           | ModelBase::output_decomposed
                           | ModelBase::output_error);
   
-//   // Exact model
-//   if(ex)
-//   {
-//     std::cout << "computing exact solution on fine mesh..." << std::endl;
      ExactModel exact(exact_solution);
-//     exact.output_distributed_solution(*fine_triangulation);
-//     ExactBase* exact_solution = new ExactSolution(well, radius);
-//     double exact_norm = Comparing::L2_norm_exact(*fine_triangulation,exact_solution);
-//     std::cout << "L2_norm of the exact solution: " << exact_norm << std::endl;
-//     //return;
-//   }
-  
-  
+
   unsigned int n_cycles = 15;
   std::pair<double,double> l2_norm_dif_fem, l2_norm_dif_xfem;
   
@@ -1732,7 +1724,7 @@ int main ()
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-  test_convergence_square(output_dir);
+   test_convergence_square(output_dir);
 //   test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);

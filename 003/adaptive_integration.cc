@@ -204,6 +204,7 @@ bool Adaptive_integration::refine_criterion_a(Square& square, Well& well)
     // criteria:
     if( square.real_diameter() > square_refinement_criteria_factor * min_distance)
         return true;
+    else return false;
 }
 
 unsigned int Adaptive_integration::refine_criterion_nodes_in_well(Square& square, Well& well)

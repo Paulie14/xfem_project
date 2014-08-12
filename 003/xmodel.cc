@@ -323,10 +323,12 @@ void XModel::find_enriched_cells(unsigned int m)
         
         triangulation->clear_user_flags();
         
-        if(enrichment_method_ == Enrichment_method::sgfem)
-          enrich_cell_sgfem(cell, w, enriched_dof_indices, n_global_enriched_dofs,m);
+        if( (enrichment_method_ == Enrichment_method::sgfem)
+            || (enrichment_method_ == Enrichment_method::xfem)
+        )
+          enrich_cell(cell, w, enriched_dof_indices, n_global_enriched_dofs,m);
         else
-          enrich_cell(cell, w, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
+          enrich_cell_blend(cell, w, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
         
         break;
       }
@@ -340,10 +342,10 @@ void XModel::find_enriched_cells(unsigned int m)
         << std::endl;
     std::cout << "Number of enriched dofs: " << n_enriched_dofs << std::endl;
     std::cout << "Total number of dofs: " << n_enriched_dofs+dof_handler->n_dofs() << std::endl;
-  //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
+    //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
-  DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata_[m].size(), triangulation->n_active_cells());
-  //print_xdata();
+    DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata_[m].size(), triangulation->n_active_cells());
+    //print_xdata();
 }
 
 void XModel::print_xdata()
@@ -355,7 +357,8 @@ void XModel::print_xdata()
     std::cout << "(" << setw(5) << xdata_[m][i]->get_cell()->index() << ") ";
     for(unsigned int xw=0; xw < xdata_[m][i]->n_wells(); xw++)
     {
-      std::cout << " w=" << setw(3) << xw << " well center: " << setw(7) << xdata_[m][i]->get_well(xw)->center() << "\tglobal_enrich_dofs: [";
+      std::cout << " w=" << setw(3) << xw << " well center: " << setw(7)
+      << xdata_[m][i]->get_well(xw)->center() << "\tglobal_enrich_dofs: [";
       
       for(unsigned int j=0; j < fe.dofs_per_cell; j++)
         std::cout << std::setw(4) << xdata_[m][i]->global_enriched_dofs(xw)[j] << "  ";
@@ -373,13 +376,12 @@ void XModel::print_xdata()
 
 
 //-------------------------------------------------------------------------------------- ENRICH CELL
-void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
-                           const unsigned int &well_index,
-                           std::vector<unsigned int> &enriched_dof_indices,
-                           std::vector<unsigned int> &enriched_weights,
-                           unsigned int &n_global_enriched_dofs,
-                           unsigned int m
-                         )
+void XModel::enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell,
+                                const unsigned int &well_index,
+                                std::vector<unsigned int> &enriched_dof_indices,
+                                std::vector<unsigned int> &enriched_weights,
+                                unsigned int &n_global_enriched_dofs,
+                                unsigned int m)
 {
   //std::cout << "CALL enrich_cell on: " << cell->index();
   // if the flag is set = we have been already there, so continue
@@ -603,7 +605,8 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
             //std::cout << "\tFace=" << face_no << " subface=" << subface_no 
             //          << " entering cell=" << neighbor_child->index() << std::endl;
             // entering on the neighbor's children behind the current face
-            enrich_cell(neighbor_child, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
+            enrich_cell_blend(neighbor_child, well_index, enriched_dof_indices, 
+                              enriched_weights, n_global_enriched_dofs,m);
           }
           //*/
       }
@@ -626,20 +629,22 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t same refine level: " 
             //          << neighbor->level() << std::endl;
-            enrich_cell(neighbor, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
+            enrich_cell_blend(neighbor, well_index, enriched_dof_indices, 
+                              enriched_weights, n_global_enriched_dofs,m);
           } 
         else
           //is coarser
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
-            enrich_cell(neighbor, well_index, enriched_dof_indices, enriched_weights, n_global_enriched_dofs,m);
+            enrich_cell_blend(neighbor, well_index, enriched_dof_indices, 
+                        enriched_weights, n_global_enriched_dofs,m);
           }
       }
   }
 }
 
 //-------------------------------------------------------------------------------------- ENRICH CELL
-void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
+void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
                            const unsigned int &well_index,
                            std::vector<unsigned int> &enriched_dof_indices,
                            unsigned int &n_global_enriched_dofs,
@@ -850,7 +855,7 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
             //std::cout << "\tFace=" << face_no << " subface=" << subface_no 
             //          << " entering cell=" << neighbor_child->index() << std::endl;
             // entering on the neighbor's children behind the current face
-            enrich_cell_sgfem(neighbor_child, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
+            enrich_cell(neighbor_child, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
           }
           //*/
       }
@@ -873,13 +878,13 @@ void XModel::enrich_cell_sgfem ( const DoFHandler<2>::active_cell_iterator cell,
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t same refine level: " 
             //          << neighbor->level() << std::endl;
-            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
+            enrich_cell(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
           } 
         else
           //is coarser
           {
             //std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
-            enrich_cell_sgfem(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
+            enrich_cell(neighbor, well_index, enriched_dof_indices, n_global_enriched_dofs,m);
           }
       }
   }
@@ -1195,6 +1200,12 @@ void XModel::assemble_subsystem (unsigned int m)
             
             switch(enrichment_method_)
             {
+                case Enrichment_method::xfem: 
+                    adaptive_integration.integrate<Enrichment_method::xfem>(enrich_cell_matrix, 
+                                                                            enrich_cell_rhs, 
+                                                                            enrich_dof_indices, 
+                                                                            transmisivity_[m-1]);
+                    break;
                 case Enrichment_method::xfem_ramp: 
                     //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
                     adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, 
@@ -1330,9 +1341,9 @@ void XModel::assemble_communication()
     for (unsigned int w=0; w < wells.size(); w++)
     {
         double perm2aquitard = wells[w]->perm2aquitard(0),
-               mat_diag = perm2aquitard,                                            // c^{M+1}_w
+               mat_diag = perm2aquitard;                                            // c^{M+1}_w
                           //+ 2*M_PI*wells[w]->radius()*wells[w]->perm2aquifer(0),   // 2piR_w*sigma_w
-               elimination_coef = - perm2aquitard / mat_diag;
+               //elimination_coef = - perm2aquitard / mat_diag;
         if(wells[w]->is_pressure_set()) 
         {        
             //DBGMSG("Dirichlet well pressure, %d.\n", w_idx);
@@ -1624,8 +1635,19 @@ void XModel::output_results (const unsigned int cycle)
             double tolerance = output_element_tolerance_;
             unsigned int iterations = 30;
             
+            //TODO: template function
             switch(enrichment_method_)
             {
+                case Enrichment_method::xfem: 
+                //MASSERT(0,"Not implemented yet.");
+                for(unsigned int n = 0; n < iterations; n++)
+                {
+                    DBGMSG("aquifer [%d] - output [%d]:\n", m, n);
+                    if( recursive_output<Enrichment_method::xfem>(
+                                    tolerance, output_grid, temp_dof_handler, temp_fe, n, m) )
+                    break;
+                }
+                break;
                 case Enrichment_method::xfem_ramp: 
                 //MASSERT(0,"Not implemented yet.");
                 for(unsigned int n = 0; n < iterations; n++)
@@ -2183,8 +2205,10 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
   std::pair<double,double> norms;
   switch(enrichment_method_)
   {
+    case Enrichment_method::xfem: 
+        norms = integrate_difference<Enrichment_method::xfem>(diff_vector, exact_solution);
+        break;
     case Enrichment_method::xfem_ramp: 
-        //MASSERT(0,"Not implemented yet.");
         norms = integrate_difference<Enrichment_method::xfem_ramp>(diff_vector, exact_solution);
         break;
       
@@ -2339,7 +2363,7 @@ void XModel::test_method(ExactBase* exact_solution)
 //                 DBGMSG("cell %d, dof %d, value: %f\n",cell->index(), local_dof_indices[i], block_solution(local_dof_indices[i]));
         }
         
-        if (cell->user_pointer() != nullptr)
+        if (cell->user_pointer())
         {   
             local_xdata = static_cast<XDataCell*>( cell->user_pointer() );
             for(unsigned int w = 0; w < local_xdata->n_wells(); w++) //W

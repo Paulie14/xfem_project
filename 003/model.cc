@@ -971,7 +971,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
                  index = 0;
                  
     double exact_value, value, cell_norm, total_norm, nodal_norm, total_nodal_norm;
-    double distance_treshold = 5.0;
+    //double distance_treshold = 5.0;
              
     QGauss<2> temp_quad(3);
     FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);

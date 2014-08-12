@@ -128,6 +128,7 @@ class XModel : public ModelBase
      * @param is_circle must be true if we load circle mesh with refinement flags 
      * @param cycle is the number of a iteration, if the model is run in cycles
      * @param m_aquifer number of aquifer which is meshed with the mesh loaded (not used)
+     * * TODO: OBSOLETE - remove or inovate
      */
     virtual void output_distributed_solution (const std::string &mesh_file, 
                                               const std::string &flag_file, 
@@ -142,6 +143,7 @@ class XModel : public ModelBase
      * @param tria is the output triangulation.
      * @param cycle is the number of a iteration, if the model is run in cycles
      * @param m_aquifer number of aquifer which is meshed with the mesh loaded (not used)
+     * * TODO: OBSOLETE - remove or inovate
      */
     void output_distributed_solution (const Triangulation<2> &dist_tria,
                                       const unsigned int &cycle=0, 
@@ -153,6 +155,7 @@ class XModel : public ModelBase
     /** Computes decomposed (enriched, unenriched and complete) solution at specified points.
      * It is called by @p output_distributed_solution with the nodes of the output triangulation.
      * @param points is the vector of points where we want to evaluate
+     * TODO: OBSOLETE - remove or inovate
      */
     void compute_distributed_solution(const std::vector< Point< 2 > >& points);
     //@}
@@ -256,13 +259,13 @@ class XModel : public ModelBase
      * Uses @p user_flags of the triangulation and tests only cells inside or on the edge
      * of the well. That means it will not go through all the cells.
      */
-    void enrich_cell (const DoFHandler<2>::active_cell_iterator cell, 
-                      const unsigned int &well_index,
-                      std::vector<unsigned int> &enriched_dof_indices,
-                      std::vector<unsigned int> &enriched_weights,
-                      unsigned int &n_global_enriched_dofs,
-                      unsigned int m
-                      );
+    void enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell, 
+                            const unsigned int &well_index,
+                            std::vector<unsigned int> &enriched_dof_indices,
+                            std::vector<unsigned int> &enriched_weights,
+                            unsigned int &n_global_enriched_dofs,
+                            unsigned int m
+                            );
    
     /** @brief Recursive function to mark enriched cells and nodes.
      * Recusively marks enriched cells and distribute 
@@ -270,7 +273,7 @@ class XModel : public ModelBase
      * Uses @p user_flags of the triangulation and tests only cells inside or on the edge
      * of the well. That means it will not go through all the cells.
      */
-    void enrich_cell_sgfem (const DoFHandler<2>::active_cell_iterator cell, 
+    void enrich_cell (const DoFHandler<2>::active_cell_iterator cell, 
                       const unsigned int &well_index,
                       std::vector<unsigned int> &enriched_dof_indices,
                       unsigned int &n_global_enriched_dofs,
@@ -300,6 +303,7 @@ class XModel : public ModelBase
                       bool xfem = true
                      );
     
+    /// TODO:rename
     template<Enrichment_method::Type> 
     int recursive_output(double tolerance, 
                          PersistentTriangulation<2> &output_grid, 
