@@ -12,14 +12,15 @@ doc_diplomka
   - typing corrections
   
 002:
-  - XFEM shift
-  - SGFEM
-  - XFEValues
-  - error measurement
-  - new adaptive output
-  - new convergence tables
+  - XFEM shift - done
+  - SGFEM - done
+  - XFEValues - done
+  - error measurement - done
+  - new adaptive output - done
+  - new convergence tables - done
 
   
 003:
   - remove well mapping on unit cell and do it in real space
-  - multiple aquifer
+  - multiple aquifer - done
+  - standard XFEM - done

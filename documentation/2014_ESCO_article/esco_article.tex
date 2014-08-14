@@ -146,14 +146,18 @@ of degrees of freedom.
 In this work we use PU (Partition of Unity) methods to overcome these problems and demonstrate it on a steady 
 %quasi-three-dimensional model of multi-aquifer system 
 two-dimensinal aquifer model containing hydro-geological wells which cause singularities in solution. 
-We follow the work of~\cite{gracie} who have already used the XFEM (eXtended FEM) on a~similar model. 
-However, we focus mainly on the study and improvement of the PU methods, in particular the XFEM and its 
-corrected version, e.g.~\cite{cxfem},  and the SGFEM, \cite{sgfem} and \cite{sgfem2013}. 
- 
+We follow the work \cite{gracie} and \cite{craig} who have already used the XFEM (eXtended FEM) on a~similar 
+model. However, we focus mainly on the study of the PU methods. In particular, we use the XFEM and its 
+corrected version (including ramp function and shift), e.g.~\cite{cxfem}, 
+and the SGFEM, \cite{sgfem} and \cite{sgfem2013}. We are able to measure the convergence of pressure in $L^2$ 
+norm over the aquifer domain and we compare the used methods. We also investigate the error of the
+adaptive integration on the enriched elements and introcude improvement. In addition, we suggest better choice
+of enrichment area based on a tolerance criterion.
+
 The implementation was done in C++ language using the Deal II library~\citep{deal}, the finite element library.
 which does not support any enrichment techniques at the moment.
 
-We briefly describe the model in the beginning of the article, set the problem and go through the
+We describe the model in the beginning of the article, set the problem and go through the
 PU methods in more details. Then we show some numerical aspects of the problem which we must deal with, 
 especially the adaptive integration in section \ref{sec:integration}. Results, convergence of methods and
 conditioning of the algebraic system are discussed right after and further research goals are pointed out 
@@ -166,20 +170,30 @@ impermeable layers (aquitards). The aquifers are connected by wells which act as
 or sinks in the domain of each aquifer. The pressure in the aquifers is further governed by the boundary 
 condition of the aquifers which can be of Dirichlet type or be homogenous of Neumann type.
 
-The distribution of the pressure head in $m$-th aquifer on its domain $\Omega^m\subset\R^2$ is described by 
-Poisson equation and boundary conditions
+We describe the wells as interior boundary condition therefore we need to define the computational domain
+as the aquifer domain with wells cross-sections cut off. Let the $\Theta^m$ be the domain on $m$-th aquifer,
+$m=1,\ldots M$, and $B^m_w$ be the its cross-section with $w$-th well, $w\in\mathcal{W}=\{1,\ldots,W\}$. 
+We then define domain $\Omega^m = \Theta^m\setminus\bigcup\limits_{w}B^m_w$ with an exterior boundary 
+consisting of exclusive parts $\partial\Theta^m=\Gamma^m_D\cup\Gamma^m_N$ and an interior boundary 
+$\bar B^m=\bigcup\limits_{w}B^m_w$, such that $\partial\Omega^m=\partial\Theta^m\cup\bar B^m$.
+
+The distribution of the pressure head in $m$-th aquifer is described by Poisson equation and 
+boundary conditions
 \begin{eqnarray} \label{eqn:poisson}
--T^m\Delta{}h^m &=& f^m \qquad \textrm{on } \Omega^m,\; \forall m=1,\dots,M, \\
+\nabla\cdot(-\mathbf{T}^m\nabla h^m) &=& f^m \qquad \textrm{on } \Omega^m\subset\R^2,\; \forall m=1,\dots,M, \\
 h^m|_{\Gamma^m_D} &=& h^m_D \\
--T^m\nabla h^m|_{\Gamma^m_N} &=& 0
+-\mathbf{T}^m\nabla h^m|_{\Gamma^m_N} &=& 0 \\
+-\mathbf{T}^m\nabla h^m|_{\partial B^m_w} &=& q^m_w 
 \end{eqnarray}
-where $T^m\, [\textrm{m}^2\textrm{s}^{-1}]$ denotes transmisivity (scalar for simplicity), 
-$h^m\, [\textrm{m}]$ pressure head, $f^m\, [\textrm{m}\textrm{s}^{-1}]$ source density and exclusive 
-boundary parts $\Gamma^m_D \cup \Gamma^m_N = \partial\Omega$ of the aquifer. 
-Equation \eqref{eqn:poisson} is derived from the Darcy law and the continuity equation 
+where $\mathbf{T}^m\, [\textrm{m}^2\textrm{s}^{-1}]$ denotes the transmisivity tensor,
+%(we will further consider only scalar $T^m$ for simplicity), 
+$h^m\, [\textrm{m}]$ the pressure head, $f^m\, [\textrm{m}\textrm{s}^{-1}]$ source density and
+$q^m_w = Q^m_w/|\partial B^m_w|$ is the density of the flow from the well to the aquifer over the well boundary 
+$\partial B^m_w$. Equation \eqref{eqn:poisson} is derived from the Darcy law and the continuity equation 
 for incompressible fluid.
 
-The communication between aquifers is possible only through wells. We can prescribe the flow balance equation 
+Presuming the aquitards to be fully impermeable, the communication between aquifers is possible only through 
+wells. We can prescribe the flow balance equation 
 \begin{eqnarray}
   Q^m_w &=& Q^m_{w,in} - Q^m_{w,out}, \textrm{ where} \label{eqn:well_flows} \\
   Q^m_w &\ldots& \textrm{flow into aquifer across the well boundary,} \nonumber\\
