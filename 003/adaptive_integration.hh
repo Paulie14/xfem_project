@@ -490,41 +490,41 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       well_cell_matrix.reinit(n_w_dofs, n_w_dofs);
       shape_val_vec.resize(n_w_dofs,0);  //unenriched, enriched, well
     
-//       std::vector<double > shape_val_averige(n_w_dofs+n_wells,0);
+      std::vector<double > shape_val_averige(n_w_dofs+n_wells,0);
       
       //cycle over quadrature points inside the cell
       //DBGMSG("n_q:%d\n",xdata->q_points(w).size());
       for (unsigned int q=0; q < xdata->q_points(w).size(); ++q)
       {
-//         // filling shape values at first
-//         for(unsigned int i = 0; i < dofs_per_cell; i++)
-//           shape_val_averige[i] += xfevalues2.shape_value(i,q); 
-//         // filling enrichment shape values
-//         unsigned int index = dofs_per_cell; //TODO: will not work with more wells on partially enriched cells
-//         for(unsigned int k = 0; k < n_vertices; k++)
-//         {
-//           if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node
-//           
-//           shape_val_averige[index] += xfevalues2.enrichment_value(k,w,q);
-//           index++;
-//         }
-//         
-//         shape_val_averige[index] += -1.0;  //testing function of the well
-        
         // filling shape values at first
         for(unsigned int i = 0; i < dofs_per_cell; i++)
-          shape_val_vec[i] = xfevalues2.shape_value(i,q); 
+          shape_val_averige[i] = xfevalues2.shape_value(i,q); 
         // filling enrichment shape values
         unsigned int index = dofs_per_cell; //TODO: will not work with more wells on partially enriched cells
         for(unsigned int k = 0; k < n_vertices; k++)
         {
           if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node
           
-          shape_val_vec[index] = xfevalues2.enrichment_value(k,w,q);
+          shape_val_averige[index] = xfevalues2.enrichment_value(k,w,q);
           index++;
         }
         
-        shape_val_vec[index] = -1.0;  //testing function of the well
+        shape_val_averige[index] = -1.0;  //testing function of the well
+        
+//         // filling shape values at first
+//         for(unsigned int i = 0; i < dofs_per_cell; i++)
+//           shape_val_vec[i] = xfevalues2.shape_value(i,q); 
+//         // filling enrichment shape values
+//         unsigned int index = dofs_per_cell; //TODO: will not work with more wells on partially enriched cells
+//         for(unsigned int k = 0; k < n_vertices; k++)
+//         {
+//           if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node
+//           
+//           shape_val_vec[index] = xfevalues2.enrichment_value(k,w,q);
+//           index++;
+//         }
+//         
+//         shape_val_vec[index] = -1.0;  //testing function of the well
         //printing enriched nodes and dofs
 //         DBGMSG("Printing shape_val_vec:  [");
 //         for(unsigned int a=0; a < shape_val_vec.size(); a++)
@@ -536,30 +536,37 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
         for (unsigned int i=0; i < n_w_dofs; ++i)
           for (unsigned int j=0; j < n_w_dofs; ++j)
           {
-              cell_matrix(i,j) += ( well->perm2aquifer(m_-1) *
-                                    shape_val_vec[i] *
-                                    shape_val_vec[j] *
-                                    jxw);
-        
+              well_cell_matrix(i,j) += ( shape_val_averige[i]
+                                        * shape_val_averige[j]
+                                        );
+          }
 //               // for debugging
 //               well_cell_matrix(i,j) += ( well->perm2aquifer() *
 //                                     shape_val_vec[i] *
 //                                     shape_val_vec[j] *
-//                                     jxw );
-              
-          }
+//                                     jxw );              
+//           }
           //*/
       } //q
       
+        well_cell_matrix *= ( well->perm2aquifer(m_-1)
+                         / xdata->q_points(w).size()
+                         * 2 * M_PI * well->radius()
+                        );
+        
+        for (unsigned int i=0; i < n_w_dofs; ++i)
+            for (unsigned int j=0; j < n_w_dofs; ++j)
+                cell_matrix(i,j) += well_cell_matrix(i,j);
 //       for (unsigned int i=0; i < n_w_dofs; ++i)
-//         shape_val_averige[i] = shape_val_averige[i] / xdata->q_points(w).size();
+//         shape_val_averige[i] = shape_val_averige[i] / xdata->q_points(w).size() / (2 * M_PI * well->radius());
 //           
 //       for (unsigned int i=0; i < n_w_dofs; ++i)
 //           for (unsigned int j=0; j < n_w_dofs; ++j)
 //           {
-//               cell_matrix(i,j) += ( well->perm2aquifer() *
-//                                     shape_val_averige[i] *
-//                                     shape_val_averige[j] 
+//               cell_matrix(i,j) += ( well->perm2aquifer(m_-1)
+//                                     * shape_val_averige[i]
+//                                     * shape_val_averige[j] 
+//                                     //* 2 * M_PI * well->radius()
 //                                    );
 //               // for debugging
 //               well_cell_matrix(i,j) += ( well->perm2aquifer() *
@@ -567,7 +574,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
 //                                     shape_val_averige[j]
 //                                     );
 //           }
-//           
+          
               
       
     } //if
