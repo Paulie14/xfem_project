@@ -582,6 +582,53 @@ both in the original (14793) and improved version (14819).
 % 
 % * problem is that we do not represent the well edge and mainly its surrounding well enough
 
+\section{Estimate the enrichment radius}
+\def\log{\mathrm{log}}
+\def\vc#1{\mathbf{\boldsymbol{#1}}}     % vector
+\def\abs#1{\left|#1\right|}
+\def\d{\mathrm{d}}
+
+The enrichment is done in order to diminish approximation error of the precise solution of the problem, i.e.
+$\tilde e_h = \min\limits_{u_h \in V_h} \| u - u_h \|_{V}$. Let us consider a well at origin, the radius $R$ of the 
+enrichment should be chosen so that 
+\[
+   \min\limits_{u_h \in V^P_h} \| \log  \vc x - u_h\|_{V(\Omega^P)} \le \epsilon
+\]
+where $V^P_h$ is polynomial finite element approximation space on unenriched part $\Omega^P$ of the domain $\Omega$, 
+$V = H^1(\Omega)$, and $\epsilon$ is prescribed tolerance. 
+
+For linear elements and 1D case, we get
+\begin{align*}
+ \|\log x - u_h\|^2_{L^2(r,r+h)} 
+ &= h\int_0^1 \abs{\log(r+ht) - \big[ (1-t)\log r + t\log(r+h) \big]}^2\d t\\
+ &= \frac{h^5}{4r^4}\int_0^1 t^2(1-t)^2 + O(h^6)\approx \frac{h^5}{120 r^4}
+\end{align*}
+
+\begin{align*}
+ \|\nabla (\log x - u_h)\|^2_{L^2(r,r+h)} &=
+ h\int_0^1 \abs{\frac{1}{r+ht} - \frac{\log(r+h) - \log r}{h}}^2\d t \\
+ &=
+\frac{h^3}{r^4}\int_0^1 (\frac12-t)^2 + O(h^4)\approx 
+\frac{h^3}{12 r^4}
+\end{align*}
+
+And thus,
+\[
+  \|\log x - u_h\|^2_{H^1(r,r+h)} \approx h^{3/2} r^{-2} 12^{-1/2}.
+\]
+
+Let us consider a 2D domain. The $H^1$ error on elements in distance $r$ is same as in the 1D case up to a constant close to 1 
+(potrebuje numericke overeni). Thus error on the band at distance $r$ is proportional to 
+\[
+ \|\log \vc x - u_h\|^2_{H^1(\Omega^P)} \approx \int_R^{diam \Omega} 2\pi r \frac{h^3}{12 r^4} \d r \le \frac{2\pi h^3}{12} 
+\frac{2}{R^2} \approx \frac{h^3}{R^2}.
+\]
+Then, the optimal choice of $R$ for given $H^1$ tolerance $\epsilon$ should be
+\[
+  R = \frac{h^{3/2}}{\epsilon}
+\]
+
+
 \section{Results}
 \label{sec:results}
 
