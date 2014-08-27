@@ -18,7 +18,8 @@
 %% with harvard style bibliographic references
 %% SP 2008/03/01
 
-\documentclass[preprint,12pt,authoryear]{elsarticle}
+\documentclass[preprint,12pt]{elsarticle}
+%\documentclass[3p,12pt,authoryear]{elsarticle}
 
 %% Use the option review to obtain double line spacing
 %% \documentclass[authoryear,preprint,review,12pt]{elsarticle}
@@ -48,6 +49,7 @@
 %% The amssymb package provides various useful mathematical symbols
 \usepackage{amssymb}
 \usepackage{amsmath}
+\usepackage{esint}
 %% The amsthm package provides extended theorem environments
 %% \usepackage{amsthm}
 
@@ -63,9 +65,13 @@
 \newcommand{\figpath}{../graphics/}
 
 %math:
+\def\vc#1{\mathbf{\boldsymbol{#1}}}     % vector
+\def\abs#1{\left|#1\right|}
+\def\avg#1{\langle#1\rangle}
+\def\d{\mathrm{d}}
 \newcommand{\dd}{\; \mathrm{d}}
 \newcommand{\R}{\mathbf{R}}
-\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bx}{\vc{x}}
 
 \begin{document}
 
@@ -98,10 +104,16 @@
 %% \address[label1]{}
 %% \address[label2]{}
 
-\author{Pavel Exner}
+\author[adr]{Pavel Exner\corref{cor1}}
 \ead{pavel.exner@tul.cz}
 \ead[url]{https://github.com/Paulie14/xfem\_project}
-\address{Technical University of Liberec, Studentsk{\' a} 1402/2, 461 17 Liberec 1, Czech Republic}
+\cortext[cor1]{Corresponding author.}
+
+\author[adr]{Jan B{\v r}ezina}
+\ead{jan.brezina@tul.cz}
+
+\address[adr]{Technical University of Liberec, Studentsk{\' a} 1402/2, 461 17 Liberec 1, Czech Republic}
+
 
 \begin{abstract}
 %% Text of abstract
@@ -172,22 +184,24 @@ condition of the aquifers which can be of Dirichlet type or be homogenous of Neu
 
 We describe the wells as interior boundary condition therefore we need to define the computational domain
 as the aquifer domain with wells cross-sections cut off. Let the $\Theta^m$ be the domain on $m$-th aquifer,
-$m=1,\ldots M$, and $B^m_w$ be the its cross-section with $w$-th well, $w\in\mathcal{W}=\{1,\ldots,W\}$. 
-We then define domain $\Omega^m = \Theta^m\setminus\bigcup\limits_{w}B^m_w$ with an exterior boundary 
+$m=1,\ldots M$, $B^m_w$ be its cross-section with $w$-th well, $w\in\mathcal{W}=\{1,\ldots,W\}$, and denote
+the union $B^m=\bigcup\limits_{w}B^m_w$. 
+We then define domain $\Omega^m = \Theta^m\setminus B^m$ with an exterior boundary 
 consisting of exclusive parts $\partial\Theta^m=\Gamma^m_D\cup\Gamma^m_N$ and an interior boundary 
-$\bar B^m=\bigcup\limits_{w}B^m_w$, such that $\partial\Omega^m=\partial\Theta^m\cup\bar B^m$.
+$\partial B^m=\bigcup\limits_{w}\partial B^m_w$, such that $\partial\Omega^m=\partial\Theta^m\cup\partial B^m$.
 
 The distribution of the pressure head in $m$-th aquifer is described by Poisson equation and 
 boundary conditions
 \begin{eqnarray} \label{eqn:poisson}
 \nabla\cdot(-\mathbf{T}^m\nabla h^m) &=& f^m \qquad \textrm{on } \Omega^m\subset\R^2,\; \forall m=1,\dots,M, \\
-h^m|_{\Gamma^m_D} &=& h^m_D \\
--\mathbf{T}^m\nabla h^m|_{\Gamma^m_N} &=& 0 \\
--\mathbf{T}^m\nabla h^m|_{\partial B^m_w} &=& q^m_w 
+h^m|_{\Gamma^m_D} &=& h^m_D, \\
+\left(-\mathbf{T}^m\nabla h^m\cdot\vc{n}\right)|_{\Gamma^m_N} &=& 0, \\
+\left(-\mathbf{T}^m\nabla h^m\cdot\vc{n}\right)|_{\partial B^m_w} &=& q^m_w \qquad \forall w\in\mathcal{W},
 \end{eqnarray}
 where $\mathbf{T}^m\, [\textrm{m}^2\textrm{s}^{-1}]$ denotes the transmisivity tensor,
 %(we will further consider only scalar $T^m$ for simplicity), 
-$h^m\, [\textrm{m}]$ the pressure head, $f^m\, [\textrm{m}\textrm{s}^{-1}]$ source density and
+$h^m\, [\textrm{m}]$ the pressure head, $f^m\, [\textrm{m}\textrm{s}^{-1}]$ source density,
+$\vc{n}$ unit normal vector on the boudnary and
 $q^m_w = Q^m_w/|\partial B^m_w|$ is the density of the flow from the well to the aquifer over the well boundary 
 $\partial B^m_w$. Equation \eqref{eqn:poisson} is derived from the Darcy law and the continuity equation 
 for incompressible fluid.
@@ -216,15 +230,15 @@ We can look at the flows in the balance equation as 1D problems which are govern
 heads and a transition coefficient. Using this idea, we can substitute the flows in the equation 
 \eqref{eqn:well_flows} and get
 \begin{eqnarray} 
-\int_{B_w^m}\sigma_w^m \left(h^m - H_w^m\right) \dd\bx 
+\int_{\partial B_w^m}\sigma_w^m \left(h^m - H_w^m\right) \dd s
   = c_w^{m+1}\left( H^m_w-H_w^{m+1}\right) - c^m_w\left( H^{m-1}_w-H^m_w \right), \label{eqn:well_balance} \\
- \forall m=1,\dots,M \;\textrm{ and } \forall w\in\mathcal{W}=\{1,\dots,W\}, \nonumber
+ \forall m=1,\dots,M \textrm{ and } \forall w\in\mathcal{W}, \nonumber
 \end{eqnarray}
-where $\sigma^m_w\, [\textrm{m}\textrm{s}^{-1}]$ denotes the permeability coefficient between $w$-th well and $m$-th aquifer, 
-$H_w^m$ pressure head in the well $w$ at the level of $m$-th aquifer, $c^m_w\, [\textrm{m}^2\textrm{s}^{-1}]$ 
-permeability of the well $w$ between aquifers and finally $B^m_w$ is the boundary of the well.
+where $\sigma^m_w\, [\textrm{m}\textrm{s}^{-1}]$ denotes the permeability coefficient between $w$-th well and 
+$m$-th aquifer, $H_w^m$ the pressure head in the well $w$ at the level of $m$-th aquifer and finally 
+$c^m_w\, [\textrm{m}^2\textrm{s}^{-1}]$ is the permeability of the well $w$ through aquitard $m$.
 
-The problem is now to find set of functions $h^m\in C^2(\Omega)\cap{C}^1(\bar\Omega)$ and set of pressure 
+The problem is now to find set of functions $h^m\in C^2(\Omega^m)\cap{C}^1(\bar\Omega^m)$ and set of pressure 
 values in the wells $H^m_w\in\R$, for all $m\in\{1,\ldots,M\}$ and $w\in\mathcal{W}$ that
 satisfy the equations \eqref{eqn:poisson} and \eqref{eqn:well_balance}.
 
@@ -236,34 +250,70 @@ and is adjusted to the form
 \begin{equation} \label{eqn:well_balance_top}
   c^M_w\left( H^{M}_w-H^{M+1}_w \right) = 0.
 \end{equation}
-The pressure at the top of the well $H^{M+1}_w$ can be set as an input value or, if not set, can be gained 
+The pressure at the top of the well $H^{M+1}_w$ can be set as an input value or, if not set, is gained 
 as part of the solution from the equation \eqref{eqn:well_balance_top}, see $H^4$ in \fig{fig:well_flows}.
 
+The boundary term in \eqref{eqn:well_balance} with large $\sigma^m_w$ would force the pressure head along the 
+well edge to be constant (equal $H^m_w$), which cannot be in general satisfied. Therefore it is weakened and 
+later replaced by the average
+\begin{equation} \label{eqn:average}
+  \avg{h^m} = \frac{1}{\abs{\partial B^m_w}} \int\limits_{\partial B^m_w} h^m \dd s,
+\end{equation}
+which corresponds to \cite{gracie}.
+
 \subsection{Weak formulation}
-Denoting $a^m(\cdot, \cdot)$ a bilinear form 
-\begin{equation} \label{eqn:bilinear_form_a}
-  a^m(u,v) = \int \limits_{\Omega^m} T^m \nabla u \cdot \nabla v \dd\bx
-        + \sum \limits_{w\in \mathcal{W}} \int \limits_{B^m_w} \sigma^m_w u v \dd\bx,
-\end{equation}
-we can write the weak form of \eqref{eqn:poisson}
-\begin{equation} \label{eqn:weak_form}
-  a^m(h^m,v^m) - \int_{B_w^m}\sigma_w^m H_w^m v^m \dd\bx
-  = \int \limits_{\Omega^m} f^mv^m% - \int \limits_{\Omega^m} T^m \nabla h^m_D \nabla v^m \dd\mathbf{x},
-  \quad \forall m=1,\ldots,M,
-\end{equation}
-where the functions $h^m$ and test functions $v^m$ are from standard Sobolev spaces $H^1_0(\Omega^m)$,
-considering $h^m|_{\partial\Omega^m}=0$ for simplicity.
-The unknowns $H^m_w$ in \eqref{eqn:well_balance} are constants thus we can imagine that the test functions of 
-$H^m_w$ are also constants, chosen to be equal one, and so \eqref{eqn:well_balance} is not modified.
+We define the trial and the test spaces
+\begin{eqnarray} \label{eqn:spaces}
+  V &=& \prod\limits_{m=1}^{M}\big(H^1(\Omega^m)\times\R^W\big), \\
+  V_0 &=& \prod\limits_{m=1}^{M}\big(H^1_0(\Omega^m)\times\R^W\big),
+\end{eqnarray}
+where $H^1$ and $H^1_0$ are standard Sobolev spaces and 
+\[ H^1_0(\Omega^m)=\{\varphi\in H^1(\Omega^m); \varphi|_{\Gamma^m_D}=0\}. \]
+We can now introduce the weak solution $u$ and test functions $v$
+\begin{eqnarray} \label{eqn:solution}
+   u &=& (h^1,\ldots, h^M, H^1_1,\ldots,H^{M+1}_W)\in V, \\
+   v &=& (\varphi^1,\ldots, \varphi^M, \Phi^1_1,\ldots,\Phi^{M+1}_W)\in V_0.
+\end{eqnarray}
+
+To obtain the weak form we apply the standard Galerkin method on \eqref{eqn:poisson} and \eqref{eqn:well_balance}, 
+we further substract the second equation from the first one, use \eqref{eqn:average} and get for $m=1,\ldots,M$
+\begin{multline} \label{eqn:weak_form}
+  \int \limits_{\Omega^m} T^m \nabla h^m \cdot \nabla \varphi^m \dd\bx
+        + \sum \limits_{w\in \mathcal{W}} \sigma^m_w\left( \avg{h^m}-H^m_w\right)
+          \left(\avg{\varphi^m}-\Phi^m_w\right) + \\
+          + \sum\limits_{w\in\mathcal{W}} \Big[
+          c_w^{m+1}\left( H^m_w-H_w^{m+1}\right)\Phi^m_w - c^m_w\left( H^{m-1}_w-H^m_w \right)\Phi^m_w \Big]= \\
+  =\int \limits_{\Omega^m} f^m\varphi^m \dd\bx.
+\end{multline}
+
+
+% Denoting $a^m(\cdot, \cdot)$ a bilinear form 
+% \begin{equation} \label{eqn:bilinear_form_a}
+%   a^m(u,v) = \int \limits_{\Omega^m} T^m \nabla u \cdot \nabla v \dd\bx
+%         + \sum \limits_{w\in \mathcal{W}} \int \limits_{B^m_w} \sigma^m_w u v \dd\bx,
+% \end{equation}
+% we can write the weak form of \eqref{eqn:poisson}
+% \begin{equation}% \label{eqn:weak_form}
+%   a^m(h^m,v^m) - \int_{B_w^m}\sigma_w^m H_w^m v^m \dd\bx
+%   = \int \limits_{\Omega^m} f^mv^m% - \int \limits_{\Omega^m} T^m \nabla h^m_D \nabla v^m \dd\mathbf{x},
+%   \quad \forall m=1,\ldots,M,
+% \end{equation}
+% where the functions $h^m$ and test functions $v^m$ are from standard Sobolev spaces $H^1_0(\Omega^m)$,
+% considering $h^m|_{\partial\Omega^m}=0$ for simplicity.
+% The unknowns $H^m_w$ in \eqref{eqn:well_balance} are constants thus we can imagine that the test functions of 
+% $H^m_w$ are also constants, chosen to be equal one, and so \eqref{eqn:well_balance} is not modified.
 
 \section{Discretization}
 \label{sec:pum_methods}
-We can now proceed to the choice of the enrichment and discretize the equations
-\eqref{eqn:weak_form} and \eqref{eqn:well_balance}.
+We can now proceed to the choice of the enrichment and discretize the system of equations
+\eqref{eqn:weak_form}.
+Let's imagine that we have only one aquifer so we can omit the upper index $m$ in this section.
+In fact, it is appropriate to do so in some notations of shape functions because we do consider the same 
+triangulation for every aquifer in our implementation.
 
 \subsection{Enrichment function}
 The enrichment function in general can be obtained from the knowledge of the solution character or 
-from solution of a simple local problem which will provide us the function.
+from the solution of a simple local problem which will provide us the function.
 In our case the simple problem is finding pressure distribution in a circular domain $\Omega$ with one well 
 placed at the center. It can be easily proved that the function
 %
@@ -291,16 +341,19 @@ s_w(\bx) =
   \log(R_w), & r_w \le R_w\\
   \end{cases}.
 \end{equation}
-%
-and its gradient
-\begin{equation} \label{eqn:xgrad_func}
-\nabla s_w(\bx) = 
-  \begin{cases}  
-    \frac{\bx - \bx_w}{r_w^2(\bx)} & r_w>R_w \\
-    0 & r_w \leq R_w
-  \end{cases}.
-\end{equation}
 See \fig{fig:enrich_func}.
+It is natural to use the same set of $s_w$ on each aquifer since they depends only on $r_w$ and the wells are 
+placed at the same positions throughout the aquifers (we consider only vertical wells, perpendicular to aquifers).
+%
+% and its gradient
+% \begin{equation} \label{eqn:xgrad_func}
+% \nabla s_w(\bx) = 
+%   \begin{cases}  
+%     \frac{\bx - \bx_w}{r_w^2(\bx)} & r_w>R_w \\
+%     0 & r_w \leq R_w
+%   \end{cases}.
+% \end{equation}
+
 \begin{figure}[!htb]
   %\vspace{-15pt}
   %TODO: do not forget to replace the notation of the enrichment function
@@ -315,10 +368,6 @@ See \fig{fig:enrich_func}.
 %TODO: define enrichment zone    
     
 \subsection{Partition of unity methods}
-Let's imagine that we have only one aquifer so we can omit the upper index $m$ in this section.
-In fact, it is appropriate to do so in some notations because we do consider the same triangulation for every
-aquifer in our implementation.
-
 Let $N_\alpha(\bx)$, $\alpha\in\mathcal{I}=\{1,\ldots,N\}$ be the standard linear finite element shape 
 functions associated with the node $\bx_\alpha$ of the triangulation. 
 In \textbf{standard XFEM}, we write the solution in the form
@@ -374,6 +423,9 @@ of freedom. The enrichment functions must be then zero at the nodes which is sat
 The property of the shifted formulation enables us to prescribe Dirichlet boundary condition such that
 $a_\alpha = h_D(\bx_\alpha)$.
 
+For the purpose of this article, let's call the XFEM with ramp function \textbf{XFEM-r} and the shifted 
+version \textbf{XFEM-s}, as we shall reference to them later.
+
 \subsubsection{SGFEM}
 Finally we present the \textbf{SGFEM}, according to \cite{sgfem2013}. The enrichment function is defined
 as the substraction of the global enrichment function and its interpolation 
@@ -391,74 +443,75 @@ Of course $\alpha\in\mathcal{I}(\tau)$ in \eqref{eqn:sgfem_enrich}.
 Notice that there are no additional enriched nodes on blending elements, like in $\mathcal{J}^e$ in 
 \eqref{eqn:xfem_ramp} and \eqref{eqn:xfem_shift}, and no ramp function is involved.
 
-\subsection{Assembly}
-Having the enrichment functions defined, the enriched nodes set and the equations discretized, we can approach
-the assembly of the linear system. The system has this block pattern 
-\begin{equation}
-  \begin{pmatrix}
-  \mathbf{E}^{M+1} &               &                     & \bar{\mathbf{F}}^{M+1}   & &&&&\\
-                   & \mathbf{K}^M  & \bar{\mathbf{R}}^M  & \bar{\mathbf{C}}^M       & &&&&\\
-                   & \mathbf{R}^M  & \mathbf{S}^M        & \bar{\mathbf{D}}^M       & &\ddots&&&\\
-  \mathbf{F}^{M+1} & \mathbf{C}^M  & \mathbf{D}^M        & \mathbf{E}^M             & &&&&\\
-  &&&& \ddots &&&& \\
-  &&&& & \mathbf{E}^2 &              &                    & \bar{\mathbf{F}}^2 \\
-  &&&\ddots& &              & \mathbf{K}^1 & \bar{\mathbf{R}}^1 & \bar{\mathbf{C}}^1 \\
-  &&&& &              & \mathbf{R}^1 & \mathbf{S}^1       & \bar{\mathbf{D}}^1 \\
-  &&&& & \mathbf{F}^2 & \mathbf{C}^1 & \mathbf{D}^1       & \mathbf{E}^1 \\
-  \end{pmatrix}
-  \begin{pmatrix}
-    \mathbf{H}^{M+1} \\
-    \mathbf{a}^{M} \\
-    \mathbf{b}^{M} \\
-    \mathbf{H}^{M} \\
-    \mathbf{\vdots} \\
-    \mathbf{H}^{2} \\
-    \mathbf{a}^{1} \\
-    \mathbf{b}^{1} \\
-    \mathbf{H}^{1} \\
-  \end{pmatrix} =
-  \begin{pmatrix}
-    \mathbf{f}^{M+1}_H \\
-    \mathbf{f}^{M}_a \\
-    \mathbf{f}^{M}_b \\
-    \mathbf{f}^{M}_H \\
-    \mathbf{\vdots} \\
-    \mathbf{f}^{2}_H \\
-    \mathbf{f}^{1}_a \\
-    \mathbf{f}^{1}_b \\
-    \mathbf{f}^{1}_H \\
-  \end{pmatrix}
-\end{equation}
-where $\mathbf{K}^m$ is the matrix of the standard FE approximation, $\mathbf{S}^m$ is the matrix of the 
-enrichment, $\mathbf{R}^m$ relates standard FE and enrichment,  $\mathbf{E}^m$ is the matrix associated with 
-unknown pressures in the wells and 
-$\mathbf{C}^m$, $\mathbf{D}^m$ and $\mathbf{F}^m$ are communication matrices: standard FE -- well, 
-enrichment -- well and well -- well, respectively. The whole system is symmetric.
-
-The entries of the matrices are 
-
-\begin{eqnarray}
-  K^m &=& \left[a^m(N^m_\alpha, N^m_\beta)\right]   ,\qquad \forall \alpha,\beta\in \mathcal{I} \label{eqn:k_entry}\\
-  S^m &=& \left[a^m(\phi^m_{\alpha k}, \phi^m_{\beta j})\right]     ,\qquad \forall \alpha,\beta\in \mathcal{I}^e,\; \forall k,j\in\mathcal{W} \label{eqn:s_entry}\\
-  R^m &=& \left[a^m(N^m_{\alpha}, \phi^m_{\beta j})\right]      ,\qquad \forall \alpha\in \mathcal{I},\; \forall\beta\in\mathcal{I}^e,\; \forall j\in\mathcal{W} \label{eqn:r_entry}\\
-  C^m_{w\alpha} &=&-\int\limits_{B^m_w} \sigma^m_w N^m_\alpha   ,\qquad \forall \alpha\in \mathcal{I},\; \forall w\in\mathcal{W}\\
-  D^m_{w\alpha j} &=&-\int\limits_{B^m_w} \sigma^m_w \phi^m_{\alpha j}  ,\qquad \forall \alpha\in \mathcal{I}^e,\; \forall w\in\mathcal{W}\\
-  \rm{diag}(\mathbf{E}^m)_w &=&\int\limits_{B^m_w} \sigma^m_w + c^{m+1}_w   ,\qquad \forall w\in\mathcal{W}\\
-  \rm{diag}(\mathbf{F}^m)_w &=& -c^m_w ,\qquad \forall w\in\mathcal{W}
-\end{eqnarray}
+% \subsection{Assembly}
+% Having the enrichment functions defined, the enriched nodes set and the equations discretized, we can approach
+% the assembly of the linear system. The system has this block pattern 
+% \begin{equation}
+%   \begin{pmatrix}
+%   \mathbf{E}^{M+1} &               &                     & \bar{\mathbf{F}}^{M+1}   & &&&&\\
+%                    & \mathbf{K}^M  & \bar{\mathbf{R}}^M  & \bar{\mathbf{C}}^M       & &&&&\\
+%                    & \mathbf{R}^M  & \mathbf{S}^M        & \bar{\mathbf{D}}^M       & &\ddots&&&\\
+%   \mathbf{F}^{M+1} & \mathbf{C}^M  & \mathbf{D}^M        & \mathbf{E}^M             & &&&&\\
+%   &&&& \ddots &&&& \\
+%   &&&& & \mathbf{E}^2 &              &                    & \bar{\mathbf{F}}^2 \\
+%   &&&\ddots& &              & \mathbf{K}^1 & \bar{\mathbf{R}}^1 & \bar{\mathbf{C}}^1 \\
+%   &&&& &              & \mathbf{R}^1 & \mathbf{S}^1       & \bar{\mathbf{D}}^1 \\
+%   &&&& & \mathbf{F}^2 & \mathbf{C}^1 & \mathbf{D}^1       & \mathbf{E}^1 \\
+%   \end{pmatrix}
+%   \begin{pmatrix}
+%     \mathbf{H}^{M+1} \\
+%     \mathbf{a}^{M} \\
+%     \mathbf{b}^{M} \\
+%     \mathbf{H}^{M} \\
+%     \mathbf{\vdots} \\
+%     \mathbf{H}^{2} \\
+%     \mathbf{a}^{1} \\
+%     \mathbf{b}^{1} \\
+%     \mathbf{H}^{1} \\
+%   \end{pmatrix} =
+%   \begin{pmatrix}
+%     \mathbf{f}^{M+1}_H \\
+%     \mathbf{f}^{M}_a \\
+%     \mathbf{f}^{M}_b \\
+%     \mathbf{f}^{M}_H \\
+%     \mathbf{\vdots} \\
+%     \mathbf{f}^{2}_H \\
+%     \mathbf{f}^{1}_a \\
+%     \mathbf{f}^{1}_b \\
+%     \mathbf{f}^{1}_H \\
+%   \end{pmatrix}
+% \end{equation}
+% where $\mathbf{K}^m$ is the matrix of the standard FE approximation, $\mathbf{S}^m$ is the matrix of the 
+% enrichment, $\mathbf{R}^m$ relates standard FE and enrichment,  $\mathbf{E}^m$ is the matrix associated with 
+% unknown pressures in the wells and 
+% $\mathbf{C}^m$, $\mathbf{D}^m$ and $\mathbf{F}^m$ are communication matrices: standard FE -- well, 
+% enrichment -- well and well -- well, respectively. The whole system is symmetric.
+% 
+% The entries of the matrices are 
+% 
+% \begin{eqnarray}
+%   K^m &=& \left[a^m(N^m_\alpha, N^m_\beta)\right]   ,\qquad \forall \alpha,\beta\in \mathcal{I} \label{eqn:k_entry}\\
+%   S^m &=& \left[a^m(\phi^m_{\alpha k}, \phi^m_{\beta j})\right]     ,\qquad \forall \alpha,\beta\in \mathcal{I}^e,\; \forall k,j\in\mathcal{W} \label{eqn:s_entry}\\
+%   R^m &=& \left[a^m(N^m_{\alpha}, \phi^m_{\beta j})\right]      ,\qquad \forall \alpha\in \mathcal{I},\; \forall\beta\in\mathcal{I}^e,\; \forall j\in\mathcal{W} \label{eqn:r_entry}\\
+%   C^m_{w\alpha} &=&-\int\limits_{B^m_w} \sigma^m_w N^m_\alpha   ,\qquad \forall \alpha\in \mathcal{I},\; \forall w\in\mathcal{W}\\
+%   D^m_{w\alpha j} &=&-\int\limits_{B^m_w} \sigma^m_w \phi^m_{\alpha j}  ,\qquad \forall \alpha\in \mathcal{I}^e,\; \forall w\in\mathcal{W}\\
+%   \rm{diag}(\mathbf{E}^m)_w &=&\int\limits_{B^m_w} \sigma^m_w + c^{m+1}_w   ,\qquad \forall w\in\mathcal{W}\\
+%   \rm{diag}(\mathbf{F}^m)_w &=& -c^m_w ,\qquad \forall w\in\mathcal{W}
+% \end{eqnarray}
 
 \section{Integration on enriched elements}
 \label{sec:integration}
-In order to compute the entries of matrices \eqref{eqn:s_entry} and \eqref{eqn:r_entry} we need to integrate
+In order to compute the entries of the system matrix, %\eqref{eqn:s_entry} and \eqref{eqn:r_entry} 
+we need to integrate
 the expressions containing the enrichment functions. These of course can be non-polynomial, like they are 
 in our case. The standard quadrature rules are not appropriate any more, as they are constructed to integrate 
 precisely polynomials up to a given degree. The higher requirements on integration precision
 are the price for using enrichment functions and a coarse mesh.
 
-There are two aspects which the integration must handle properly and compute precisely enough:
+There are two aspects which the integration must handle properly:
 \begin{itemize}
   \item the steep gradient of the pressure head in the vicinity of a well (the singularity),
-  \item the weak discontinuity of the pressure head at the well edge (jump in the pressure head gradient).
+  \item the well edge (since the elements of the triangulation do not take the well into account)
 \end{itemize}
 
 %TODO: better quadrature for log is not proper in our case as the function may be different according to hydrogeologist
@@ -489,8 +542,8 @@ and the integration error is large.
   \subfloat[improved refinement]{\label{fig:adapt_ref_b} 
     \includegraphics[width=0.45\textwidth]{results/adaptive_refinement_3_new.pdf} }
   \caption[Adaptive refinement comparision]
-  {Comparision of different refinement techniques.
-   Black lines denote element edges, red lines denote adaptive refinement (subelement edges) and the well
+  {Comparision of the original and improved refinement techniques.
+   Black lines denote enriched element edges, red lines denote adaptive refinement (subelement edges) and the well
    edge is blue.
   }
   \label{fig:adapt_refinement}
@@ -513,8 +566,6 @@ In \fig{fig:adapt_refinement_norm} you can see the $L_2$ norms of the error on t
 were computed also using the corresponding adaptive integration. Notice the scale of the improved version -- 
 the error on elements is in small range and is not significantly concentrated anywhere. On the other hand, 
 the original version shows out large error that is concentrated on the closest non-refined element to the well.
-
-%TODO: number of quadrature points in both approaches
 
 \begin{figure}[!htb]
 %   \vspace{0pt}
@@ -583,11 +634,6 @@ both in the original (14793) and improved version (14819).
 % * problem is that we do not represent the well edge and mainly its surrounding well enough
 
 \section{Estimate the enrichment radius}
-\def\log{\mathrm{log}}
-\def\vc#1{\mathbf{\boldsymbol{#1}}}     % vector
-\def\abs#1{\left|#1\right|}
-\def\d{\mathrm{d}}
-
 The enrichment is done in order to diminish approximation error of the precise solution of the problem, i.e.
 $\tilde e_h = \min\limits_{u_h \in V_h} \| u - u_h \|_{V}$. Let us consider a well at origin, the radius $R$ of the 
 enrichment should be chosen so that 
@@ -614,7 +660,7 @@ For linear elements and 1D case, we get
 
 And thus,
 \[
-  \|\log x - u_h\|^2_{H^1(r,r+h)} \approx h^{3/2} r^{-2} 12^{-1/2}.
+  \|\log x - u_h\|_{H^1(r,r+h)} \approx h^{3/2} r^{-2} 12^{-1/2}.
 \]
 
 Let us consider a 2D domain. The $H^1$ error on elements in distance $r$ is same as in the 1D case up to a constant close to 1 
@@ -671,8 +717,8 @@ and the solution
 \end{equation}
 with $a,b$ being the same as in \eqref{eqn:laplace_solution}, is obtained the same way as above.
 
-\section{Convergence on Laplace problem}
-\section{Convergence on Poisson problem with sinusoidal source}
+\subsection{Convergence on Laplace problem}
+\subsection{Convergence on Poisson problem with sinusoidal source}
 
 \section{Summary}
 \label{sec:summary}
@@ -708,9 +754,9 @@ no. 21066/115 on the Technical University of Liberec.
 % 
 % \end{thebibliography}
  %\nocite{dip}
- \bibliographystyle{elsarticle-harv} 
+ %\bibliographystyle{elsarticle-harv} 
  %\bibliographystyle{elsarticle-num-names} 
- %\bibliographystyle{elsarticle-num} 
+ \bibliographystyle{elsarticle-num} 
  \bibliography{../citace.bib}
 \end{document}
 

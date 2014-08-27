@@ -51,9 +51,9 @@
   \begin{picture}(1,1.28619857)%
     \put(0,0){\includegraphics[width=\unitlength]{\figpath well_communcation.pdf}}%
     \put(0.51608371,1.19){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$H^4_w$}}%
-    \put(0.80,1.04){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$\Theta^3$}}%
-    \put(0.8,0.6){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$\Theta^2$}}%
-    \put(0.8,0.20){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$\Theta^1$}}%
+    \put(0.80,1.04){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$\Omega^3$}}%
+    \put(0.8,0.6){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$\Omega^2$}}%
+    \put(0.8,0.20){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$\Omega^1$}}%
     \put(0.52,1.03){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$H^3_w$}}%
     \put(0.52,0.61){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$H^2_w$}}%
     \put(0.52,0.19){\color[rgb]{0,0,0}\makebox(0,0)[lb]{$H^1_w$}}%
