@@ -319,7 +319,15 @@ void XModel::find_enriched_cells(unsigned int m)
         }  
         r_enr[w] = std::max(dist, r_enr[w]);
           
+//         double tol = 1e-1;
+// //         double enr_radius = 1.0/2 * pow(cell->diameter(), 3.0/2) / tol;
+//         double diag = up_right.distance(down_left);
+//         double h = pow(cell->diameter(),5)/10.0 + pow(cell->diameter(),3);
+//         double enr_radius = sqrt(h*diag*diag / (4*tol*tol*diag*diag+h));
+//         r_enr[w] = std::min(r_enr[w], enr_radius);
+        
         std::cout << "enrichment radius: wanted: " << rad_enr << "  finally set: " << r_enr[w] << std::endl;
+//             << "\t newly computed: " << enr_radius << std::endl;
         
         triangulation->clear_user_flags();
         
@@ -335,7 +343,86 @@ void XModel::find_enriched_cells(unsigned int m)
     } //for cells
   } //for wells
   
-      
+  
+  // computing enrichment tolerance
+  for (unsigned int w = 0; w < wells.size(); w++)
+  {
+    Well well = *(wells[w]);
+    Vector<double> diff_vector(triangulation->n_active_cells());
+    QGauss<2> temp_quad(4);
+    FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
+    
+    cell = dof_handler->begin_active();
+    endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    { 
+        //integral of s(x)-i(s)(x)
+        fe_values.reinit(cell);
+        
+        //node values of the global enrichment function
+        std::vector<double> node_values(GeometryInfo<2>::vertices_per_cell);
+        for(unsigned int i=0; i < GeometryInfo<2>::vertices_per_cell; i++)
+            node_values[i] = well.global_enrich_value(cell->vertex(i));
+        
+        double integral = 0;
+        for(unsigned int q=0; q < fe_values.n_quadrature_points; q++)
+        {
+            double interpolation = 0;
+            for(unsigned int i=0; i < fe.dofs_per_cell; i++)
+                interpolation += fe_values.shape_value(i,q) * node_values[i];
+            
+            integral += abs(well.global_enrich_value(fe_values.quadrature_point(q)) - interpolation) 
+                        * fe_values.JxW(q);
+        }
+    
+        
+        //tolerance criterion
+        double  distance = cell->center().distance(well.center());
+        double error_estimate = 1.0/12 * cell->diameter() * cell->diameter() * cell->diameter() 
+                                * cell->diameter() / distance / distance / distance;
+//         double error_estimate = M_PI/6 * cell->diameter() * cell->diameter() / distance;
+    
+//         diff_vector[cell->index()] = integral;
+        diff_vector[cell->index()] = error_estimate/integral;
+        //diff_vector[cell->index()] = (integral / cell->measure() > 1e-3)? 1:0;
+        //(error_estimate > 1e-1)? 1 : 0;
+        
+        //DBGMSG("error_estimate = %e,\tintegral = %e\n",error_estimate, integral);
+    }
+        FE_DGQ<2> temp_fe(0);
+        DoFHandler<2>    temp_dof_handler;
+        //ConstraintMatrix hanging_node_constraints;
+  
+        temp_dof_handler.initialize(*triangulation,temp_fe);
+  
+        //DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+        //hanging_node_constraints.close();
+  
+        //====================vtk output
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (temp_dof_handler);
+  
+        //hanging_node_constraints.distribute(diff_vector);
+  
+        data_out.add_data_vector (diff_vector, "xfem_enrichment");
+        data_out.build_patches ();
+
+        std::stringstream filename;
+        filename << output_dir_ << "xfem_enrichment_" << cycle_ << ".vtk";
+   
+        std::ofstream output (filename.str());
+        if(output.is_open())
+        {
+            data_out.write_vtk (output);
+            data_out.clear();
+            std::cout << "\noutput(error) written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+        }
+  }
+  
     n_enriched_dofs = n_global_enriched_dofs - dof_handler->n_dofs();
     std::cout << "Number of unenriched dofs: "
         << dof_handler->n_dofs()
@@ -889,6 +976,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
       }
   }
 }
+
 
 void XModel::setup_system()
 {
@@ -2556,4 +2644,127 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
     std::cout << "Run time: " << last_run_time_ << " s" << std::endl;
     //*/
     return rel_error;
+}
+
+void XModel::test_enr_error()
+{  
+    const unsigned int dofs_per_cell = fe.dofs_per_cell;
+    std::vector<unsigned int> local_dof_indices (dofs_per_cell);
+    std::vector<double> node_values(dofs_per_cell);
+    std::vector<double> node_grads(dofs_per_cell);
+
+    dealii::Vector< double > diff_vector_l2, diff_vector_h1sem, diff_vector_h1, diff_vector_h1_est, distance_vec;
+    diff_vector_l2.reinit(dof_handler->get_tria().n_active_cells());
+    diff_vector_h1sem.reinit(dof_handler->get_tria().n_active_cells());
+    diff_vector_h1.reinit(dof_handler->get_tria().n_active_cells());
+    diff_vector_h1_est.reinit(dof_handler->get_tria().n_active_cells());
+    distance_vec.reinit(dof_handler->get_tria().n_active_cells());
+    
+    const unsigned int n_q_points = 5;
+    QGauss<2> quad(n_q_points);
+    FEValues<2> temp_fe_values(fe,quad, update_values | update_gradients | update_JxW_values | update_quadrature_points);
+    
+    unsigned int index = 0;
+    DoFHandler<2>::active_cell_iterator
+        cell = dof_handler->begin_active(),
+        endc = dof_handler->end();
+    for (; cell!=endc; ++cell)
+    {
+         Point<2> wc = wells[0]->center();
+         double cell_distance = cell->center().distance(wc);
+//         if( cell_distance > cell->diameter()/2.0 )
+//             continue;
+        
+        DBGMSG("on cell %d\n",cell->index());
+        temp_fe_values.reinit (cell);
+      
+        for (unsigned int i=0; i < dofs_per_cell; ++i)
+        {
+            double distance = wc.distance(cell->vertex(i));
+            if (distance <= wells[0]->radius()) distance = wells[0]->radius();
+                
+            node_values[i] = std::log(distance);
+            node_grads[i] = 1.0/distance;
+        }
+            
+        double int_val = 0,
+               int_grad = 0;
+        
+        for (unsigned int q_point=0; q_point < temp_fe_values.n_quadrature_points; ++q_point)
+        {
+            double distance = wc.distance(temp_fe_values.quadrature_point(q_point));
+            if (distance <= wells[0]->radius()) distance = wells[0]->radius();
+            //if (distance <= 1e-10) continue;
+            double interpolation_val = 0,
+                   interpolation_grad = 0; 
+            for (unsigned int i=0; i < dofs_per_cell; ++i)
+            {
+                interpolation_val += node_values[i] * temp_fe_values.shape_value(i, q_point);
+                interpolation_grad += node_grads[i] * temp_fe_values.shape_value(i, q_point);
+            }
+                
+            int_val += pow(std::log(distance) - interpolation_val, 2) * temp_fe_values.JxW (q_point);
+            int_grad += pow(1.0/distance - interpolation_grad, 2) * temp_fe_values.JxW (q_point);
+        }
+        
+        diff_vector_l2[index] = sqrt(int_val);
+        diff_vector_h1sem[index] = sqrt(int_grad);
+        diff_vector_h1[index] = sqrt(int_val + int_grad);
+        distance_vec[index] = cell_distance;
+        
+        double estimate_l2norm = pow(cell->diameter(),6)/(120 * pow(cell_distance,4));
+        double estimate_h1seminorm = pow(cell->diameter(),4)/(12 * pow(cell_distance,4));
+        double estimate_h1norm = estimate_l2norm + estimate_h1seminorm;
+        diff_vector_h1_est[index] = estimate_h1seminorm;
+        std::cout << "l2norm = " << sqrt(estimate_l2norm) << "\tcomputed = " << sqrt(int_val) << std::endl;
+        std::cout << "h1seminorm = " << sqrt(estimate_h1seminorm) << "\tcomputed = " << sqrt(int_grad) << std::endl;
+        std::cout << "h1norm = " << sqrt(estimate_h1norm) << "\tcomputed = " << 
+            sqrt(int_val + int_grad) << std::endl;
+            
+        index++;
+    }
+    
+    if(1)
+    {
+        FE_DGQ<2> temp_fe(0);
+        DoFHandler<2>    temp_dof_handler;
+        ConstraintMatrix hanging_node_constraints;
+  
+        temp_dof_handler.initialize(*triangulation,temp_fe);
+  
+        DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+        hanging_node_constraints.close();
+  
+        //====================vtk output
+        DataOut<2> data_out;
+        data_out.attach_dof_handler (temp_dof_handler);
+  
+        hanging_node_constraints.distribute(diff_vector_l2);
+        hanging_node_constraints.distribute(diff_vector_h1sem);
+        hanging_node_constraints.distribute(diff_vector_h1);
+        hanging_node_constraints.distribute(diff_vector_h1_est);
+        hanging_node_constraints.distribute(distance_vec);
+  
+        data_out.add_data_vector (diff_vector_l2, "error_val");
+        data_out.add_data_vector (diff_vector_h1sem, "error_grad");
+        data_out.add_data_vector (diff_vector_h1, "error_h1");
+        data_out.add_data_vector (diff_vector_h1_est, "est_error_h1");
+        data_out.add_data_vector (distance_vec, "distance");
+        data_out.build_patches ();
+
+        std::stringstream filename;
+        filename << output_dir_ << "enr_error_" << cycle_ << ".vtk";
+   
+        std::ofstream output (filename.str());
+        if(output.is_open())
+        {
+            data_out.write_vtk (output);
+            data_out.clear();
+            std::cout << "\nlog error written in:\t" << filename.str() << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+        }
+    }
 }

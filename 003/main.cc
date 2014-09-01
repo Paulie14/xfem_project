@@ -649,10 +649,10 @@ void test_convergence_square(std::string output_dir)
   XModel_simple xmodel(well, ""); 
 //     xmodel.set_name(test_name + "xfem");
 //     xmodel.set_enrichment_method(Enrichment_method::xfem);
-    xmodel.set_name(test_name + "xfem_ramp");
-    xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
-//     xmodel.set_name(test_name + "xfem_shift");
-//     xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//     xmodel.set_name(test_name + "xfem_ramp");
+//     xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
+    xmodel.set_name(test_name + "xfem_shift");
+    xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
 //     xmodel.set_name(test_name + "sgfem"); 
 //     xmodel.set_enrichment_method(Enrichment_method::sgfem);
   
@@ -666,8 +666,8 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
-                          | ModelBase::output_solution
-                          | ModelBase::output_decomposed
+                          //| ModelBase::output_solution
+                          //| ModelBase::output_decomposed
                           //| ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
@@ -794,9 +794,9 @@ void test_convergence_square(std::string output_dir)
         {
             xmodel.compute_interpolated_exact(exact_solution);
             xmodel.output_results(cycle);
-            ExactModel* exact = new ExactModel(exact_solution);
-            exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
-            delete exact;
+//             ExactModel* exact = new ExactModel(exact_solution);
+//             exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+//             delete exact;
         } 
     }   // for cycle
       
@@ -824,13 +824,13 @@ void test_convergence_sin(std::string output_dir)
          //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
          radius = p_a*std::sqrt(2),
          well_radius = 0.02,
-         perm2fer = 1e-2,//Parameters::perm2fer, 
+         perm2fer = 1e5,//Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard,
          transmisivity = Parameters::transmisivity,
          enrichment_radius = 4.0,
          well_pressure = Parameters::pressure_at_top,
          k_wave_num = 0.3,
-         amplitude = 0.2;
+         amplitude = 0.8;
          
   unsigned int n_well_q_points = 200;
          
@@ -1712,6 +1712,97 @@ void test_two_aquifers(std::string output_dir)
   
 }
 
+
+void test_enr_error(std::string output_dir)
+{
+    std::cout << "\n\n:::::::::::::::: TEST ENRICHMENT RADIUS ERROR ::::::::::::::::\n\n" << std::endl;
+    
+  //------------------------------SETTING----------------------------------
+  double p_a = 10.0,    //area of the model
+         p_b = 10.0,
+         excenter = 0,
+         radius = p_a*std::sqrt(2),
+         well_radius = 0.02,
+         perm2fer = Parameters::perm2fer, 
+         perm2tard = Parameters::perm2tard,
+         transmisivity = 1.0,
+         enrichment_radius = 2.0,
+         well_pressure = 1.0;
+         
+  unsigned int n_well_q_points = 200,
+               initial_refinement = 4;
+         
+  Point<2> well_center(0+excenter,0+excenter);
+
+  //--------------------------END SETTING----------------------------------
+  
+  Point<2> down_left(-p_a,-p_a);
+  Point<2> up_right(p_a, p_a);
+  std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+  
+  
+  Well *well = new Well( well_radius,
+                         well_center);
+  well->set_perm2aquifer(0,perm2fer);
+  well->set_perm2aquitard({perm2tard, 0.0});
+  well->set_pressure(well_pressure);
+  well->evaluate_q_points(n_well_q_points);
+  
+  Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
+
+    for(unsigned int refinement = 3; refinement < 8; refinement++)
+    {
+        std::stringstream test_name;
+        test_name << "test_enr_error_" << refinement;
+  XModel_simple xmodel(well);  
+//   xmodel.set_name(test_name + "sgfem_model"); 
+//   xmodel.set_enrichment_method(Enrichment_method::sgfem);
+  xmodel.set_name(test_name.str());
+  xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+  
+  xmodel.set_output_dir(output_dir);
+  xmodel.set_area(down_left,up_right);
+  xmodel.set_transmisivity(transmisivity,0);
+  xmodel.set_initial_refinement(refinement);                                     
+  //xmodel.set_initial_refinement(initial_refinement);                                     
+  xmodel.set_enrichment_radius(enrichment_radius);
+  xmodel.set_grid_create_type(ModelBase::rect);
+  xmodel.set_dirichlet_function(exact_solution);
+  xmodel.set_adaptivity(true);
+  //xmodel.set_well_computation_type(Well_computation::sources);
+  xmodel.set_output_options(ModelBase::output_gmsh_mesh
+                          //| ModelBase::output_solution
+                          //| ModelBase::output_decomposed
+                          | ModelBase::output_error);
+  
+  
+  double l2_norm_dif_fem;
+  std::pair<double,double> l2_norm_dif_xfem;
+ 
+      std::cout << "===== XModel_simple running   =====" << std::endl;
+      
+      //xmodel.test_method(exact_solution);  
+      xmodel.run();
+      xmodel.test_enr_error();
+      
+      std::cout << "===== XModel_simple finished =====" << std::endl;
+      
+
+      Vector<double> diff_vector;
+      l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
+      
+      xmodel.compute_interpolated_exact(exact_solution);
+      xmodel.output_results();
+  
+        
+    }
+    
+  delete well;
+  delete exact_solution;
+    
+  std::cout << "\n\n:::::::::::::::: TEST ENRICHMENT RADIUS ERROR - DONE ::::::::::::::::\n\n" << std::endl;
+}
+
 int main ()
 {
   std::string input_dir = "../input/";
@@ -1724,11 +1815,12 @@ int main ()
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-   test_convergence_square(output_dir);
+//    test_convergence_square(output_dir);
 //   test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);
   //test_output(output_dir);
+   test_enr_error(output_dir);
   return 0;
 }
 
