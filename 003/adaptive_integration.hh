@@ -230,6 +230,8 @@ class Adaptive_integration
     
     double test_integration(Function<2>* func); 
     
+    std::pair<double,double> test_integration_2(Function<2>* func, unsigned int diff_levels);
+    
     /// 1 point Gauss quadrature with dim=2
     static const QGauss<2> empty_quadrature;
     /// 1 point Gauss quadrature with dim=2
@@ -279,6 +281,8 @@ class Adaptive_integration
     ///Does the actual refinement of the squares according to the flags.
     /// @param n_squares_to_refine is number of squares to be refined
     void refine(unsigned int n_squares_to_refine);
+    
+    inline static bool remove_square_cond(Square sq) {return sq.refine_flag;}
     
     /// Returns true if criterion is satisfied.
     /** Criterion: square diameter > C * (minimal distance of a node from well edge)

@@ -2646,6 +2646,7 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
     return rel_error;
 }
 
+
 void XModel::test_enr_error()
 {  
     const unsigned int dofs_per_cell = fe.dofs_per_cell;
@@ -2672,8 +2673,18 @@ void XModel::test_enr_error()
     {
          Point<2> wc = wells[0]->center();
          double cell_distance = cell->center().distance(wc);
-//         if( cell_distance > cell->diameter()/2.0 )
-//             continue;
+
+        if( cell_distance < cell->diameter() )
+        {
+            double empty_val = 1e-16;
+            diff_vector_l2[index] = empty_val;
+            diff_vector_h1sem[index] = empty_val;
+            diff_vector_h1[index] = empty_val;
+            distance_vec[index] = cell_distance;
+            diff_vector_h1_est[index] = empty_val;
+            index++;
+            continue;
+        }
         
         DBGMSG("on cell %d\n",cell->index());
         temp_fe_values.reinit (cell);
@@ -2692,19 +2703,25 @@ void XModel::test_enr_error()
         
         for (unsigned int q_point=0; q_point < temp_fe_values.n_quadrature_points; ++q_point)
         {
-            double distance = wc.distance(temp_fe_values.quadrature_point(q_point));
+            Point<2> point = temp_fe_values.quadrature_point(q_point);
+            double distance = wc.distance(point);
             if (distance <= wells[0]->radius()) distance = wells[0]->radius();
             //if (distance <= 1e-10) continue;
-            double interpolation_val = 0,
-                   interpolation_grad = 0; 
+            double interpolation_val = 0;
+                   //interpolation_grad = 0;
+            Tensor<1,2> interpolation_grad, grad; 
+            
             for (unsigned int i=0; i < dofs_per_cell; ++i)
             {
                 interpolation_val += node_values[i] * temp_fe_values.shape_value(i, q_point);
-                interpolation_grad += node_grads[i] * temp_fe_values.shape_value(i, q_point);
+                //interpolation_grad += node_grads[i] * temp_fe_values.shape_value(i, q_point);
+                interpolation_grad += node_values[i] * temp_fe_values.shape_grad(i, q_point);
             }
-                
+            
+            grad[0] = (point[0] - wc[0]) / (distance*distance);
+            grad[1] = (point[1] - wc[1]) / (distance*distance);
             int_val += pow(std::log(distance) - interpolation_val, 2) * temp_fe_values.JxW (q_point);
-            int_grad += pow(1.0/distance - interpolation_grad, 2) * temp_fe_values.JxW (q_point);
+            int_grad += (grad - interpolation_grad).norm_square() * temp_fe_values.JxW (q_point);
         }
         
         diff_vector_l2[index] = sqrt(int_val);
@@ -2712,10 +2729,11 @@ void XModel::test_enr_error()
         diff_vector_h1[index] = sqrt(int_val + int_grad);
         distance_vec[index] = cell_distance;
         
-        double estimate_l2norm = pow(cell->diameter(),6)/(120 * pow(cell_distance,4));
-        double estimate_h1seminorm = pow(cell->diameter(),4)/(12 * pow(cell_distance,4));
+        double el_size = cell->diameter();
+        double estimate_l2norm = pow(el_size,5)/(120 * pow(cell_distance,4));
+        double estimate_h1seminorm = pow(el_size,3)/(12 * pow(cell_distance,4));
         double estimate_h1norm = estimate_l2norm + estimate_h1seminorm;
-        diff_vector_h1_est[index] = estimate_h1seminorm;
+        diff_vector_h1_est[index] = sqrt(estimate_h1seminorm);
         std::cout << "l2norm = " << sqrt(estimate_l2norm) << "\tcomputed = " << sqrt(int_val) << std::endl;
         std::cout << "h1seminorm = " << sqrt(estimate_h1seminorm) << "\tcomputed = " << sqrt(int_grad) << std::endl;
         std::cout << "h1norm = " << sqrt(estimate_h1norm) << "\tcomputed = " << 

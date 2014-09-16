@@ -554,14 +554,15 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
     }
   }
   
-  for(unsigned int i = 0; i < n_original_squares; i++)
-  {
-    if(squares[i].refine_flag)
-    {
-      squares.erase(squares.begin()+i);
-      i--;  //one erased, so we must lower iterator
-    }
-  }
+  squares.erase(std::remove_if(squares.begin(), squares.end(),remove_square_cond));
+//   for(unsigned int i = 0; i < n_original_squares; i++)
+//   {
+//     if(squares[i].refine_flag)
+//     {
+//       squares.erase(squares.begin()+i);
+//       i--;  //one erased, so we must lower iterator
+//     }
+//   }
   
   level ++;
   
@@ -910,6 +911,149 @@ double Adaptive_integration::test_integration(Function< 2 >* func)
     return integral;
 }
 
+
+std::pair< double, double > Adaptive_integration::test_integration_2(Function< 2 >* func, unsigned int diff_levels)
+{   
+    QGauss<2> gauss_quad = Adaptive_integration::gauss_1;
+    
+    // Prepare quadrature points - only on squares on the well edge
+    MASSERT(squares.size() > 1, "Element not refined.");
+    q_points_all.reserve(squares.size()*gauss_quad.size());
+    jxw_all.reserve(squares.size()*gauss_quad.size());
+
+    for(unsigned int i = 0; i < squares.size(); i++)
+    {   
+        //TODO: this will not include the squares with cross-section with well and no nodes inside
+        //all the squares on the edge of the well
+        bool on_well_edge = false;
+        for(unsigned int w=0; w < xdata->n_wells(); w++)
+        {
+            unsigned int n = refine_criterion_nodes_in_well(squares[i],*(xdata->get_well(w)));
+            if( (n > 0) && (n < 4)) on_well_edge = true;
+        }
+        if(on_well_edge)    
+        {
+            squares[i].gauss = &(gauss_quad);
+            std::vector<Point<2> > temp(squares[i].gauss->get_points());
+            squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+
+            for(unsigned int w=0; w < xdata->n_wells(); w++)
+            for(unsigned int j = 0; j < temp.size(); j++)
+            {
+                //include only points outside the well
+                //TODO: this will not work on non-square mesh
+                if(m_well_center[w].distance(temp[j]) >= m_well_radius[w])
+                {
+                q_points_all.push_back(temp[j]);
+                jxw_all.push_back( squares[i].gauss->weight(j) *
+                                   squares[i].mapping.jakobian() );
+                }
+            }
+            squares[i].refine_flag = false;
+        }
+        //all the squares around the well
+        else
+        {
+            squares[i].refine_flag = true;
+            //nothing - we ignore other squares
+        }
+    }
+    q_points_all.shrink_to_fit();
+    jxw_all.shrink_to_fit();
+    
+//     gnuplot_refinement("../output/test_adaptive_integration_2/",true);
+    squares.erase(std::remove_if(squares.begin(), squares.end(),remove_square_cond), squares.end());
+//     for (auto it = squares.begin(); it != squares.end(); ) {
+//         if (it->refine_flag)
+//             // new erase() that returns iter..
+//             it = squares.erase(it);
+//         else
+//             ++it;
+//     }
+ 
+//     gnuplot_refinement("../output/test_adaptive_integration_2/",true);
+    
+    DBGMSG("squares refined and prepared...\n");
+    
+    Quadrature<2>* quad = new Quadrature<2>(q_points_all, jxw_all);
+    XFEValues<Enrichment_method::xfem_shift> *xfevalues = 
+        new XFEValues<Enrichment_method::xfem_shift>(*fe,*quad, update_quadrature_points | update_JxW_values );
+    xfevalues->reinit(xdata);
+  
+    double integral_test = 0;
+    for(unsigned int q=0; q<q_points_all.size(); q++)
+    {
+        integral_test += func->value(xfevalues->quadrature_point(q)) * xfevalues->JxW(q);
+    }
+
+    DBGMSG("test integral computed...%f\n",integral_test);
+    
+    //refine several times
+    for(unsigned int i = 0; i < diff_levels; i++)
+    {
+        unsigned int squares_to_refine = squares.size();
+        DBGMSG("refining...\n");
+        for(unsigned int i = 0; i < squares.size(); i++)
+            squares[i].refine_flag = true;
+        refine(squares_to_refine);
+    }
+        
+    //gnuplot_refinement("../output/test_adaptive_integration_2/",true);
+    // Prepare quadrature points - only on squares on the well edge
+    MASSERT(squares.size() > 1, "Element not refined.");
+    q_points_all.clear();
+    jxw_all.clear();
+    q_points_all.reserve(squares.size()*gauss_1.size());
+    jxw_all.reserve(squares.size()*gauss_1.size());
+
+    for(unsigned int i = 0; i < squares.size(); i++)
+    {   
+            squares[i].gauss = &(gauss_quad);
+            std::vector<Point<2> > temp(squares[i].gauss->get_points());
+            squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+
+            for(unsigned int w=0; w < xdata->n_wells(); w++)
+            for(unsigned int j = 0; j < temp.size(); j++)
+            {
+                //include only points outside the well
+                //TODO: this will not work on non-square mesh
+                if(m_well_center[w].distance(temp[j]) >= m_well_radius[w])
+                {
+                q_points_all.push_back(temp[j]);
+//                 DBGMSG("i=%d \t w=%f \t j=%f\n",i,squares[i].gauss->weight(j), squares[i].mapping.jakobian());
+                jxw_all.push_back( squares[i].gauss->weight(j) *
+                                   squares[i].mapping.jakobian() );
+                }
+            }
+    }
+    q_points_all.shrink_to_fit();
+    jxw_all.shrink_to_fit();
+    
+    //gnuplot_refinement("../output/test_adaptive_integration_2/",true);
+    DBGMSG("squares refined and prepared...\n");
+    
+    delete xfevalues;
+    delete quad;
+    
+    quad = new Quadrature<2>(q_points_all, jxw_all);
+    xfevalues = 
+        new XFEValues<Enrichment_method::xfem_shift>(*fe,*quad, update_quadrature_points | update_JxW_values );
+    xfevalues->reinit(xdata);
+    double integral_fine = 0;
+    for(unsigned int q=0; q<q_points_all.size(); q++)
+    {
+//         std::cout << xfevalues->quadrature_point(q) << std::endl;
+//         DBGMSG("q=%d \t jxw=%f\n",q,xfevalues->JxW(q));
+        integral_fine += func->value(xfevalues->quadrature_point(q)) * xfevalues->JxW(q);
+    }
+//     cout << jxw_all[0] << "  " << q_points_all[10] <<endl;
+    DBGMSG("fine integral computed...%f\n",integral_fine);
+    
+    delete xfevalues;
+    delete quad;
+    
+    return std::make_pair(integral_test, integral_fine);
+}
 
 
 //OBSOLETE
