@@ -554,15 +554,15 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
     }
   }
   
-  squares.erase(std::remove_if(squares.begin(), squares.end(),remove_square_cond));
-//   for(unsigned int i = 0; i < n_original_squares; i++)
-//   {
-//     if(squares[i].refine_flag)
-//     {
-//       squares.erase(squares.begin()+i);
-//       i--;  //one erased, so we must lower iterator
-//     }
-//   }
+//   squares.erase(std::remove_if(squares.begin(), squares.end(),remove_square_cond));
+  for(unsigned int i = 0; i < n_original_squares; i++)
+  {
+    if(squares[i].refine_flag)
+    {
+      squares.erase(squares.begin()+i);
+      i--;  //one erased, so we must lower iterator
+    }
+  }
   
   level ++;
   
@@ -962,14 +962,14 @@ std::pair< double, double > Adaptive_integration::test_integration_2(Function< 2
     jxw_all.shrink_to_fit();
     
 //     gnuplot_refinement("../output/test_adaptive_integration_2/",true);
-    squares.erase(std::remove_if(squares.begin(), squares.end(),remove_square_cond), squares.end());
-//     for (auto it = squares.begin(); it != squares.end(); ) {
-//         if (it->refine_flag)
-//             // new erase() that returns iter..
-//             it = squares.erase(it);
-//         else
-//             ++it;
-//     }
+//     squares.erase(std::remove_if(squares.begin(), squares.end(),remove_square_cond), squares.end());
+    for (auto it = squares.begin(); it != squares.end(); ) {
+        if (it->refine_flag)
+            // new erase() that returns iter..
+            it = squares.erase(it);
+        else
+            ++it;
+    }
  
 //     gnuplot_refinement("../output/test_adaptive_integration_2/",true);
     
