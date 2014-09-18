@@ -190,6 +190,12 @@ void XModel::set_enrichment_method(Enrichment_method::Type enrichment_method)
     enrichment_method_ = enrichment_method;
 }
 
+void XModel::set_adaptive_refinement_by_error(double alpha_tolerance)
+{
+    refine_by_error_ = true;
+    alpha_tolerance_ = alpha_tolerance;
+}
+
 
 void XModel::make_grid ()
 {
@@ -1292,15 +1298,24 @@ void XModel::assemble_subsystem (unsigned int m)
             Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping(),m);
             
             //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
-            //unsigned int refinement_level = 12;
             unsigned int t;
-//             for(t=0; t < adaptive_integration_refinement_level_; t++)
-            for(t=0; t < 17; t++)
+            if(refine_by_error_)    // refinement controlled by tolerance
             {
-                DBGMSG("refinement level: %d\n", t);
-//                 if ( ! adaptive_integration.refine_edge())
-               if ( ! adaptive_integration.refine_error())
+                for(t=0; t < 17; t++)
+                {
+                    DBGMSG("refinement level: %d\n", t);
+                    if ( ! adaptive_integration.refine_error(alpha_tolerance_))
                     break;
+                }
+            }
+            else                    // refinement controlled by edge geometry
+            {
+                for(t=0; t < adaptive_integration_refinement_level_; t++)
+                {
+                    DBGMSG("refinement level: %d\n", t);
+                    if ( ! adaptive_integration.refine_edge())
+                    break;
+                }
             }
             
             if (output_options_ & OutputOptions::output_adaptive_plot)

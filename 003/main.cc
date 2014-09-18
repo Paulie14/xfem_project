@@ -687,6 +687,7 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_grid_create_type(ModelBase::rect);
   xmodel.set_dirichlet_function(exact_solution);
   xmodel.set_adaptivity(true);
+  //xmodel.set_adaptive_refinement_by_error(1e-2);
   //xmodel.set_well_computation_type(Well_computation::sources);
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
 //                           | ModelBase::output_solution

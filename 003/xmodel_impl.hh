@@ -267,18 +267,26 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
         { 
             Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping(),m);
             
-            //unsigned int refinement_level = 15;
-            for(unsigned int t=0; t < adaptive_integration_refinement_level_; t++)
+            unsigned int t;
+            if(refine_by_error_)    // refinement controlled by tolerance
             {
-                //if(t>0) DBGMSG("refinement level: %d\n", t);
-                if ( ! adaptive_integration.refine_edge())
-                break;
-                if (t == adaptive_integration_refinement_level_-1)
+                for(t=0; t < 17; t++)
                 {
-                    // (output_dir, false, true) must be set to unit coordinates and to show on screen 
-                    //adaptive_integration.gnuplot_refinement(output_dir);
+                    DBGMSG("refinement level: %d\n", t);
+                    if ( ! adaptive_integration.refine_error(alpha_tolerance_))
+                    break;
                 }
             }
+            else                    // refinement controlled by edge geometry
+            {
+                for(t=0; t < adaptive_integration_refinement_level_; t++)
+                {
+                    DBGMSG("refinement level: %d\n", t);
+                    if ( ! adaptive_integration.refine_edge())
+                    break;
+                }
+            }
+            
             //adaptive_integration.gnuplot_refinement(output_dir_, true, true);
             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),exact_solution);
         }

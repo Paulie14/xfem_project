@@ -203,6 +203,13 @@ class XModel : public ModelBase
     
     /// Sets the type of PUM method - the enrichment method.
     void set_enrichment_method (Enrichment_method::Type enrichment_method);
+    
+    /// Sets the adaptive integration refinement controlled by tolerance.
+    /** It is switched off and the refinement controlled by geometry 
+     * (distance from well center and well edge intersection) is used by default.
+     * @param alpha_tolerance is 1e-2 by default.
+     */
+    void set_adaptive_refinement_by_error(double alpha_tolerance = 1e-2);
     //@}
 
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
@@ -357,6 +364,8 @@ class XModel : public ModelBase
     ///Finite Element Value
     FEValues<2> fe_values;
     
+    bool refine_by_error_;
+    double alpha_tolerance_;
     
     ///takes care hanging nodes
     ConstraintMatrix hanging_node_constraints;
