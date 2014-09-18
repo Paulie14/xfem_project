@@ -9,6 +9,8 @@
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/fe/fe_dgq.h>
 
+/************************************ TEMPLATE IMPLEMENTATION **********************************************/
+
 template<Enrichment_method::Type EnrType>
 int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& output_grid, 
                              DoFHandler<2> &temp_dof_handler, 

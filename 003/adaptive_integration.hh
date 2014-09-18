@@ -34,25 +34,17 @@ public:
     ///@param p1 is down left vertex of the square
     ///@param p2 is up right vertex of the square
     Square(const Point<2> &p1, const Point<2> &p2);
-  
+ 
     ///@name Getters
     //@{
-        inline double real_diameter() const
-        { return real_diameter_; }
-        
-        inline double unit_diameter() const
-        { return unit_diameter_; }
-        
-        inline Point<2> real_vertex(unsigned int i) const
-        { return real_vertices_[i]; }
-        
-        inline Point<2> vertex(unsigned int i) const
-        { return vertices[i]; }
-        
-        inline Quadrature<2> const* quadrature() const
-        { return gauss; }
+        double real_diameter() const;               ///< Returns diameter in real coordinates.
+        double unit_diameter() const;               ///< Returns diameter in unit cell coordinates.
+        Point<2> real_vertex(unsigned int i) const; ///< Returns @p i vertex in real coordinates.
+        Point<2> vertex(unsigned int i) const;      ///< Returns @p i vertex in unit cell coordinates.
+        Quadrature<2> const* quadrature() const;    ///< Returns square quadrature.
     //@}
     
+    /// Transforms the square into the real coordinates.
     void transform_to_real_space(const DoFHandler< 2  >::active_cell_iterator& cell,
                                  const Mapping<2> &mapping);
     
@@ -113,14 +105,12 @@ class Adaptive_integration
                          unsigned int m
                         );
     
-    ///Getter for current level of refinement
-    inline unsigned int get_level()
-    {return level;}
-    
-    inline void set_functors(Function<2>* dirichlet_function, Function<2>* rhs_function)
-    { this->dirichlet_function = dirichlet_function;
-      this->rhs_function = rhs_function;
-    }
+    /// Getter for current level of refinement
+    unsigned int level();
+
+    /// Sets the dirichlet and right hand side functors.
+    void set_functors(Function<2>* dirichlet_function, 
+                      Function<2>* rhs_function);
     
     /// @brief Refinement along the well edge.
     /** If the square is crossed by the well edge
@@ -128,10 +118,7 @@ class Adaptive_integration
       */
     bool refine_edge();
     
-    /// @brief Refinement according to the error at each square.
-    /** TODO: suggest error computation and comparing
-     *  Sofar not implemented
-      */ 
+    /// @brief Refinement controlled by chosen tolerance.
     bool refine_error(double alpha_tolerance = 1e-2);
     
     /** @brief Integrates over all squares and their quadrature points.
@@ -227,12 +214,45 @@ class Adaptive_integration
       */ 
     void gnuplot_refinement(const std::string &output_dir, bool real=true, bool show=false);
     
+    /// @name Test methods
+    //@{
+        /// Test - integrates the @p func using adaptive integration (used for circle characteristic function).
+        double test_integration(Function<2>* func); 
     
-    double test_integration(Function<2>* func); 
-    
-    std::pair<double,double> test_integration_2(Function<2>* func, unsigned int diff_levels);
+        /// Test - integrates the @p func using adaptive integration on different levels (used for \f$ 1/r^2) \f$.
+        std::pair<double,double> test_integration_2(Function<2>* func, unsigned int diff_levels);
+    //@}
     
   private: 
+      
+    ///Does the actual refinement of the squares according to the flags.
+    /// @param n_squares_to_refine is number of squares to be refined
+    void refine(unsigned int n_squares_to_refine);
+    
+    inline static bool remove_square_cond(Square sq) {return sq.refine_flag;}
+    
+    /// Gathers the quadrature points and their weigths from squares into a single vector.
+    void gather_w_points();
+    
+    ///@name Refinement criteria.
+    //@{
+        /// Returns true if criterion is satisfied.
+        /** Criterion: square diameter > C * (minimal distance of a node from well edge)
+        */
+        bool refine_criterion_a(Square &square, Well &well);
+        
+        /// Returns number of nodes of @p square inside the @p well.
+        unsigned int refine_criterion_nodes_in_well(Square &square, Well &well);
+        
+        /// Computes the alpha criterion for different n (quadrature order) and returns the quad. order
+        unsigned int refine_criterion_alpha(double r_min);
+        
+        bool refine_criterion_h(Square &square, Well &well, double criterion_rhs);
+        
+        /// Computes r_min
+        double compute_r_min(Square &square, unsigned int w);
+    //@}
+    
     ///Current cell to integrate
     const DoFHandler<2>::active_cell_iterator cell;
     
@@ -265,34 +285,11 @@ class Adaptive_integration
     Function<2> *rhs_function;
   
     ///Level of current refinement.
-    unsigned int level;
+    unsigned int level_;
     
+    /// Tolerance for refine_error method.
     double alpha_tolerance_;
     
-    ///Does the actual refinement of the squares according to the flags.
-    /// @param n_squares_to_refine is number of squares to be refined
-    void refine(unsigned int n_squares_to_refine);
-    
-    inline static bool remove_square_cond(Square sq) {return sq.refine_flag;}
-    
-    /// Returns true if criterion is satisfied.
-    /** Criterion: square diameter > C * (minimal distance of a node from well edge)
-     */
-    bool refine_criterion_a(Square &square, Well &well);
-    
-    /// Returns number of nodes of @p square inside the @p well.
-    unsigned int refine_criterion_nodes_in_well(Square &square, Well &well);
-    
-    /// Computes the alpha criterion for different n (quadrature order) and returns the quad. order
-    unsigned int refine_criterion_alpha(double r_min);
-    
-    bool refine_criterion_h(Square &square, Well &well, double criterion_rhs);
-    
-    /// Computes r_min
-    double compute_r_min(Square &square, unsigned int w);
-    
-    void gather_w_points();
-  
     
     ///TODO: Get rid of these
     ///helpful temporary data
@@ -308,19 +305,10 @@ class Adaptive_integration
     //alpha in apriori adaptive criterion
     static const std::vector<double> alpha_;
     
+    /// Empiric constants for refine_error method.
     static const double c_empiric_, p_empiric_;
     
-//         /// 1 point Gauss quadrature with dim=2
-//     static const QGauss<2> empty_quadrature;
-//     /// 1 point Gauss quadrature with dim=2
-//     static const QGauss<2> gauss_1;
-//     /// 3 point Gauss quadrature with dim=2
-//     static const QGauss<2> gauss_2;
-//     /// 3 point Gauss quadrature with dim=2
-//     static const QGauss<2> gauss_3;
-//     /// 4 point Gauss quadrature with dim=2
-//     static const QGauss<2> gauss_4;
-    
+    /// Vector of Gauss quadrature of different order.
     static const std::vector<QGauss<2> > quadratures_;
 };
 

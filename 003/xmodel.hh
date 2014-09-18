@@ -170,60 +170,55 @@ class XModel : public ModelBase
      */
     const Vector< double > &get_distributed_solution() override;
     
-    ///Returns reference to the computational grid
-    inline const Triangulation<2> &get_triangulation()
-    { return *triangulation; }
+    ///Returns reference to the computational triangulation.
+    const Triangulation<2> &get_triangulation();
     
-    ///Returns the total number of degrees of freedom (both enriched and unenriched)
-    std::pair<unsigned int, unsigned int> get_number_of_dofs()
-    { //std::pair<unsigned int, unsigned int> pair(n_enriched_dofs, dof_handler->n_dofs()); 
-      return std::make_pair(dof_handler->n_dofs(), n_enriched_dofs);
-    }
+    /** Returns the number of degrees of freedom.
+     * @return pair consisting of number of standard dofs and enriched dofs
+     */
+    std::pair<unsigned int, unsigned int> get_number_of_dofs();
     
-    inline const Triangulation<2> & get_output_triangulation()
-    { return *output_triangulation;}
+    ///Returns reference to the output triangulation.
+    const Triangulation<2> & get_output_triangulation();
     
-    //unsigned int get_number_of_dofs()
-    //{ return n_enriched_dofs + dof_handler->n_dofs(); }
+    /// Returns pressure at the top of the well after computation.
+    double well_pressure(unsigned int w);
     //@}
     
     
     /// @name Setters
     //@{
-    inline void set_enrichment_radius(double r_enr)
-    { this->rad_enr = r_enr; }
-   
+    /// Sets the enrichment radius. Note that it can changed if it was chosen incorrectly.
+    void set_enrichment_radius(double r_enr);
+       
     /**Sets file path to a mesh file. 
      * Grid creation type @p grid_create is set to @p load.
      * @param coarse_mesh is the path to the GMSH file to be loaded
      * @param ref_flags is the path to the file with refinement flags
      */
-    inline void set_computational_mesh (std::string coarse_mesh, std::string ref_flags = "")
-    { this->coarse_grid_file = coarse_mesh;
-      this->ref_flags_file = ref_flags;
-      grid_create = load;
-    }
+    void set_computational_mesh (std::string coarse_mesh, std::string ref_flags = "");
+
+    /// Sets the behavior of the well in the computation - boundary x source.
+    void set_well_computation_type(Well_computation::Type well_computation);
     
-    inline void set_well_computation_type(Well_computation::Type well_computation)
-    {
-      well_computation_ = well_computation;
-    }
-    
-    inline void set_enrichment_method (Enrichment_method::Type enrichment_method)
-    { enrichment_method_ = enrichment_method;}
+    /// Sets the type of PUM method - the enrichment method.
+    void set_enrichment_method (Enrichment_method::Type enrichment_method);
     //@}
 
-    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution) override;
+    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
+                                                   const Function<2> &exact_solution) override;
 
+    /// @name Testing methods
+    //@{
     /// Set the solution vector (dofs) accurately according to the exact solution and test XFEValues etc.
     void test_method(ExactBase *exact_solution);
     
     /// Computes the H1 norm of [log - approx(log)] on elements on the band of enrichment radius.
     void test_enr_error();
     
+    /// Tests adaptive integration - integrates characteristic function of a circle inside a square.
     double test_adaptive_integration(Function<2> *func, unsigned int level, unsigned int pol_degree=0);
-    
-    double well_pressure(unsigned int w);
+    //@}
     
   protected:
     virtual void make_grid () override;
@@ -317,7 +312,8 @@ class XModel : public ModelBase
                         );
     
     template<Enrichment_method::Type EnrType>
-    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, const Function<2> &exact_solution);
+    std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
+                                                   const Function<2> &exact_solution);
     
     ///Type of enrichment method
     Enrichment_method::Type enrichment_method_;

@@ -31,11 +31,6 @@ const vector<double> Adaptive_integration::alpha_ =
 const double Adaptive_integration::c_empiric_ = 12.65;
 const double Adaptive_integration::p_empiric_ = 2.27;
 const double Adaptive_integration::square_refinement_criteria_factor_ = 0.5;
-// const QGauss<2> Adaptive_integration::empty_quadrature = QGauss<2>(0);
-// const QGauss<2> Adaptive_integration::gauss_1 = QGauss<2>(1);
-// const QGauss<2> Adaptive_integration::gauss_2 = QGauss<2>(2);
-// const QGauss<2> Adaptive_integration::gauss_3 = QGauss<2>(3);
-// const QGauss<2> Adaptive_integration::gauss_4 = QGauss<2>(3);
 
 const std::vector<QGauss<2> > Adaptive_integration::quadratures_ = {
         QGauss<2>(0),
@@ -147,7 +142,7 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
     cell_mapping(cell->vertex(0), cell->vertex(3)),
     dirichlet_function(nullptr),
     rhs_function(nullptr),
-    level(0)
+    level_(0)
 {
       MASSERT(cell->user_pointer() != NULL, "NULL user_pointer in the cell"); 
       //A *a=static_cast<A*>(cell->user_pointer()); //from DEALII (TriaAccessor)
@@ -675,7 +670,7 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
     }
   }
   
-  level ++;
+  level_ ++;
   
   //print squares and nodes
   /*
@@ -780,7 +775,7 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
   gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
   // print only adaptively refined elements
   //if(q_points_all.size() <= quadratures_[3].size()) return;
-  DBGMSG("level = %d,  number of quadrature points = %d\n",level,q_points_all.size());
+  DBGMSG("level = %d,  number of quadrature points = %d\n",level_,q_points_all.size());
   
   std::string fgnuplot_ref = "adaptive_integration_refinement_",
               fgnuplot_qpoints = "adaptive_integration_qpoints_",

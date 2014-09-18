@@ -1,5 +1,33 @@
 #include "adaptive_integration.hh"
 
+/************************************ INLINE IMPLEMENTATION **********************************************/
+
+inline double Square::real_diameter() const
+{ return real_diameter_; }
+
+inline double Square::unit_diameter() const
+{ return unit_diameter_; }
+
+inline Point<2> Square::real_vertex(unsigned int i) const
+{ return real_vertices_[i]; }
+
+inline Point<2> Square::vertex(unsigned int i) const
+{ return vertices[i]; }
+
+inline Quadrature<2> const* Square::quadrature() const
+{ return gauss; }
+        
+inline unsigned int Adaptive_integration::level()
+{ return level_; }
+
+inline void Adaptive_integration::set_functors(Function< 2 >* dirichlet_function, 
+                                               Function< 2 >* rhs_function)
+{
+    this->dirichlet_function = dirichlet_function;
+    this->rhs_function = rhs_function;
+}
+/************************************ TEMPLATE IMPLEMENTATION **********************************************/
+
 template<Enrichment_method::Type EnrType> 
 void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix, 
                                       Vector<double> &cell_rhs,

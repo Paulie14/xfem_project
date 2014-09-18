@@ -152,6 +152,45 @@ XModel::~XModel()
 }
 
 
+/************************************ GETTERS AND SETTERS ************************************************/
+const Triangulation< 2 >& XModel::get_triangulation()
+{
+    return *triangulation;
+}
+
+std::pair< unsigned int, unsigned int > XModel::get_number_of_dofs()
+{
+    return std::make_pair(dof_handler->n_dofs(), n_enriched_dofs);
+}
+
+const Triangulation< 2 >& XModel::get_output_triangulation()
+{
+    return *output_triangulation;
+}
+
+void XModel::set_enrichment_radius(double r_enr)
+{
+    this->rad_enr = r_enr;
+}
+
+void XModel::set_computational_mesh(string coarse_mesh, string ref_flags)
+{
+    this->coarse_grid_file = coarse_mesh;
+    this->ref_flags_file = ref_flags;
+    grid_create = load;
+}
+
+void XModel::set_well_computation_type(Well_computation::Type well_computation)
+{
+    well_computation_ = well_computation;
+}
+
+void XModel::set_enrichment_method(Enrichment_method::Type enrichment_method)
+{
+    enrichment_method_ = enrichment_method;
+}
+
+
 void XModel::make_grid ()
 {
   if(dof_handler != nullptr)
@@ -197,7 +236,8 @@ void XModel::make_grid ()
           triangulation->read_flags(in);
         else
         {
-          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.\n", ref_flags_file.c_str());
+          xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.\n", 
+                  ref_flags_file.c_str());
         }
         //creates actual grid to be available
         triangulation->restore();
