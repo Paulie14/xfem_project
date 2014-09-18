@@ -277,6 +277,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
                     //adaptive_integration.gnuplot_refinement(output_dir);
                 }
             }
+            //adaptive_integration.gnuplot_refinement(output_dir_, true, true);
             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),exact_solution);
         }
         

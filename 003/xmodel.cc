@@ -1254,10 +1254,12 @@ void XModel::assemble_subsystem (unsigned int m)
             //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
             //unsigned int refinement_level = 12;
             unsigned int t;
-            for(t=0; t < adaptive_integration_refinement_level_; t++)
+//             for(t=0; t < adaptive_integration_refinement_level_; t++)
+            for(t=0; t < 17; t++)
             {
-                //DBGMSG("refinement level: %d\n", t);
-                if ( ! adaptive_integration.refine_edge())
+                DBGMSG("refinement level: %d\n", t);
+//                 if ( ! adaptive_integration.refine_edge())
+               if ( ! adaptive_integration.refine_error())
                     break;
             }
             

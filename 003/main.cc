@@ -689,9 +689,9 @@ void test_convergence_square(std::string output_dir)
   xmodel.set_adaptivity(true);
   //xmodel.set_well_computation_type(Well_computation::sources);
   xmodel.set_output_options(ModelBase::output_gmsh_mesh
-                          //| ModelBase::output_solution
-                          //| ModelBase::output_decomposed
-                          //| ModelBase::output_adaptive_plot
+//                           | ModelBase::output_solution
+//                           | ModelBase::output_decomposed
+                          | ModelBase::output_adaptive_plot
                           | ModelBase::output_error);
 
 //   // Exact model
@@ -1937,12 +1937,12 @@ int main ()
   //return 0;
   
 //   test_adaptive_integration(output_dir);
-  test_adaptive_integration2(output_dir);
+//   test_adaptive_integration2(output_dir);
 //   test_adaptive_integration3(output_dir);
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-//    test_convergence_square(output_dir);
+   test_convergence_square(output_dir);
 //   test_convergence_sin(output_dir);
   //test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);
