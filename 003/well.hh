@@ -65,6 +65,9 @@ class Well
     
     inline const std::vector<Point<2> > &q_points()
     {return q_points_;}
+    
+    inline bool is_active()
+    { return active_;}
     //@}
   
   
@@ -93,6 +96,12 @@ class Well
     {   pressure_ = press;
         pressure_set_ = true;
     }
+    
+    inline void set_active()
+    { active_ = true; }
+    
+    inline void set_inactive()
+    { active_ = false; }
     //@}
     
     
@@ -116,6 +125,9 @@ class Well
     Tensor<1,2,double> global_enrich_grad(const Point<2> &point);
   
   protected:
+    
+    /// True, if the well should be active and included in computation.
+    bool active_;
     
     /// radius of the well
     double radius_;

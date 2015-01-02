@@ -695,6 +695,7 @@ void Model::assemble_system ()
       {
         //DBGMSG("well number: %d\n",w);
         Well * well = data->get_well(w);
+        if(! well->is_active()) continue;
         //jacobian = radius of the well; weights are the same all around
         double jxw = 2 * M_PI * well->radius() / n_wells_q_points[data->get_well_index(w)];
 

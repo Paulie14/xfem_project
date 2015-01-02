@@ -271,8 +271,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
           //*/
       } //q
       
-        well_cell_matrix *= ( well->perm2aquifer(m_-1)
-                         / xdata->q_points(w).size()
+        well_cell_matrix *= ( well->perm2aquifer(m_-1) / well->q_points().size()
+                         /// xdata->q_points(w).size()
                          * 2 * M_PI * well->radius()
                         );
         

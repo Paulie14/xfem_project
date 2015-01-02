@@ -334,6 +334,7 @@ class XModel : public ModelBase
     
     ///User defined enrichment radius.
     double rad_enr;
+    double r_enr_tolerance_;
     
     ///Real enrichment radius used in computation.
     ///It may be different for each wells.

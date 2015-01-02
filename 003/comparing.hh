@@ -66,8 +66,8 @@ namespace Solution
     class ExactSolution1 : public ExactBase
     {
     public:
-      ExactSolution1(Well *well, double radius, double k, double amplitude) 
-        : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude) {}
+      ExactSolution1(Well *well, double radius, double k, double amplitude);
+        
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     protected:

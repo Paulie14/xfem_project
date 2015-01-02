@@ -126,6 +126,8 @@ void XModel::constructor_init()
     r_enr.resize(wells.size());
     system_matrix_.initialize(n_aquifers_, n_aquifers_);
     if(name_ == "") name_ = "Default_XFEM_Model";
+    r_enr_tolerance_ = 33.5;
+    refine_by_error_ = false;
 }
 
 
@@ -365,12 +367,13 @@ void XModel::find_enriched_cells(unsigned int m)
         }  
         r_enr[w] = std::max(dist, r_enr[w]);
           
-//         double tol = 1e-1;
-// //         double enr_radius = 1.0/2 * pow(cell->diameter(), 3.0/2) / tol;
-//         double diag = up_right.distance(down_left);
-//         double h = pow(cell->diameter(),5)/10.0 + pow(cell->diameter(),3);
-//         double enr_radius = sqrt(h*diag*diag / (4*tol*tol*diag*diag+h));
-//         r_enr[w] = std::min(r_enr[w], enr_radius);
+        // Automatic choice of the enrichment radius according to the given tolerance:
+//         r_enr_tolerance_ = (cycle_ == 0) ? (r_enr_tolerance_/10 ) : (r_enr_tolerance_/4);
+//         double enr_radius = 0.25 * pow(cell->diameter(), 1.5) / r_enr_tolerance_;
+// //         double h = pow(cell->diameter(),5)*0.025 + 0.25*pow(cell->diameter(),3);
+// //         double enr_radius = sqrt(h);
+//         DBGMSG("r_enr_tolerance = %e, h = %f, enr_radius = %f\n",r_enr_tolerance_, cell->diameter(), enr_radius);
+//          r_enr[w] = enr_radius;//std::min(r_enr[w], enr_radius);
         
         std::cout << "enrichment radius: wanted: " << rad_enr << "  finally set: " << r_enr[w] << std::endl;
 //             << "\t newly computed: " << enr_radius << std::endl;
@@ -1303,7 +1306,7 @@ void XModel::assemble_subsystem (unsigned int m)
             {
                 for(t=0; t < 17; t++)
                 {
-                    DBGMSG("refinement level: %d\n", t);
+//                     DBGMSG("refinement level: %d\n", t);
                     if ( ! adaptive_integration.refine_error(alpha_tolerance_))
                     break;
                 }
@@ -1312,7 +1315,7 @@ void XModel::assemble_subsystem (unsigned int m)
             {
                 for(t=0; t < adaptive_integration_refinement_level_; t++)
                 {
-                    DBGMSG("refinement level: %d\n", t);
+//                     DBGMSG("refinement level: %d\n", t);
                     if ( ! adaptive_integration.refine_edge())
                     break;
                 }
@@ -1607,7 +1610,8 @@ void XModel::solve ()
   
   //USING CG, BICG, PreconditionJacobi
   //SolverBicgstab<BlockVector<double> > solver_bicg(solver_control,vector_memory);
-  SolverCG<BlockVector<double> > solver_cg(solver_control, vector_memory);
+  SolverCG<BlockVector<double> > solver_cg(solver_control, vector_memory, 
+                                           SolverCG<BlockVector<double> >::AdditionalData(false, true, false, false));
   
     // block Jacobi preconditioning
     BlockTrianglePrecondition<double> preconditioning(n_aquifers_+1);
@@ -2786,10 +2790,10 @@ void XModel::test_enr_error()
         diff_vector_h1[index] = sqrt(int_val + int_grad);
         distance_vec[index] = cell_distance;
         
-        double el_size = cell->diameter();
-        double estimate_l2norm = pow(el_size,5)/(120 * pow(cell_distance,4));
-        double estimate_h1seminorm = pow(el_size,3)/(12 * pow(cell_distance,4));
-        double estimate_h1norm = estimate_l2norm + estimate_h1seminorm;
+        double el_size = cell->diameter() / sqrt(2.0);
+        double estimate_l2norm = pow(el_size,6)/(120 * pow(cell_distance,4));
+        double estimate_h1seminorm = pow(el_size,4)/(6 * pow(cell_distance,4));
+        double estimate_h1norm = estimate_h1seminorm;//estimate_l2norm + estimate_h1seminorm;
         diff_vector_h1_est[index] = sqrt(estimate_h1seminorm);
         std::cout << "l2norm = " << sqrt(estimate_l2norm) << "\tcomputed = " << sqrt(int_val) << std::endl;
         std::cout << "h1seminorm = " << sqrt(estimate_h1seminorm) << "\tcomputed = " << sqrt(int_grad) << std::endl;

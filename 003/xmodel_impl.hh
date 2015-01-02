@@ -272,7 +272,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
             {
                 for(t=0; t < 17; t++)
                 {
-                    DBGMSG("refinement level: %d\n", t);
+//                     DBGMSG("refinement level: %d\n", t);
                     if ( ! adaptive_integration.refine_error(alpha_tolerance_))
                     break;
                 }
@@ -281,7 +281,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
             {
                 for(t=0; t < adaptive_integration_refinement_level_; t++)
                 {
-                    DBGMSG("refinement level: %d\n", t);
+//                     DBGMSG("refinement level: %d\n", t);
                     if ( ! adaptive_integration.refine_edge())
                     break;
                 }

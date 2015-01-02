@@ -248,6 +248,19 @@ double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigne
     return a_ * std::log(well_->radius()) + b_;//well_->pressure();
 }
 
+ExactSolution1::ExactSolution1(Well* well, double radius, double k, double amplitude)
+    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+{
+    a_ = (well_->radius()*well_->perm2aquifer(m_)*
+            (
+            well_->pressure() - amplitude_*sin(k_*well_->center()[0])
+            - amplitude_*k_*k_*sin(k_*well_->center()[0]) / 2.0 / well_->perm2aquifer(m_)
+            )
+         ) / 
+         (well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_) - 1);
+    b_ = - a_ * std::log(radius_);
+}
+
 double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);

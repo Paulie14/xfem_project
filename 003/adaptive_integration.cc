@@ -31,6 +31,7 @@ const vector<double> Adaptive_integration::alpha_ =
 const double Adaptive_integration::c_empiric_ = 12.65;
 const double Adaptive_integration::p_empiric_ = 2.27;
 const double Adaptive_integration::square_refinement_criteria_factor_ = 0.5;
+// const double Adaptive_integration::square_refinement_criteria_factor_ = 1.0;
 
 const std::vector<QGauss<2> > Adaptive_integration::quadratures_ = {
         QGauss<2>(0),
@@ -225,10 +226,10 @@ bool Adaptive_integration::refine_criterion_a(Square& square, Well& well)
     //return false; // switch on and off the criterion
     square.transform_to_real_space(cell, *mapping);
     
-    double min_distance = square.real_vertex(0).distance(well.center()) - well.radius();
+    double min_distance = square.real_vertex(0).distance(well.center());// - well.radius();
     for(unsigned int j=1; j < 4; j++)
     {
-        double dist = well.center().distance(square.real_vertex(j)) - well.radius();
+        double dist = well.center().distance(square.real_vertex(j));// - well.radius();
         min_distance = std::min(min_distance,dist);
     }
 
@@ -774,7 +775,7 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
   //DBGMSG("gnuplotting\n");
   gather_w_points();    //gathers all quadrature points from squares into one vector and maps them to unit cell
   // print only adaptively refined elements
-  //if(q_points_all.size() <= quadratures_[3].size()) return;
+  if(q_points_all.size() <= quadratures_[6].size()) return;
   DBGMSG("level = %d,  number of quadrature points = %d\n",level_,q_points_all.size());
   
   std::string fgnuplot_ref = "adaptive_integration_refinement_",

@@ -1,7 +1,8 @@
 #include "well.hh"
 
 Well::Well(double r, Point< 2 > cent)
-: radius_(r), 
+: active_(true),
+  radius_(r), 
   pressure_(0),
   pressure_set_(false),
   center_(cent)
@@ -11,7 +12,8 @@ Well::Well(double r, Point< 2 > cent)
 }
 
 Well::Well(double r, Point< 2 > cent, double perm2fer, double perm2tard)
-: radius_(r), 
+: active_(true), 
+  radius_(r), 
   pressure_(0),
   pressure_set_(false),
   center_(cent)
@@ -21,7 +23,8 @@ Well::Well(double r, Point< 2 > cent, double perm2fer, double perm2tard)
 }
 
 Well::Well(Well* well)
-: radius_(well->radius_), 
+: active_(well->active_),
+  radius_(well->radius_), 
   pressure_(well->pressure_),
   pressure_set_(well->pressure_set_),
   center_(well->center_), 
