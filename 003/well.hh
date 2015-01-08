@@ -104,6 +104,8 @@ class Well
     { active_ = false; }
     //@}
     
+    /// Computes circumference of the well_edge
+    double circumference();
     
     /// returns true if the given point lies within the well radius
     inline bool points_inside(const Point<2> &point)

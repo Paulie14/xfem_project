@@ -1,4 +1,5 @@
 #include "well.hh"
+#include <cmath> //M_PI
 
 Well::Well(double r, Point< 2 > cent)
 : active_(true),
@@ -32,6 +33,11 @@ Well::Well(Well* well)
   perm2aquitard_(well->perm2aquitard_)
 {}
 
+
+double Well::circumference()
+{
+    return 2*M_PI*radius_;
+}
 
 
 double Well::global_enrich_value(const Point< 2 > &point)
@@ -115,10 +121,11 @@ void Well::evaluate_q_points(const unsigned int& n)
   //std::vector<double> phis(n);
   
   double phi = 2*M_PI / n;
+  double offset = 1e-10;
   
   for(unsigned int i=0; i < n; i++)
   {
-      q_points_[i] = Point<2>(center_[0]+radius_*std::cos(i*phi),center_[1]+radius_*std::sin(i*phi));
+      q_points_[i] = Point<2>(center_[0]+radius_*std::cos(i*phi+offset),center_[1]+radius_*std::sin(i*phi+offset));
       //phis[i] = i*phi / M_PI * 180;
   }
 }
