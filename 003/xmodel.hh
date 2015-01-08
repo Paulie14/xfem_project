@@ -237,6 +237,7 @@ class XModel : public ModelBase
     void assemble_dirichlet(unsigned int m) override;
     void setup_subsystem (unsigned int m);
     void assemble_subsystem (unsigned int m);
+    void assemble_well_permeability_term(unsigned int m);
     void assemble_communication ();
     
     /// Procedures that are done in constructor.
@@ -308,8 +309,12 @@ class XModel : public ModelBase
                       bool xfem = true
                      );
     
+    template<Enrichment_method::Type EnrType> 
+    void prepare_shape_well_averiges(std::vector<std::map<unsigned int, double> > &shape_well_averiges,
+                                     std::vector<XDataCell*> xdata);
+    
     /// TODO:rename
-    template<Enrichment_method::Type> 
+    template<Enrichment_method::Type EnrType> 
     int recursive_output(double tolerance, 
                          PersistentTriangulation<2> &output_grid, 
                          DoFHandler<2> &temp_dof_handler, 
@@ -346,8 +351,12 @@ class XModel : public ModelBase
     ///vector of global enrichment function values at nodes of the triangulation
     std::vector<std::vector<std::map<unsigned int, double> > > node_enrich_values;
     
-    ///Number of enriched degrees of freedom
-    unsigned int n_enriched_dofs;
+    ///vector of global enrichment function values at nodes of the triangulation
+    std::vector<std::map<unsigned int, double> > shape_well_averiges;
+    
+    unsigned int n_enriched_dofs_,   ///< Number of enriched degrees of freedom per aquifer.
+                 n_standard_dofs_,   ///< Number of enriched degrees of freedom per aquifer.
+                 n_dofs_;            ///< Number of enriched degrees of freedom per aquifer.
     
     ///2d triangulation of the aquifer
     PersistentTriangulation<2> *triangulation;

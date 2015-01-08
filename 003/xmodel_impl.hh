@@ -10,6 +10,98 @@
 #include <deal.II/fe/fe_dgq.h>
 
 /************************************ TEMPLATE IMPLEMENTATION **********************************************/
+template<Enrichment_method::Type EnrType>
+void XModel::prepare_shape_well_averiges(vector< std::map< unsigned int, double > >& shape_well_averiges, std::vector< XDataCell* > xdata_vec)
+{
+    MASSERT(n_dofs_ > 0,"Dofs uninitialized yet.");
+    
+    
+    shape_well_averiges.clear();
+    shape_well_averiges.resize(wells.size());
+        
+    for(unsigned int s = 0; s < xdata_vec.size(); s++)
+    {
+        XDataCell* xdata = xdata_vec[s];
+        
+        /*getting dof's indices : 
+        * [ FEM(dofs_per_cell), 
+        *   n_wells * [SGFEM / XFEM(maximum of n_wells*dofs_per_cell), 
+        *              well_dof)]_w 
+        * ]
+        */
+        std::vector<unsigned int> local_dof_indices;
+        xdata->get_dof_indices(local_dof_indices, fe.dofs_per_cell); //dof initialization
+        
+        
+        unsigned int n_wells_inside = xdata->n_wells_inside(),  // number of wells with q_points inside the cell
+                    n_wells = xdata->n_wells(),                // number of wells affecting the cell
+                    dofs_per_cell = fe.dofs_per_cell,
+                    n_vertices = GeometryInfo< 2  >::vertices_per_cell,
+                    n_dofs = xdata->n_dofs();  
+        
+        if(n_wells_inside == 0) continue; //skip when there is no cross-section with any well
+  
+  
+        DoFHandler<2>::active_cell_iterator cell = xdata->get_cell();
+        fe_values.reinit (cell);    //NOTE: only mapping is required
+        xdata->map_well_quadrature_points(fe_values.get_mapping());
+        
+        for(unsigned int w = 0; w < n_wells; w++)   //iterate over all well affecting the cell
+        {
+            if(xdata->q_points(w).size() == 0)   //skip those with no cross-section
+            {
+                //TODO: if more wells...
+                MASSERT(0,"DO NOT ENTER!\n");
+                continue;
+            }
+            
+            Well * well = xdata->get_well(w);
+            Quadrature<2> quad (xdata->mapped_q_points(w));
+            XFEValues<EnrType> xfevalues(fe,quad, update_values | update_quadrature_points);
+            xfevalues.reinit(xdata);
+
+            //dx along the well edge = radius of the well; weights are the same all around
+            double dx = well->circumference() / well->q_points().size();
+            
+            std::vector<double> shape_val_vec(n_dofs,0);
+            
+            //cycle over quadrature points inside the cell
+            //DBGMSG("n_q:%d\n",xdata->q_points(w).size());
+            for (unsigned int q=0; q < quad.size(); ++q)
+            {
+                // filling shape values at first
+                for(unsigned int i = 0; i < dofs_per_cell; i++)
+                    shape_val_vec[i] += xfevalues.shape_value(i,q)*dx; 
+                // filling enrichment shape values
+                unsigned int index = dofs_per_cell;
+                for(unsigned int k = 0; k < n_vertices; k++)
+                {
+                    if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node
+                    
+                    double temp = xfevalues.enrichment_value(k,w,q)*dx;
+                    //if(index==7) DBGMSG("s=%d k=%d w=%d index=%d q=%d \t val=%e\n",s,k,w,index,q,temp);
+                    shape_val_vec[index] += temp;
+                    
+                    index++;
+                }
+
+                //shape_val_vec[index] += -1.0*dx;  //testing function of the well
+            
+            } // for q
+            
+            for(unsigned int index = 0; index < n_dofs; index++)
+                shape_well_averiges[xdata->get_well_index(w)][local_dof_indices[index]] += shape_val_vec[index];
+        } // for w
+    } // for s
+    
+    //correction of wells integration
+    for(unsigned int w = 0; w < wells.size(); w++)   //iterate over all well affecting the cell 
+    {
+        unsigned int well_dof_index = n_dofs_ - wells.size() + w;
+        shape_well_averiges[w][well_dof_index] = -1.0*wells[w]->circumference();
+    }
+}
+
 
 template<Enrichment_method::Type EnrType>
 int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& output_grid, 

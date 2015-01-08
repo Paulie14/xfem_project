@@ -66,7 +66,9 @@ XModel::XModel ()
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
-    n_enriched_dofs(0),
+    n_enriched_dofs_(0),
+    n_standard_dofs_(0),
+    n_dofs_(0),
     //dealii fem
     triangulation(nullptr),
     fe (1),
@@ -85,7 +87,9 @@ XModel::XModel (const std::string &name,
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
-    n_enriched_dofs(0),
+    n_enriched_dofs_(0),
+    n_standard_dofs_(0),
+    n_dofs_(0),
     //dealii fem
     triangulation(nullptr),
     fe (1),
@@ -106,7 +110,9 @@ XModel::XModel (const std::vector<Well*> &wells,
     enrichment_method_(Enrichment_method::xfem_shift),
     well_computation_(Well_computation::bc_newton),
     rad_enr(0),
-    n_enriched_dofs(0),
+    n_enriched_dofs_(0),
+    n_standard_dofs_(0),
+    n_dofs_(0),
     //dealii fem
     triangulation(nullptr),
     fe (1),
@@ -162,7 +168,7 @@ const Triangulation< 2 >& XModel::get_triangulation()
 
 std::pair< unsigned int, unsigned int > XModel::get_number_of_dofs()
 {
-    return std::make_pair(dof_handler->n_dofs(), n_enriched_dofs);
+    return std::make_pair(dof_handler->n_dofs(), n_enriched_dofs_);
 }
 
 const Triangulation< 2 >& XModel::get_output_triangulation()
@@ -472,12 +478,12 @@ void XModel::find_enriched_cells(unsigned int m)
         }
   }
   
-    n_enriched_dofs = n_global_enriched_dofs - dof_handler->n_dofs();
+    n_enriched_dofs_ = n_global_enriched_dofs - dof_handler->n_dofs();
     std::cout << "Number of unenriched dofs: "
         << dof_handler->n_dofs()
         << std::endl;
-    std::cout << "Number of enriched dofs: " << n_enriched_dofs << std::endl;
-    std::cout << "Total number of dofs: " << n_enriched_dofs+dof_handler->n_dofs() << std::endl;
+    std::cout << "Number of enriched dofs: " << n_enriched_dofs_ << std::endl;
+    std::cout << "Total number of dofs: " << n_enriched_dofs_+dof_handler->n_dofs() << std::endl;
     //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
     DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata_[m].size(), triangulation->n_active_cells());
@@ -1086,8 +1092,8 @@ void XModel::assemble_system ()
     }
     
     assemble_communication();
-    //DBGMSG("System matrix:\n");
-    //system_matrix_.print_latex(cout);
+//     DBGMSG("System matrix:\n");
+//     system_matrix_.print_latex(cout);
     //DBGMSG("System RHS:\n");
     //block_system_rhs.print(cout);
     
@@ -1109,7 +1115,7 @@ void XModel::setup_subsystem(unsigned int m)
     triangulation->clear_user_data();
  
     //find cells which lies within the enrichment radius of the wells
-    n_enriched_dofs = 0;
+    n_enriched_dofs_ = 0;
     find_enriched_cells(m-1);
     triangulation->save_user_pointers(tria_pointers_[m-1]);
   
@@ -1120,7 +1126,7 @@ void XModel::setup_subsystem(unsigned int m)
         for(unsigned int w=0; w < xdata_[m-1][x]->n_wells(); w++)
         {
             //DBGMSG("setup-well_dof_indices: wi=%d \n", xdata[x]->get_well_index(w));
-            well_dof_indices[w] = dof_handler->n_dofs() + n_enriched_dofs + xdata_[m-1][x]->get_well_index(w);
+            well_dof_indices[w] = dof_handler->n_dofs() + n_enriched_dofs_ + xdata_[m-1][x]->get_well_index(w);
         }
         xdata_[m-1][x]->set_well_dof_indices(well_dof_indices);
     }
@@ -1133,10 +1139,12 @@ void XModel::setup_subsystem(unsigned int m)
     //block_matrix[m] = 0.0;
     
     unsigned int n_fem = dof_handler->n_dofs(),
-                 n_xfem = n_enriched_dofs,
+                 n_xfem = n_enriched_dofs_,
                  n_wells = wells.size(),
                  n_well_block = n_fem + n_xfem;
     unsigned int dimension = n_fem + n_xfem + n_wells;
+    n_standard_dofs_ = n_fem;
+    n_dofs_ = dimension;
 
     CompressedSparsityPattern block_c_sparsity(dimension, dimension);
     
@@ -1198,6 +1206,56 @@ void XModel::setup_subsystem(unsigned int m)
         } // if user_pointer
     } // for cells
   
+  
+    XDataCell::initialize_node_values(node_enrich_values[m-1], xdata_[m-1], wells.size());
+    DBGMSG("XData inicialization done - node values computed.\n");
+    
+    switch(enrichment_method_)
+    {
+        case Enrichment_method::xfem: 
+            prepare_shape_well_averiges<Enrichment_method::xfem>(shape_well_averiges, 
+                                                                 xdata_[m-1]);
+            break;
+        case Enrichment_method::xfem_ramp: 
+            prepare_shape_well_averiges<Enrichment_method::xfem_ramp>(shape_well_averiges, 
+                                                                      xdata_[m-1]);
+        break;
+        case Enrichment_method::xfem_shift:
+            prepare_shape_well_averiges<Enrichment_method::xfem_shift>(shape_well_averiges, 
+                                                                       xdata_[m-1]);
+        break;
+        case Enrichment_method::sgfem:
+            prepare_shape_well_averiges<Enrichment_method::sgfem>(shape_well_averiges, 
+                                                                  xdata_[m-1]);
+        break;
+    }
+    
+    DBGMSG("Precomputed shape functions integral on the well edge:\n");
+    for(unsigned int w =0; w < wells.size(); w++) 
+    {
+        DBGMSG("Well %d:\n",w);
+        for(std::map<unsigned int,double>::iterator val = shape_well_averiges[w].begin(); val != shape_well_averiges[w].end(); ++val)
+        {
+            std::cout << "func number: " << val->first << " \t val: " << val->second << std::endl;
+        }
+    }
+    
+    //well averaging
+    for (unsigned int w=0; w < wells.size(); ++w)
+    {
+        Well * well = wells[w];
+        
+        std::map<unsigned int,double>::iterator val_i = shape_well_averiges[w].begin();
+        for(; val_i != shape_well_averiges[w].end(); ++val_i)
+        {
+            std::map<unsigned int,double>::iterator val_j = shape_well_averiges[w].begin();
+            for(; val_j != shape_well_averiges[w].end(); ++val_j)
+            {
+                block_c_sparsity.add(val_i->first, val_j->first);
+            }
+        }
+    }
+    
     //diagonal pattern in the block (2,2)
     for(unsigned int w = 0; w < wells.size(); w++)
         block_c_sparsity.add(n_well_block + w,n_well_block + w);
@@ -1227,12 +1285,8 @@ void XModel::setup_subsystem(unsigned int m)
 }
 
 
-
 void XModel::assemble_subsystem (unsigned int m)
 {
-    XDataCell::initialize_node_values(node_enrich_values[m-1], xdata_[m-1], wells.size());
-    DBGMSG("XData inicialization done - node values computed.\n");
-  
     const unsigned int dofs_per_cell = fe.dofs_per_cell;
     const unsigned int n_q_points    = quadrature_formula.size();
 
@@ -1388,6 +1442,8 @@ void XModel::assemble_subsystem (unsigned int m)
         } //else
     } //end for(cells)
   
+    assemble_well_permeability_term(m);
+    
     unsigned int w_idx = block_matrix[m].n() - wells.size();
     for (unsigned int w = 0; w < wells.size(); w++)
     {
@@ -1418,6 +1474,35 @@ void XModel::assemble_subsystem (unsigned int m)
     }
 }
 
+void XModel::assemble_well_permeability_term(unsigned int m)
+{
+    FullMatrix<double> well_cell_matrix;
+    unsigned int n_w_dofs=0;
+    double jxw = 0;
+    
+    for (unsigned int w=0; w < wells.size(); ++w)
+    {
+        Well * well = wells[w];
+        
+        std::map<unsigned int,double>::iterator val_i = shape_well_averiges[w].begin();
+        for(; val_i != shape_well_averiges[w].end(); ++val_i)
+        {
+            std::map<unsigned int,double>::iterator val_j = shape_well_averiges[w].begin();
+            for(; val_j != shape_well_averiges[w].end(); ++val_j)
+            {
+                //if(block_sp_pattern.exists(val_i->first,val_j->first))
+                {
+                double value = well->perm2aquifer(m-1) / well->circumference()
+                               * val_i->second 
+                               * val_j->second;
+                block_matrix[m].add(val_i->first,
+                                    val_j->first,
+                                    value);
+                }
+            }
+        }          
+    }
+}
 
 
 // void XModel::assemble_reduce_known(unsigned int m)
@@ -1857,7 +1942,7 @@ void XModel::get_dof_func(const std::vector< Point< 2 > >& points,
   MASSERT(points.size() == dof_func.size(), "Vector of solution and support points must be of the same size.");
   if(xfem)
   {
-    MASSERT(dof_handler->n_dofs() <= dof_index && dof_index < n_enriched_dofs+dof_handler->n_dofs(), 
+    MASSERT(dof_handler->n_dofs() <= dof_index && dof_index < n_enriched_dofs_+dof_handler->n_dofs(), 
             "xfem is true. Given dof index is not index of enriched dof.");
   }
   else
@@ -2205,7 +2290,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
   std::cout << "...number of nodes in the mesh:   " << dist_dof_handler.n_dofs() << std::endl;
   std::cout << "...number of nodes in the xfem mesh:   " << dof_handler->n_dofs() << std::endl;
   std::cout << "...number of dofs in the xfem mesh:   " << dof_handler->n_dofs() << " unenriched and " 
-            << n_enriched_dofs << " enriched" << std::endl;
+            << n_enriched_dofs_ << " enriched" << std::endl;
 
   //====================vtk output
   //DataOut<2> data_out;
@@ -2249,7 +2334,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     data_out.attach_dof_handler (dist_dof_handler);
     std::vector<Vector<double> > dist_dof_func;
     //writing only half of the enriched functions
-    for(unsigned int i = n_dofs; i < n_enriched_dofs/2+n_dofs; i++)
+    for(unsigned int i = n_dofs; i < n_enriched_dofs_/2+n_dofs; i++)
     {
       dist_dof_func.push_back(Vector<double>(dist_dof_handler.n_dofs()));
       get_dof_func(support_points,i, dist_dof_func.back() );
@@ -2533,7 +2618,7 @@ void XModel::test_method(ExactBase* exact_solution)
     const unsigned int blocks_dimension = 3;
     unsigned int n[blocks_dimension] = 
                       { dof_handler->n_dofs(), //n1-block(0) unenriched dofs
-                        n_enriched_dofs,      //n2-block(1) enriched dofs
+                        n_enriched_dofs_,      //n2-block(1) enriched dofs
                         wells.size()          //n3-block(2) average pressures on wells
                       };
     BlockVector<double> residuum;
