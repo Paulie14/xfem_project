@@ -251,6 +251,8 @@ double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigne
 ExactSolution1::ExactSolution1(Well* well, double radius, double k, double amplitude)
     : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
 {
+    if(well->is_active())
+    {
     a_ = (well_->radius()*well_->perm2aquifer(m_)*
             (
             well_->pressure() - amplitude_*sin(k_*well_->center()[0])
@@ -259,6 +261,12 @@ ExactSolution1::ExactSolution1(Well* well, double radius, double k, double ampli
          ) / 
          (well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_) - 1);
     b_ = - a_ * std::log(radius_);
+    }
+    else
+    {
+        a_ = 0;
+        b_ = 0;
+    }
 }
 
 double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
