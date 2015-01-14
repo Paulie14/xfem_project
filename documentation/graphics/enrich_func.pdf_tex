@@ -53,11 +53,11 @@
     \scriptsize{
     \put(0.01066643,0.0){\makebox(0,0)[b]{\smash{-1}}}%
     \put(0.25652086,0.0){\makebox(0,0)[b]{\smash{-0.5}}}%
-    \put(0.50237528,0.0){\makebox(0,0)[b]{\smash{$\xi_w\equiv 0$}}}%
+    \put(0.50237528,0.0){\makebox(0,0)[b]{\smash{$x_w\equiv 0$}}}%
     \put(0.74805233,0.0){\makebox(0,0)[b]{\smash{0.5}}}%
     \put(0.99390675,0.0){\makebox(0,0)[b]{\smash{1}}}%
     }
-    \put(0.64,0.17437398){\makebox(0,0)[b]{\smash{$2R_w$}}}%
+    \put(0.64,0.17437398){\makebox(0,0)[b]{\smash{$2\rho_w$}}}%
     \put(0.3,0.43406138){\makebox(0,0)[b]{\smash{$-s_w(\mathbf{x})$}}}%
   \end{picture}%
 \endgroup%
