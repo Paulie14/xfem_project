@@ -251,15 +251,29 @@ double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigne
 ExactSolution1::ExactSolution1(Well* well, double radius, double k, double amplitude)
     : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
 {
+    double delta = std::log(well_->radius()/radius_);
+    double gamma = 1.0 / (1.0 - well_->radius()*well->perm2aquifer(m_)*delta);
+    double temp = well_->perm2aquitard(m_)/well_->perm2aquifer(m_);
+    double well_pressure = temp*well_->pressure() / (gamma + temp);
+    
+//     if(well->is_active())
+//     {
+//     a_ = (well_->radius()*well_->perm2aquifer(m_)*
+//             (
+//             well_pressure - amplitude_*sin(k_*well_->center()[0])
+//             - amplitude_*k_*k_*sin(k_*well_->center()[0]) / 2.0 / well_->perm2aquifer(m_)
+//             )
+//          ) / 
+//          (well_->radius()*well_->perm2aquifer(m_)*delta - 1);
+//     b_ = - a_ * std::log(radius_);
+//     }
+    double twopirosigma = 2*M_PI*well_->radius()*well_->perm2aquifer(m_);
     if(well->is_active())
     {
-    a_ = (well_->radius()*well_->perm2aquifer(m_)*
-            (
-            well_->pressure() - amplitude_*sin(k_*well_->center()[0])
-            - amplitude_*k_*k_*sin(k_*well_->center()[0]) / 2.0 / well_->perm2aquifer(m_)
-            )
-         ) / 
-         (well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_) - 1);
+    a_ = (twopirosigma * (well_pressure - amplitude_*std::sin(k_*well_->center()[0]))
+           - 0.5*amplitude_*k_*k_*std::sin(k_*well_->center()[0]) )
+          /
+          (-1.0/well_->radius() + twopirosigma*delta);
     b_ = - a_ * std::log(radius_);
     }
     else
@@ -298,3 +312,46 @@ double Solution::Source2::value(const Point< 2 >& p, const unsigned int /*compon
 }
 
 
+
+
+
+
+
+ExactSolution3::ExactSolution3(Well* well, double radius, double k, double amplitude)
+    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+{
+    if(well->is_active())
+    {
+        a_ = (well_->radius()*well_->perm2aquifer(m_)*(p_dirichlet_-well_->pressure())) 
+            / (1.0 - well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_));
+        b_ = p_dirichlet_ - a_ * std::log(radius_);
+    }
+    else
+    {
+        a_ = 0;
+        b_ = 0;
+    }
+}
+
+double Solution::ExactSolution3::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  double distance = well_->center().distance(p);
+  double distance_from_well = distance - well_->radius();
+  if(distance > well_->radius())
+    return a_ * std::log(distance) + b_ + distance_from_well*distance_from_well * amplitude_*std::sin(k_*p[0]);
+  else
+    return a_ * std::log(well_->radius()) + b_;
+}
+
+double Solution::Source3::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+    double distance = well_->center().distance(p);
+    double distance_from_well = distance - well_->radius();
+    double sin = std::sin(k_ * p[0]);
+    double r_x_normed = (p[0] - well_->center()[0]) / distance;
+    double b_nabla_a = (2/distance * distance_from_well + 2.0) * sin,
+           grad_a_grad_b = 2 * distance_from_well * k_ * std::cos(k_*p[0]) * r_x_normed,
+           a_nabla_b = - distance_from_well * distance_from_well * k_ * k_ * sin;
+    
+    return - amplitude_ * (b_nabla_a + 2*grad_a_grad_b + a_nabla_b);
+}

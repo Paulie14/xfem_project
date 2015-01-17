@@ -105,7 +105,31 @@ namespace Solution
       Source2(ExactSolution2 &ex_sol) : ExactSolution2(ex_sol.well_, ex_sol.radius_, ex_sol.k_) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
-    };    
+    };
+
+
+    class ExactSolution3 : public ExactBase
+    {
+    public:
+      ExactSolution3(Well *well, double radius, double k, double amplitude);
+        
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    protected:
+        double k_, amplitude_;
+        
+    friend class Source3;
+    };
+    
+    class Source3 : public ExactSolution3
+    {
+    public:
+      //Source1(Well *well, double radius, double k) : ExactSolution1(well, radius, k) {}
+      Source3(ExactSolution3 &ex_sol) 
+        : ExactSolution3(ex_sol.well_, ex_sol.radius_, ex_sol.k_, ex_sol.amplitude_) {}
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
 }  
 using namespace Solution;
     
