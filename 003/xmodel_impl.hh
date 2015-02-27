@@ -313,7 +313,7 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& ou
 
 
 template<Enrichment_method::Type EnrType>
-std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, ExactBase * exact_solution)
 {
     unsigned int m = n_aquifers_;
 //     unsigned int m = 0;
@@ -350,7 +350,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
                 for(unsigned int i=0; i < dofs_per_cell; i++)
                     value += block_solution.block(m)(local_dof_indices[i]) * temp_fe_values.shape_value(i,q);
                 
-                exact_value = exact_solution.value(temp_fe_values.quadrature_point(q));
+                exact_value = exact_solution->value(temp_fe_values.quadrature_point(q));
                 value = value - exact_value;                        // u_h - u
                 cell_norm += value * value * temp_fe_values.JxW(q);  // (u_h-u)^2 * JxW
             }
@@ -380,7 +380,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
             }
             
             //adaptive_integration.gnuplot_refinement(output_dir_, true, true);
-            cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),exact_solution);
+            cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),*exact_solution);
         }
         
         cell_norm = std::sqrt(cell_norm);   // square root
@@ -390,7 +390,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
         //node values should be exactly equal FEM dofs
         for(unsigned int i=0; i < dofs_per_cell; i++)
         {
-            nodal_norm = block_solution.block(m)(local_dof_indices[i]) - exact_solution.value(cell->vertex(i));
+            nodal_norm = block_solution.block(m)(local_dof_indices[i]) - exact_solution->value(cell->vertex(i));
             diff_nodal_vector[local_dof_indices[i]] = std::abs(nodal_norm);
         }
     }

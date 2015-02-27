@@ -60,6 +60,7 @@
 #include "adaptive_integration.hh"
 #include "system.hh"
 #include "xfevalues.hh"
+#include "comparing.hh"
 
 XModel::XModel () 
   : ModelBase(),
@@ -2429,7 +2430,7 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
 }
 
 
-std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, ExactBase * exact_solution, bool h1)
 {
     unsigned int m = n_aquifers_-1;
     MASSERT(triangulation != nullptr, "No triangulation in model.");

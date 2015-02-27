@@ -23,12 +23,12 @@
 
 #include "model_base.hh"
 #include "xfevalues.hh"
-#include "comparing.hh"
 
 using namespace dealii;
 
 class Well;
 class XDataCell;
+
 
 /** \mainpage
  * 
@@ -213,7 +213,7 @@ class XModel : public ModelBase
     //@}
 
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
-                                                   const Function<2> &exact_solution) override;
+                                                   ExactBase * exact_solution, bool h1=false) override;
 
     /// @name Testing methods
     //@{
@@ -325,7 +325,7 @@ class XModel : public ModelBase
     
     template<Enrichment_method::Type EnrType>
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
-                                                   const Function<2> &exact_solution);
+                                                   ExactBase * exact_solution);
     
     ///Type of enrichment method
     Enrichment_method::Type enrichment_method_;

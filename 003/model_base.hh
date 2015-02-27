@@ -4,12 +4,13 @@
 #include <deal.II/grid/tria.h>
 #include <deal.II/base/function.h>
 #include <deal.II/lac/block_sparse_matrix.h>
-
+#include "comparing.hh"
 
 using namespace dealii;
 
 //Forward declaration
 class Well;
+// class ExactBase;
 
 /** @brief Base class for the model of multi-aquifer system with wells.
  * 
@@ -110,7 +111,7 @@ public:
                                              const unsigned int &m_aquifer=0) = 0;
                                              
   virtual std::pair<double,double> integrate_difference(Vector<double>& diff_vector, 
-                                                        const Function<2> &exact_solution);
+                                                        ExactBase *exact_solution, bool h1=false);
   
                                              
   /** @name Getters

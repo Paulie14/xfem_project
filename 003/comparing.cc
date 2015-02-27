@@ -233,10 +233,32 @@ Solution::ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
 {
 //   a_ = (well_->pressure() - p_dirichlet) / (std::log(well_->radius() / radius));
 //   b_ = p_dirichlet - a_ * std::log(radius);
-    a_ = (well_->radius()*well_->perm2aquifer(m_)*(p_dirichlet_-well_->pressure())) 
-          / (1.0 - well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_));
-    b_ = p_dirichlet - a_ * std::log(radius);
+    if(well->is_active())
+    {
+        a_ = (well_->radius()*well_->perm2aquifer(m_)*(p_dirichlet_-well_->pressure())) 
+            / (1.0 - well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_));
+        b_ = p_dirichlet - a_ * std::log(radius);
+    }
+    else
+    {
+        a_ = 0;
+        b_ = 0;
+    }
 }
+
+
+double ExactSolutionZero::value(const Point< 2 >& p, const unsigned int component) const
+{
+    return 0;
+}
+
+Tensor< 1, 2 > ExactSolutionZero::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    Tensor<1,2> grad;
+    return grad;
+}
+
+
 
 
 double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigned int /*component*/) const
@@ -247,6 +269,20 @@ double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigne
   else
     return a_ * std::log(well_->radius()) + b_;//well_->pressure();
 }
+
+Tensor< 1, 2 > Solution::ExactSolution::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    double distance = well_->center().distance(p);
+    Tensor<1,2> grad;
+    if(distance > well_->radius())
+    {
+        grad = p;
+        return a_ * 2.0/(distance*distance)*grad;
+    }
+    else
+        return grad;
+}
+
 
 ExactSolution1::ExactSolution1(Well* well, double radius, double k, double amplitude)
     : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
@@ -292,6 +328,14 @@ double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /
     return a_ * std::log(well_->radius()) + b_ + amplitude_ * std::sin(k_*p[0]);
 }
 
+Tensor< 1, 2 > ExactSolution1::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    MASSERT(0,"Not implemented!!!");
+    Tensor<1,2> grad;
+    return grad;
+}
+
+
 double Solution::Source1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   return amplitude_*k_*k_*std::sin(k_*p[0]);
@@ -305,6 +349,14 @@ double Solution::ExactSolution2::value(const Point< 2 >& p, const unsigned int /
   else
     return a_ * std::log(well_->radius()) + b_ + std::sin(k_*p[1]);
 }
+
+Tensor< 1, 2 > ExactSolution2::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    MASSERT(0,"Not implemented!!!");
+    Tensor<1,2> grad;
+    return grad;
+}
+
 
 double Solution::Source2::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
@@ -332,6 +384,23 @@ ExactSolution3::ExactSolution3(Well* well, double radius, double k, double ampli
         b_ = 0;
     }
 }
+
+Tensor< 1, 2 > ExactSolution3::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    double distance = well_->center().distance(p);
+    Tensor<1,2> grad;
+    if(distance > well_->radius())
+    {
+        grad[0]= (p[0] - well_->center()[0]);
+        grad[1]= (p[1] - well_->center()[1]);
+        grad = grad * 2*(distance - well_->radius())/distance * std::sin(k_*p[0]);
+        grad[0] += (distance-well_->radius())*(distance-well_->radius())*k_*std::cos(k_*p[0]);
+        return amplitude_ * grad;
+    }
+    else
+        return grad;
+}
+
 
 double Solution::ExactSolution3::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {

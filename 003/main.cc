@@ -313,458 +313,6 @@ void test_circle_grid_creation(const std::string &input_dir)
   //*/
 }
 
-/*
-void test_convergence_square(std::string output_dir)
-{
-  std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE ::::::::::::::::\n\n" << std::endl;
-  
-  //------------------------------SETTING----------------------------------
-  std::string test_name = "square_convergence_";
-  bool fem_create = false,
-       fem = false,
-       xfem = true,
-       ex = false;
-  
-  double p_a = 10.0,    //area of the model
-         p_b = 10.0,
-         excenter = 0.0, //0.05,
-         radius = p_a*std::sqrt(2),
-         well_radius = 0.02,
-         perm2fer = Parameters::perm2fer, 
-         perm2tard = Parameters::perm2tard,
-         transmisivity = Parameters::transmisivity,
-         enrichment_radius = 4.0;
-         
-  unsigned int n_well_q_points = 500;
-         
-  Point<2> well_center(0,0);
-  
-  //std::string input_dir = "../input/square_convergence/";
-  std::string input_dir = "../input/square_convergence/";
-  std::string coarse_file = input_dir + "coarse_grid.msh";
-  //std::string coarse_file_0 = input_dir + "coarse_grid.msh";
-  //std::string ref_flags_coarse = input_dir + "ref_flags_1.ptf";
-  std::string ref_flags_fine = input_dir + "ref_flags_7.ptf";
-  
-  PersistentTriangulation<2>* fine_triangulation = NULL;
-  //--------------------------END SETTING----------------------------------
-  
-  Point<2> down_left(-p_a+excenter,-p_a+excenter);
-  Point<2> up_right(p_a+excenter, p_a+excenter);
-  std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
-  
-  
-  Well *well = new Well( well_radius,
-                         well_center,
-                         perm2fer, 
-                         perm2tard);
-  well->set_pressure(Parameters::pressure_at_top);
-  well->evaluate_q_points(n_well_q_points);
-  
-  //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-  Function<2> *dirichlet_square = new Dirichlet_exact_square(well,radius);
-  
-  //FEM model creation
-  Model_simple model_simple(well);  
-  model_simple.set_name(test_name + "fem_model");
-  model_simple.set_output_dir(output_dir);
-  model_simple.set_area(down_left,up_right);
-  model_simple.set_transmisivity(transmisivity,0);
-  model_simple.set_initial_refinement(1);  
-  model_simple.set_ref_coarse_percentage(0.95,0.05);
-  //model_simple.set_ref_coarse_percentage(0.3,0.05);
-  //model_simple.set_grid_create_type(ModelBase::rect);
-  
-  model_simple.set_grid_create_type(ModelBase::load);
-  model_simple.set_computational_mesh(coarse_file);
-  model_simple.set_dirichlet_function(dirichlet_square);
-  model_simple.set_adaptivity(true);
-  model_simple.set_matrix_output(false);
-  
-  XModel_simple xmodel_simple(well);  
-  xmodel_simple.set_name(test_name + "sgfem_model");
-  xmodel_simple.set_enrichment_method(Enrichment_method::sgfem);
-  //xmodel_simple.set_name(test_name + "xfem_shift_model");
-  //xmodel_simple.set_enrichment_method(Enrichment_method::xfem_shift);
-  
-  xmodel_simple.set_output_dir(output_dir);
-  xmodel_simple.set_area(down_left,up_right);
-  xmodel_simple.set_transmisivity(transmisivity,0);
-  xmodel_simple.set_initial_refinement(1);                                     
-  xmodel_simple.set_enrichment_radius(enrichment_radius);
-  xmodel_simple.set_grid_create_type(ModelBase::rect);
-  //xmodel_simple.set_computational_mesh(coarse_file, ref_flags_coarse);
-  xmodel_simple.set_dirichlet_function(dirichlet_square);
-  xmodel_simple.set_adaptivity(true);
-  //xmodel_simple.set_enrichment_method(Enrichment_method::xfem_shift);
-  //xmodel_simple.set_well_computation_type(Well_computation::sources);
-  //xmodel_simple.set_output_features(true, true);
-  xmodel_simple.set_matrix_output(true);
-   
-//   // creation of the very fine mesh
-//   // uncomment if you want to create the fine mesh, e.g. for exact solution and comparision
-//   if(fem_create)
-//     
-//   {
-//     model_simple.set_grid_create_type(ModelBase::rect);
-//     model_simple.set_initial_refinement(7);
-//     model_simple.set_ref_coarse_percentage(0.2,0.0);
-//     for (unsigned int cycle=0; cycle < 15; ++cycle)
-//     { 
-//       std::cout << "===== Model running   " << cycle << "   =====" << std::endl;
-//       model_simple.run (cycle);
-//       model_simple.output_results (cycle);
-//       std::cout << "===== Model finished =====" << std::endl;
-//     }
-//     return;
-//   }
-
-  
-  
-//   { //MESH CREATION
-//   // open fine mesh -------------------------------------------------
-//   std::cout << "creating/restoring fine mesh..." << std::endl;
-//   Triangulation<2> coarse_tria;
-//   std::ifstream in;
-//   GridIn<2> gridin;
-//   in.open(coarse_file);
-//   //attaching object of triangulation
-//   gridin.attach_triangulation(coarse_tria);
-//   if(in.is_open())
-//   {
-//     //reading data from filestream
-//     gridin.read_msh(in);
-//   }          
-//   else
-//   {
-//     xprintf(Err, "Could not open coarse grid file: %s", coarse_file.c_str());
-//   }
-//   in.close();
-//   in.clear();
-//   
-//   
-//   fine_triangulation = new PersistentTriangulation<2>(coarse_tria);
-//   fine_triangulation->restore();
-//   for(unsigned int i = 0; i <6; i++)
-//   {
-//     fine_triangulation->set_all_refine_flags();
-//     fine_triangulation->execute_coarsening_and_refinement();
-//   }
-//    
-//    //output of refinement flags of persistent triangulation
-//    std::stringstream ref_flags_start_file;
-//    ref_flags_start_file << output_dir << "ref_flags_start" << ".ptf";
-//    std::ofstream output (ref_flags_start_file.str());
-//    //output.open(ref_flags_start_file.str());
-//    fine_triangulation->write_flags(output);
-//    
-//   // creation of the very fine mesh
-//   // uncomment if you want to create the fine mesh, e.g. for exact solution and comparision
-//   
-//     model_simple.set_name(test_name + "fem_model_mesh_creation");
-//     model_simple.set_grid_create_type(ModelBase::load);
-//     model_simple.set_computational_mesh(coarse_file, ref_flags_start_file.str());
-//     model_simple.set_ref_coarse_percentage(0.2,0.0);
-//     for (unsigned int cycle=0; cycle < 15; ++cycle)
-//     { 
-//       std::cout << "===== Model running   " << cycle << "   =====" << std::endl;
-//       model_simple.run (cycle);
-//       model_simple.output_results (cycle);
-//       std::cout << "===== Model finished =====" << std::endl;
-//     }
-//     return;
-//   
-//   }
-  
-  
-  // open fine mesh -------------------------------------------------
-  std::cout << "creating/restoring fine mesh..." << std::endl;
-  Triangulation<2> coarse_tria;
-  std::ifstream in;
-  GridIn<2> gridin;
-  in.open(coarse_file);
-  //attaching object of triangulation
-  gridin.attach_triangulation(coarse_tria);
-  if(in.is_open())
-  {
-    //reading data from filestream
-    gridin.read_msh(in);
-  }          
-  else
-  {
-    xprintf(Err, "Could not open coarse grid file: %s", coarse_file.c_str());
-  }
-        
-  fine_triangulation = new PersistentTriangulation<2>(coarse_tria);
-  in.close();
-  in.clear();
-  in.open(ref_flags_fine);
-  if(in.is_open())
-    fine_triangulation->read_flags(in);
-  else
-  {
-    xprintf(Warn, "Could not open refinement flags file: %s\n Ingore this if loading mesh without refinement flag file.\n", ref_flags_fine.c_str());
-  }
-  //creates actual grid to be available
-  fine_triangulation->restore();
-  //end reading fine mesh -------------------------------------------
-  
-  // Exact model
-  if(ex)
-  {
-    std::cout << "computing exact solution on fine mesh..." << std::endl;
-    ExactModel exact(well, radius);
-    exact.output_distributed_solution(*fine_triangulation);
-    ExactBase* exact_solution = new ExactSolution(well, radius);
-    double exact_norm = Comparing::L2_norm_exact(*fine_triangulation,exact_solution);
-    std::cout << "L2_norm of the exact solution: " << exact_norm << std::endl;
-    //return;
-  }
-  
-  
-  unsigned int n_cycles = 15;
-  double l2_norm_dif_xfem, l2_norm_dif_fem;
-  
-  TableHandler table_convergence;
-  
-  ExactBase* exact_solution = new ExactSolution(well, radius);
-  std::cout << "L2_norm of the exact solution: " << 
-      Comparing::L2_norm_exact(*fine_triangulation,exact_solution) << std::endl;
-  
-  for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
-    { 
-      table_convergence.add_value("Cycle",cycle);
-      if(fem)
-      {
-      std::cout << "===== FEM Model_simple running   " << cycle << "   =====" << std::endl;
-      model_simple.run (cycle);
-      model_simple.output_distributed_solution(*fine_triangulation, cycle);
-      //model_simple.output_results (cycle);
-      l2_norm_dif_fem = Comparing::L2_norm_diff( model_simple.get_distributed_solution(),
-                                                 *fine_triangulation,
-                                                 exact_solution);
-      
-      table_convergence.add_value("$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$",l2_norm_dif_fem);
-      table_convergence.set_precision("$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$", 2);
-      table_convergence.set_scientific("$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$",true);
-      
-      table_convergence.add_value("FEM-dofs",model_simple.get_number_of_dofs());
-      table_convergence.add_value("It_{FEM}",model_simple.solver_iterations());
-      
-      table_convergence.add_value("FEM-time",model_simple.get_last_run_time());
-      table_convergence.set_precision("FEM-time", 3);
-      std::cout << "===== FEM Model_simple finished =====" << std::endl;
-      }
-      
-      
-      if(xfem)
-      {
-      //if(cycle < 5)
-      {
-      std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
-      
-      xmodel_simple.run (cycle);  
-      xmodel_simple.output_distributed_solution(*fine_triangulation,cycle);
-      std::cout << "===== XModel_simple finished =====" << std::endl;
-      
-      l2_norm_dif_xfem = Comparing::L2_norm_diff( xmodel_simple.get_distributed_solution(),
-                                                  *fine_triangulation,
-                                                  exact_solution);
-      }
-      
-      table_convergence.add_value("$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$",l2_norm_dif_xfem);
-      table_convergence.set_precision("$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$", 2);
-      table_convergence.set_scientific("$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$",true);
-      
-      table_convergence.add_value("XFEM-dofs",xmodel_simple.get_number_of_dofs().first+xmodel_simple.get_number_of_dofs().second);
-      table_convergence.add_value("XFEM-enriched dofs",xmodel_simple.get_number_of_dofs().second);
-      table_convergence.add_value("It_{XFEM}",xmodel_simple.solver_iterations());
-      
-      table_convergence.add_value("XFEM-time",xmodel_simple.get_last_run_time());
-      table_convergence.set_precision("XFEM-time", 3);
-      }
-      
-      //write the table every cycle (to have at least some results if program fails)
-      table_convergence.write_text(std::cout);
-      std::ofstream out_file;
-      out_file.open(output_dir + "table_convergence_circle.tex");
-      table_convergence.write_tex(out_file);
-      out_file.close();
-    } 
-    
-  delete well;
-  
-  if(fine_triangulation != NULL)
-    delete fine_triangulation;
-  
-  std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE - DONE ::::::::::::::::\n\n" << std::endl;
-}
-//*/
-
-void find_problem(std::string output_dir)
-{
-    std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE ::::::::::::::::\n\n" << std::endl;
-    
-    //------------------------------SETTING----------------------------------
-    std::string test_name = "find_problem_";
-    bool xfem = true,
-         ex = false;
-    
-    double p_a = 10.0,    //area of the model
-           p_b = 10.0,
-           excenter = 0.0,
-           radius = p_a*std::sqrt(2),
-           well_radius = 0.4,
-           perm2fer = Parameters::perm2fer, 
-           perm2tard = Parameters::perm2tard,
-           transmisivity = Parameters::transmisivity,
-           enrichment_radius = 3.0,
-           well_pressure = 5*Parameters::pressure_at_top;
-    
-    unsigned int n_well_q_points = 200,
-                 initial_refinement = 3;
-            
-    Point<2> well_center(0+excenter,0+excenter);
-    //--------------------------END SETTING----------------------------------
-    
-    Point<2> down_left(-p_a,-p_a);
-    Point<2> up_right(p_a, p_a);
-    std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
-    
-    Well *well = new Well( well_radius,
-                           well_center);
-    well->set_perm2aquifer(0,perm2fer);
-    well->set_perm2aquitard({perm2tard, 0.0});
-    well->set_pressure(well_pressure);
-    well->evaluate_q_points(n_well_q_points);
-    
-    //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-    Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
-    //Function<2> *dirichlet_square = new Solution::ExactSolution(well,radius);
-    
-    XModel_simple xmodel(well, ""); 
-//         xmodel.set_name(test_name + "xfem");
-//         xmodel.set_enrichment_method(Enrichment_method::xfem);
-//         xmodel.set_name(test_name + "xfem_ramp");
-//         xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
-//         xmodel.set_name(test_name + "xfem_shift");
-//         xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
-        xmodel.set_name(test_name + "sgfem"); 
-        xmodel.set_enrichment_method(Enrichment_method::sgfem);
-    
-    xmodel.set_output_dir(output_dir);
-    xmodel.set_area(down_left,up_right);
-    xmodel.set_transmisivity(transmisivity,0);
-    xmodel.set_initial_refinement(initial_refinement);                                     
-    xmodel.set_enrichment_radius(enrichment_radius);
-    xmodel.set_grid_create_type(ModelBase::rect);
-    xmodel.set_dirichlet_function(exact_solution);
-    xmodel.set_adaptivity(true);
-    //xmodel.set_adaptive_refinement_by_error(1e-2);
-    //xmodel.set_well_computation_type(Well_computation::sources);
-    xmodel.set_output_options(ModelBase::output_gmsh_mesh
-    //                           | ModelBase::output_solution
-    //                           | ModelBase::output_decomposed
-                              | ModelBase::output_adaptive_plot
-                            | ModelBase::output_error);
-
-    //   // Exact model
-    //   if(ex)
-    //   {
-    //     std::cout << "computing exact solution on fine mesh..." << std::endl;
-        
-    //     exact.output_distributed_solution(*fine_triangulation);
-    //     ExactBase* exact_solution = new ExactSolution(well, radius);
-    //     double exact_norm = Comparing::L2_norm_exact(*fine_triangulation,exact_solution);
-    //     std::cout << "L2_norm of the exact solution: " << exact_norm << std::endl;
-    //     //return;
-    //   }
-    
-    
-    unsigned int n_cycles = 13;
-    std::cout << "Cycles: " << n_cycles << std::endl;
-    std::pair<double,double> l2_norm_dif_fem, l2_norm_dif_xfem;
-    
-    ConvergenceTable table_convergence;
-  
-    for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
-    { 
-        table_convergence.add_value("Cycle",cycle);
-        table_convergence.set_tex_format("Cycle", "r");
-        double h = 2*p_a / pow(2.0,initial_refinement+cycle);
-        table_convergence.add_value("h",h);
-        table_convergence.set_tex_format("h", "r");
-      
-      
-        if(xfem)
-        {
-            std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
-      
-            xmodel.run (cycle);  
-      
-            //xmodel.output_distributed_solution(*fine_triangulation,cycle);
-            std::cout << "===== XModel_simple finished =====" << std::endl;
-      
-//       std::cout << "L2 norm of exact solution = " << Comparing::L2_norm_exact(xmodel.get_output_triangulation(), 
-//                                                                               exact_solution) << std::endl;
-      
-//       l2_norm_dif_xfem = Comparing::L2_norm_diff( xmodel.get_distributed_solution(),
-//                                                   xmodel.get_output_triangulation(),
-//                                                   exact_solution);
-  
-            Vector<double> diff_vector;
-            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
-            
-            table_convergence.add_value("X_L2",l2_norm_dif_xfem.second);
-            table_convergence.set_tex_caption("X_L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
-            table_convergence.set_precision("X_L2", 2);
-            table_convergence.set_scientific("X_L2",true);
-            
-            table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate);
-            table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate_log2);
-      
-            table_convergence.add_value("XFEM-dofs",
-                                        xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
-            table_convergence.add_value("XFEM-enriched dofs",xmodel.get_number_of_dofs().second);
-            table_convergence.add_value("It_{XFEM}",xmodel.solver_iterations());
-            
-            table_convergence.add_value("XFEM-time",xmodel.last_run_time());
-            table_convergence.set_precision("XFEM-time", 3);
-            
-            table_convergence.set_tex_format("XFEM-dofs", "r");
-            table_convergence.set_tex_format("XFEM-enriched dofs", "r");
-            table_convergence.set_tex_format("It_{XFEM}", "r");
-            table_convergence.set_tex_format("XFEM-time", "r");
-
-       }
-      
-        //write the table every cycle (to have at least some results if program fails)
-        table_convergence.write_text(std::cout);
-        std::ofstream out_file;
-        out_file.open(output_dir + xmodel.name() + ".tex");
-        table_convergence.write_tex(out_file);
-        out_file.close();
-        
-        out_file.open(output_dir + xmodel.name() + ".txt");
-        table_convergence.write_text(out_file, 
-                                     TableHandler::TextOutputFormat::table_with_separate_column_description);
-        out_file.close();
-      
-        if(xfem)
-        {
-            xmodel.compute_interpolated_exact(exact_solution);
-            xmodel.output_results(cycle);
-//             ExactModel* exact = new ExactModel(exact_solution);
-//             exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
-//             delete exact;
-        } 
-    }   // for cycle
-      
-  delete well;
-  delete exact_solution;
-  
-  std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE - DONE ::::::::::::::::\n\n" << std::endl;
-}
 
 void test_convergence_square(std::string output_dir)
 {
@@ -772,10 +320,10 @@ void test_convergence_square(std::string output_dir)
     
     //------------------------------SETTING----------------------------------
     std::string test_name = "square_convergence_";
-    bool fem_create = false,
+    bool //fem_create = false,
          fem = false,
-         xfem = true,
-         ex = false;
+         //ex = false,
+         xfem = true;
     
     double p_a = 100.0,    //area of the model
            p_b = 100.0,
@@ -814,7 +362,6 @@ void test_convergence_square(std::string output_dir)
     
     //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
     Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
-    //Function<2> *dirichlet_square = new Solution::ExactSolution(well,radius);
     
     //FEM model creation
     Model_simple model_simple(well);  
@@ -899,7 +446,7 @@ void test_convergence_square(std::string output_dir)
 //                                                  exact_solution);
       
             Vector<double> diff_vector;
-            l2_norm_dif_fem = model_simple.integrate_difference(diff_vector, *exact_solution);
+            l2_norm_dif_fem = model_simple.integrate_difference(diff_vector, exact_solution);
       
             table_convergence.add_value("L2",l2_norm_dif_fem.second);
             table_convergence.set_tex_caption("L2","$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$");
@@ -939,7 +486,7 @@ void test_convergence_square(std::string output_dir)
 //                                                   exact_solution);
   
             Vector<double> diff_vector;
-            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
+            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
             
             table_convergence.add_value("X_L2",l2_norm_dif_xfem.second);
             table_convergence.set_tex_caption("X_L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
@@ -1110,7 +657,7 @@ void test_radius_convergence_square(std::string output_dir)
                 std::cout << "===== XModel_simple finished =====" << std::endl;
     
                 Vector<double> diff_vector;
-                l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
+                l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
                 
                 table_convergence.add_value(name_error.str(),l2_norm_dif_xfem.second);
                 table_convergence.set_tex_caption(name_error.str(),"$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
@@ -1155,100 +702,97 @@ void test_radius_convergence_square(std::string output_dir)
 
 void test_radius_convergence_sin(std::string output_dir)
 {
-  std::cout << "\n\n:::::::::::::::: RADIUS CONVERGENCE TEST ON SQUARE WITH SIN(X)::::::::::::::::\n\n" << std::endl;
-  
-  //------------------------------SETTING----------------------------------
-  std::string test_name = "sin_radius_convergence_";
-  bool xfem = true,
-       ex = false;
-  
-  double p_a = 100.0,    //area of the model
-         p_b = 100.0,
-         excenter = 4.89,
-         radius = p_a*std::sqrt(2),
-         well_radius = 0.2,
-         perm2fer = Parameters::perm2fer, 
-         perm2tard = Parameters::perm2tard,
-         transmisivity = Parameters::transmisivity,
-         k_wave_num = 0.03,
-         amplitude = 8.0,
-         well_pressure_exact = 50*Parameters::pressure_at_top,
-         well_pressure = well_pressure_exact;// + amplitude*std::sin(k_wave_num*excenter);
+    std::cout << "\n\n:::::::::::::::: RADIUS CONVERGENCE TEST ON SQUARE WITH SIN(X)::::::::::::::::\n\n" << std::endl;
+    
+    //------------------------------SETTING----------------------------------
+    std::string test_name = "sin_radius_convergence_";
+    bool fem = 1;   //compute h1 norm of the error of the regular part ur
+    
+    double p_a = 2.0,    //area of the model
+            p_b = 2.0,
+            excenter = 0,
+            radius = p_a*std::sqrt(2),
+            well_radius = 0.003,
+            perm2fer = Parameters::perm2fer, 
+            perm2tard = Parameters::perm2tard,
+            transmisivity = Parameters::transmisivity,
+            k_wave_num = 6,
+            amplitude = 0.02,
+            well_pressure = 9;
 
+    unsigned int n_well_q_points = 200,
+                initial_refinement = 3;
+            
+    Point<2> well_center(0+excenter,0+excenter);
+    //--------------------------END SETTING----------------------------------
+    
+    Point<2> down_left(-p_a,-p_a);
+    Point<2> up_right(p_a, p_a);
+    std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+    
+    Well *well = new Well( well_radius,
+                            well_center);
+    well->set_perm2aquifer(0,perm2fer);
+    well->set_perm2aquitard({perm2tard, 0.0});
+    well->set_pressure(well_pressure);
+    well->evaluate_q_points(n_well_q_points);
+    
+    ExactSolution3 *exact_solution = new Solution::ExactSolution3(well, radius, k_wave_num, amplitude);
+    Function<2> *dirichlet_square = exact_solution;
+    Function<2> *rhs_function = new Solution::Source3(*exact_solution);
   
-  unsigned int n_well_q_points = 200,
-               initial_refinement = 3;
-         
-  Point<2> well_center(0+excenter,0+excenter);
-
-  //--------------------------END SETTING----------------------------------
-  
-  Point<2> down_left(-p_a,-p_a);
-  Point<2> up_right(p_a, p_a);
-  std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
-  
-  
-  Well *well = new Well( well_radius,
-                         well_center);
-//   well->set_perm2aquifer({perm2fer, perm2fer});
-//   well->set_perm2aquitard({perm2tard, 0.0});
-  well->set_perm2aquifer(0,perm2fer);
-  well->set_perm2aquitard({perm2tard, 0.0});
-  well->set_pressure(well_pressure);
-  well->evaluate_q_points(n_well_q_points);
-  
-  Well *well_exact = new Well(well);
-  well_exact->set_pressure(well_pressure_exact);
-  
-  ExactSolution1 *exact_solution = new Solution::ExactSolution1(well_exact, radius, k_wave_num, amplitude);
-  Function<2> *dirichlet_square = exact_solution;
-  Function<2> *rhs_function = new Solution::Source1(*exact_solution);
-  
-//   FEM model creation
-  Well *well_fem = new Well(well);
-  well_fem->set_pressure(0);
-  well_fem->evaluate_q_points(n_well_q_points);
-  well_fem->set_inactive();
-  ExactSolution1 *exact_solution_fem = new Solution::ExactSolution1(well_fem, radius, k_wave_num, amplitude);
-  Model_simple model(well_fem);  
-  model.set_name(test_name + "fem");
-  model.set_output_dir(output_dir);
-  model.set_area(down_left,up_right);
-  model.set_transmisivity(transmisivity,0);
-  model.set_initial_refinement(initial_refinement);  
-  model.set_ref_coarse_percentage(1.0,0.0);
-  
-  model.set_grid_create_type(ModelBase::rect);
-  model.set_dirichlet_function(exact_solution_fem);
-  Function<2> *rhs_function_fem = new Solution::Source1(*exact_solution_fem);
-  model.set_rhs_function(rhs_function_fem);
-  model.set_adaptivity(true);
-  model.set_output_options(ModelBase::output_gmsh_mesh
-                         | ModelBase::output_solution
-                         | ModelBase::output_error);
-  
-  unsigned int n_cycles = 7;
-  std::vector<double> fem_errors(n_cycles);
-  for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
-  { 
-      model.run(cycle);
-      model.output_results(cycle);
-      Vector<double> diff_vector;
-      std::pair<double,double> l2_norm = model.integrate_difference(diff_vector, *exact_solution_fem);
-      fem_errors[cycle] = l2_norm.second;
-      std::cout << "FEM error = " << l2_norm.second << std::endl;
-  }
-  //write the errors down:
-  std::cout << "FEM errors: " << std::endl;
-  for (unsigned int i=0; i < n_cycles; ++i)
-  { 
-      double h = 2*p_a / pow(2.0,initial_refinement+i);
-      std::cout << h << "\t" << fem_errors[i] << std::endl;
-  }
-  return;
+    if (fem)    //compute h1 norm of the error of the regular part ur
+    {
+        //   FEM model creation
+        Well *well_fem = new Well(well);
+        well_fem->set_pressure(0);
+        well_fem->evaluate_q_points(n_well_q_points);
+        well_fem->set_inactive();
+        
+        ExactSolution3 *exact_solution_fem = new Solution::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
+        Function<2> *rhs_function_fem = new Solution::Source3(*exact_solution_fem);
+        
+        Model_simple model(well_fem);  
+        model.set_name(test_name + "fem");
+        model.set_output_dir(output_dir);
+        model.set_area(down_left,up_right);
+        model.set_transmisivity(transmisivity,0);
+        model.set_initial_refinement(initial_refinement);  
+        model.set_ref_coarse_percentage(1.0,0.0);
+        model.set_grid_create_type(ModelBase::rect);
+        model.set_dirichlet_function(exact_solution_fem);
+        model.set_rhs_function(rhs_function_fem);
+        model.set_adaptivity(true);
+        model.set_output_options(ModelBase::output_gmsh_mesh
+                                | ModelBase::output_solution
+                                | ModelBase::output_error);
+        
+        unsigned int n_cycles = 8;
+        std::vector<double> fem_errors(n_cycles);
+        for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
+        { 
+            model.run(cycle);
+            model.output_results(cycle);
+            Vector<double> diff_vector;
+            std::pair<double,double> h1_norm = model.integrate_difference(diff_vector, exact_solution_fem, true);
+            fem_errors[cycle] = h1_norm.second;
+            std::cout << "FEM error = " << h1_norm.second << std::endl;
+        }
+        //write the errors down:
+        std::cout << "FEM errors: " << std::endl;
+        for (unsigned int i=0; i < n_cycles; ++i)
+        { 
+            double h = 2*p_a / pow(2.0,initial_refinement+i);
+            std::cout << h << "\t" << fem_errors[i] << std::endl;
+        }
+        delete well_fem;
+        delete rhs_function_fem;
+        delete exact_solution_fem;
+        return;
+    }
   
     std::vector<double> enrichment_radius;
-    for(unsigned int r=0; r < 4; r++)
+    for(unsigned int r=0; r < 10; r++)
     {
         double val = pow(2.0,r+4)*well_radius;
 //         double val = 51.2;
@@ -1267,10 +811,10 @@ void test_radius_convergence_sin(std::string output_dir)
         //     xmodel.set_enrichment_method(Enrichment_method::xfem);
         //     xmodel.set_name(test_name + "xfem_ramp");
         //     xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
-            xmodel.set_name(test_name + "xfem_shift");
-            xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
-        //     xmodel.set_name(test_name + "sgfem"); 
-        //     xmodel.set_enrichment_method(Enrichment_method::sgfem);
+//             xmodel.set_name(test_name + "xfem_shift");
+//             xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+        xmodel.set_name(test_name + "sgfem"); 
+        xmodel.set_enrichment_method(Enrichment_method::sgfem);
         
         xmodel.set_output_dir(output_dir);
         xmodel.set_area(down_left,up_right);
@@ -1281,14 +825,11 @@ void test_radius_convergence_sin(std::string output_dir)
         xmodel.set_dirichlet_function(dirichlet_square);
         xmodel.set_rhs_function(rhs_function);
         xmodel.set_adaptivity(true);
-        //xmodel.set_adaptive_refinement_by_error(1e-2);
-        //xmodel.set_well_computation_type(Well_computation::sources);
         xmodel.set_output_options(ModelBase::output_gmsh_mesh
 //                                   | ModelBase::output_solution
 //                                   | ModelBase::output_decomposed
         //                           | ModelBase::output_adaptive_plot
                                 | ModelBase::output_error);
-        
         
         unsigned int n_cycles = 7;
         std::cout << "Cycles: " << n_cycles << std::endl;
@@ -1296,7 +837,6 @@ void test_radius_convergence_sin(std::string output_dir)
     
         for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
         { 
-            
             if(r==0)
             {
                 double h = 2*p_a / pow(2.0,initial_refinement+cycle);
@@ -1304,56 +844,40 @@ void test_radius_convergence_sin(std::string output_dir)
                 table_convergence.set_tex_format("h", "r");
             }
         
-            if(xfem)
-            {
-                std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
+            std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
         
-                xmodel.run (cycle);  
+            xmodel.run (cycle);  
         
-                //xmodel.output_distributed_solution(*fine_triangulation,cycle);
-                std::cout << "===== XModel_simple finished =====" << std::endl;
+            //xmodel.output_distributed_solution(*fine_triangulation,cycle);
+            std::cout << "===== XModel_simple finished =====" << std::endl;
     
-                Vector<double> diff_vector;
-                l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
-                
-                table_convergence.add_value(name_error.str(),l2_norm_dif_xfem.second);
-                table_convergence.set_tex_caption(name_error.str(),"$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
-                table_convergence.set_precision(name_error.str(), 2);
-                table_convergence.set_scientific(name_error.str(),true);
-                
-                table_convergence.add_value(name_edofs.str(),xmodel.get_number_of_dofs().second);
-                table_convergence.set_tex_format(name_edofs.str(), "r");
-                
-//                 table_convergence.write_text(std::cout);
-//                 xmodel.output_results(cycle);
-            }
-        
+            Vector<double> diff_vector;
+            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
             
-        
-//             if(xfem)
-//             {
-//                 xmodel.compute_interpolated_exact(exact_solution);
-//                 xmodel.output_results(cycle);
-//                 ExactModel* exact = new ExactModel(exact_solution);
-//                 exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
-    //             delete exact;
-//             } 
+            table_convergence.add_value(name_error.str(),l2_norm_dif_xfem.second);
+            table_convergence.set_tex_caption(name_error.str(),"$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
+            table_convergence.set_precision(name_error.str(), 2);
+            table_convergence.set_scientific(name_error.str(),true);
+            
+            table_convergence.add_value(name_edofs.str(),xmodel.get_number_of_dofs().second);
+            table_convergence.set_tex_format(name_edofs.str(), "r");
         }   // for cycle
         
         //write the table every cycle (to have at least some results if program fails)
-            table_convergence.write_text(std::cout);
-            std::ofstream out_file;
-            out_file.open(output_dir + xmodel.name() + ".tex");
-            table_convergence.write_tex(out_file);
-            out_file.close();
-            
-            out_file.open(output_dir + xmodel.name() + ".txt");
-            table_convergence.write_text(out_file, 
-                                        TableHandler::TextOutputFormat::table_with_separate_column_description);
-            out_file.close();
+        table_convergence.write_text(std::cout);
+        std::ofstream out_file;
+        out_file.open(output_dir + xmodel.name() + ".tex");
+        table_convergence.write_tex(out_file);
+        out_file.close();
+        
+        out_file.open(output_dir + xmodel.name() + ".txt");
+        table_convergence.write_text(out_file, 
+                                    TableHandler::TextOutputFormat::table_with_separate_column_description);
+        out_file.close();
     }   //for r
       
   delete well;
+  delete rhs_function;
   delete exact_solution;
   
   std::cout << "\n\n:::::::::::::::: RADIUS CONVERGENCE TEST ON SQUARE WITH SIN(X) - DONE ::::::::::::::::\n\n" << std::endl;
@@ -1365,8 +889,7 @@ void test_convergence_sin(std::string output_dir)
     
     //------------------------------SETTING----------------------------------
     std::string test_name = "sin_square_convergence_";
-    bool fem_create = false,
-         fem = false,
+    bool fem = false,
          xfem = true,
          ex = false;
   
@@ -1382,33 +905,16 @@ void test_convergence_sin(std::string output_dir)
            amplitude = 8,
            well_pressure = 50*Parameters::pressure_at_top,
            enrichment_radius = 25.6;
-           
-//   double p_a = 10.0,    //area of the model
-//          p_b = 10.0,
-//          excenter = 0.0, //0.05,
-//          //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-//          radius = p_a*std::sqrt(2),
-//          well_radius = 0.02,
-//          perm2fer = 1e5,//Parameters::perm2fer, 
-//          perm2tard = Parameters::perm2tard,
-//          transmisivity = Parameters::transmisivity,
-//          enrichment_radius = 4.0,
-//          k_wave_num = 0.3,
-//          amplitude = 0.8,
-//          well_pressure_exact = Parameters::pressure_at_top,
-//          well_pressure = well_pressure_exact + amplitude*std::sin(k_wave_num*excenter);
          
     unsigned int n_well_q_points = 200,
                  initial_refinement = 3;
             
     Point<2> well_center(0+excenter,0+excenter);
-
     //--------------------------END SETTING----------------------------------
   
     Point<2> down_left(-p_a,-p_a);
     Point<2> up_right(p_a, p_a);
     std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
-    
     
     Well *well = new Well( well_radius,
                             well_center);
@@ -1497,7 +1003,7 @@ void test_convergence_sin(std::string output_dir)
 //                                                  exact_solution);
       
             Vector<double> diff_vector;
-            l2_norm_dif_fem = model.integrate_difference(diff_vector, *exact_solution_fem);
+            l2_norm_dif_fem = model.integrate_difference(diff_vector, exact_solution_fem);
       
             table_convergence.add_value("L2",l2_norm_dif_fem.second);
             table_convergence.set_tex_caption("L2","$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$");
@@ -1536,7 +1042,7 @@ void test_convergence_sin(std::string output_dir)
 //                                                   xmodel.get_output_triangulation(),
 //                                                   exact_solution);
             Vector<double> diff_vector;
-            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
+            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
             
             table_convergence.add_value("X_L2",l2_norm_dif_xfem.second);
             table_convergence.set_tex_caption("X_L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
@@ -1602,53 +1108,34 @@ void test_convergence_sin_2(std::string output_dir)
     
     //------------------------------SETTING----------------------------------
     std::string test_name = "sin_square_convergence_2_";
-    bool fem_create = false,
-         fem = false,
-         xfem = true,
-         ex = false;
+    bool fem = false,
+         xfem = true;
   
     double p_a = 2.0,    //area of the model
            p_b = 2.0,
-           excenter = 0,//5.43,
+           excenter = 0.004,
            radius = p_a*std::sqrt(2),
            well_radius = 0.003,
            perm2fer = Parameters::perm2fer, 
            perm2tard = Parameters::perm2tard,
            transmisivity = Parameters::transmisivity,
-           k_wave_num = 2,
-           amplitude = 2,
+           k_wave_num = 6,
+           amplitude = 0.02,
            well_pressure = 9,
            enrichment_radius = 0.3;
-           
-//   double p_a = 10.0,    //area of the model
-//          p_b = 10.0,
-//          excenter = 0.0, //0.05,
-//          //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-//          radius = p_a*std::sqrt(2),
-//          well_radius = 0.02,
-//          perm2fer = 1e5,//Parameters::perm2fer, 
-//          perm2tard = Parameters::perm2tard,
-//          transmisivity = Parameters::transmisivity,
-//          enrichment_radius = 4.0,
-//          k_wave_num = 0.3,
-//          amplitude = 0.8,
-//          well_pressure_exact = Parameters::pressure_at_top,
-//          well_pressure = well_pressure_exact + amplitude*std::sin(k_wave_num*excenter);
          
     unsigned int n_well_q_points = 200,
                  initial_refinement = 3;
             
     Point<2> well_center(0+excenter,0+excenter);
-
     //--------------------------END SETTING----------------------------------
   
     Point<2> down_left(-p_a,-p_a);
     Point<2> up_right(p_a, p_a);
     std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
     
-    
     Well *well = new Well( well_radius,
-                            well_center);
+                           well_center);
     well->set_pressure(well_pressure);
     well->set_perm2aquifer(0,perm2fer);
     well->set_perm2aquitard({perm2tard, 0.0});
@@ -1660,19 +1147,18 @@ void test_convergence_sin_2(std::string output_dir)
     
     //FEM model creation
     Well *well_fem = new Well(well);
-    //well_fem->set_pressure(0);
-    //well_fem->set_inactive();
+//     well_fem->set_pressure(0);
+//     well_fem->set_inactive();
     well_fem->evaluate_q_points(n_well_q_points);
     ExactSolution3 *exact_solution_fem = new Solution::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
     Function<2> *rhs_function_fem = new Solution::Source3(*exact_solution_fem);
-    Model_simple model(well_fem);  
-    //Model_simple model(well);  
+    Model_simple model(well_fem);    
     model.set_name(test_name + "fem");
     model.set_output_dir(output_dir);
     model.set_area(down_left,up_right);
     model.set_transmisivity(transmisivity,0);
     model.set_initial_refinement(initial_refinement);  
-    model.set_ref_coarse_percentage(0.5,0.0);
+    model.set_ref_coarse_percentage(1.0,0.0);
     model.set_grid_create_type(ModelBase::rect);
     //model.set_computational_mesh(coarse_file);
     model.set_dirichlet_function(exact_solution_fem);
@@ -1727,15 +1213,14 @@ void test_convergence_sin_2(std::string output_dir)
         {
             std::cout << "===== FEM Model_simple running   " << cycle << "   =====" << std::endl;
             model.run (cycle);
-//       model.output_distributed_solution(*fine_triangulation, cycle);
             model.output_results (cycle);
-//       l2_norm_dif_fem = Comparing::L2_norm_diff( model.get_distributed_solution(),
-//                                                  *fine_triangulation,
-//                                                  exact_solution);
       
             Vector<double> diff_vector;
-            l2_norm_dif_fem = model.integrate_difference(diff_vector, *exact_solution_fem);
-      
+            l2_norm_dif_fem = model.integrate_difference(diff_vector, exact_solution_fem);
+            
+            ExactSolutionZero zero_exact;
+            std::pair<double,double> l2_norm_solution = model.integrate_difference(diff_vector, &zero_exact);
+            std::cout << "L2 norm of solution:  " << l2_norm_solution.second << std::endl;
             table_convergence.add_value("L2",l2_norm_dif_fem.second);
             table_convergence.set_tex_caption("L2","$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$");
             table_convergence.set_precision("L2", 2);
@@ -1760,20 +1245,10 @@ void test_convergence_sin_2(std::string output_dir)
         if(xfem)
         {
             std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
-      
-            xmodel.run (cycle);  
-      
-            //xmodel.output_distributed_solution(*fine_triangulation,cycle);
-            std::cout << "===== XModel_simple finished =====" << std::endl;
-      
-//       std::cout << "L2 norm of exact solution = " << Comparing::L2_norm_exact(xmodel.get_output_triangulation(), 
-//                                                                               exact_solution) << std::endl;
-      
-//       l2_norm_dif_xfem = Comparing::L2_norm_diff( xmodel.get_distributed_solution(),
-//                                                   xmodel.get_output_triangulation(),
-//                                                   exact_solution);
+            xmodel.run (cycle);
             Vector<double> diff_vector;
-            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
+            l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
+            std::cout << "===== XModel_simple finished =====" << std::endl;
             
             table_convergence.add_value("X_L2",l2_norm_dif_xfem.second);
             table_convergence.set_tex_caption("X_L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
@@ -1782,14 +1257,6 @@ void test_convergence_sin_2(std::string output_dir)
             
             table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate);
             table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate_log2);
-      
-//       table_convergence.add_value("X_L2 nodal",l2_norm_dif_xfem.first);
-//       table_convergence.set_tex_caption("X_L2 nodal","$\\|x_{XFEM}-x_{exact}\\|_{L^2(N)}$");
-//       table_convergence.set_precision("X_L2 nodal", 2);
-//       table_convergence.set_scientific("X_L2 nodal",true);
-//       
-//       table_convergence.evaluate_convergence_rates("X_L2 nodal", ConvergenceTable::reduction_rate);
-//       table_convergence.evaluate_convergence_rates("X_L2 nodal", ConvergenceTable::reduction_rate_log2);
       
             table_convergence.add_value("XFEM-dofs",
                                         xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
@@ -1808,11 +1275,15 @@ void test_convergence_sin_2(std::string output_dir)
         //write the table every cycle (to have at least some results if program fails)
         table_convergence.write_text(std::cout);
         std::ofstream out_file;
-        out_file.open(output_dir + xmodel.name() + ".tex");
+        std::string filename = output_dir;
+        if(fem) filename += model.name();
+        else filename += xmodel.name();
+        
+        out_file.open(filename + ".tex");
         table_convergence.write_tex(out_file);
         out_file.close();
         
-        out_file.open(output_dir + xmodel.name() + ".txt");
+        out_file.open(filename + ".txt");
         table_convergence.write_text(out_file, 
                                     TableHandler::TextOutputFormat::table_with_separate_column_description);
         out_file.close();
@@ -1835,247 +1306,6 @@ void test_convergence_sin_2(std::string output_dir)
   
     std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE WITH SIN(x) 2 - DONE ::::::::::::::::\n\n" << std::endl;
 }
-
-
-// void test_convergence_sin(std::string output_dir)
-// {
-//     std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE WITH SIN(x) ::::::::::::::::\n\n" << std::endl;
-//     
-//     //------------------------------SETTING----------------------------------
-//     std::string test_name = "sin_square_convergence_";
-//     bool fem_create = false,
-//          fem = false,
-//          xfem = true,
-//          ex = false;
-//   
-//     double p_a = 100.0,    //area of the model
-//            p_b = 100.0,
-//            excenter = 5.43,
-//            radius = p_a*std::sqrt(2),
-//            well_radius = 0.2,
-//            perm2fer = Parameters::perm2fer, 
-//            perm2tard = Parameters::perm2tard,
-//            transmisivity = Parameters::transmisivity,
-//            k_wave_num = 0.03,
-//            amplitude = 8,
-//            well_pressure_exact = 50*Parameters::pressure_at_top,
-//            well_pressure = well_pressure_exact + amplitude*std::sin(k_wave_num*excenter),
-//            enrichment_radius = 25.6;
-//            
-// //   double p_a = 10.0,    //area of the model
-// //          p_b = 10.0,
-// //          excenter = 0.0, //0.05,
-// //          //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-// //          radius = p_a*std::sqrt(2),
-// //          well_radius = 0.02,
-// //          perm2fer = 1e5,//Parameters::perm2fer, 
-// //          perm2tard = Parameters::perm2tard,
-// //          transmisivity = Parameters::transmisivity,
-// //          enrichment_radius = 4.0,
-// //          k_wave_num = 0.3,
-// //          amplitude = 0.8,
-// //          well_pressure_exact = Parameters::pressure_at_top,
-// //          well_pressure = well_pressure_exact + amplitude*std::sin(k_wave_num*excenter);
-//          
-//     unsigned int n_well_q_points = 200,
-//                  initial_refinement = 3;
-//             
-//     Point<2> well_center(0+excenter,0+excenter);
-// 
-//     //--------------------------END SETTING----------------------------------
-//   
-//     Point<2> down_left(-p_a,-p_a);
-//     Point<2> up_right(p_a, p_a);
-//     std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
-//     
-//     
-//     Well *well = new Well( well_radius,
-//                             well_center);
-//     well->set_pressure(well_pressure);
-//     well->set_perm2aquifer(0,perm2fer);
-//     well->set_perm2aquitard({perm2tard, 0.0});
-//     well->evaluate_q_points(n_well_q_points);
-//     
-//     Well *well_exact = new Well(well);
-//     well_exact->set_pressure(well_pressure_exact);
-//     
-//     ExactSolution1 *exact_solution = new Solution::ExactSolution1(well_exact, radius, k_wave_num, amplitude);
-//     Function<2> *dirichlet_square = exact_solution;
-//     Function<2> *rhs_function = new Solution::Source1(*exact_solution);
-//     
-//     //FEM model creation
-//     Well *well_fem = new Well(well);
-//     //well_fem->set_pressure(0);
-//     //well_fem->set_inactive();
-//     well_fem->evaluate_q_points(n_well_q_points);
-//     ExactSolution1 *exact_solution_fem = new Solution::ExactSolution1(well_fem, radius, k_wave_num, amplitude);
-//     Function<2> *rhs_function_fem = new Solution::Source1(*exact_solution_fem);
-//     Model_simple model(well_fem);  
-//     //Model_simple model(well);  
-//     model.set_name(test_name + "fem");
-//     model.set_output_dir(output_dir);
-//     model.set_area(down_left,up_right);
-//     model.set_transmisivity(transmisivity,0);
-//     model.set_initial_refinement(initial_refinement);  
-//     model.set_ref_coarse_percentage(1.0,0.0);
-//     model.set_grid_create_type(ModelBase::rect);
-//     //model.set_computational_mesh(coarse_file);
-//     model.set_dirichlet_function(exact_solution_fem);
-//     model.set_rhs_function(rhs_function_fem);
-//     model.set_adaptivity(true);
-//     model.set_output_options(ModelBase::output_gmsh_mesh
-//                             | ModelBase::output_solution
-//                             | ModelBase::output_error);
-//         
-//     
-//     XModel_simple xmodel(well);  
-// //     xmodel.set_name(test_name + "sgfem");
-// //     xmodel.set_enrichment_method(Enrichment_method::sgfem);
-//     xmodel.set_name(test_name + "xfem_shift");
-//     xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
-// //       xmodel.set_name(test_name + "xfem_ramp");
-// //       xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
-// //       xmodel.set_name(test_name + "xfem");
-// //       xmodel.set_enrichment_method(Enrichment_method::xfem);
-//     
-//     xmodel.set_output_dir(output_dir);
-//     xmodel.set_area(down_left,up_right);
-//     xmodel.set_transmisivity(transmisivity,0);
-//     xmodel.set_initial_refinement(initial_refinement);                                     
-//     xmodel.set_enrichment_radius(enrichment_radius);
-//     xmodel.set_grid_create_type(ModelBase::rect);
-//     xmodel.set_dirichlet_function(dirichlet_square);
-//     xmodel.set_rhs_function(rhs_function);
-//     xmodel.set_adaptivity(true);
-//     xmodel.set_output_options(ModelBase::output_gmsh_mesh
-//     //                           | ModelBase::output_solution
-//     //                           | ModelBase::output_decomposed
-// //                             | ModelBase::output_adaptive_plot
-//                             | ModelBase::output_error);
-//     
-//     ExactModel exact(exact_solution);
-// 
-//     unsigned int n_cycles = 13;
-//     std::pair<double,double> l2_norm_dif_fem, l2_norm_dif_xfem;
-//     
-//     ConvergenceTable table_convergence;
-//   
-//     for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
-//     { 
-//         table_convergence.add_value("Cycle",cycle);
-//         table_convergence.set_tex_format("Cycle", "r");
-//         double h = 2*p_a / pow(2.0,initial_refinement+cycle);
-//         table_convergence.add_value("h",h);
-//         table_convergence.set_tex_format("h", "r");
-//         
-//         if(fem)
-//         {
-//             std::cout << "===== FEM Model_simple running   " << cycle << "   =====" << std::endl;
-//             model.run (cycle);
-// //       model.output_distributed_solution(*fine_triangulation, cycle);
-//             model.output_results (cycle);
-// //       l2_norm_dif_fem = Comparing::L2_norm_diff( model.get_distributed_solution(),
-// //                                                  *fine_triangulation,
-// //                                                  exact_solution);
-//       
-//             Vector<double> diff_vector;
-//             l2_norm_dif_fem = model.integrate_difference(diff_vector, *exact_solution_fem);
-//       
-//             table_convergence.add_value("L2",l2_norm_dif_fem.second);
-//             table_convergence.set_tex_caption("L2","$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$");
-//             table_convergence.set_precision("L2", 2);
-//             table_convergence.set_scientific("L2",true);
-//   
-//             table_convergence.evaluate_convergence_rates("L2", ConvergenceTable::reduction_rate);
-//             table_convergence.evaluate_convergence_rates("L2", ConvergenceTable::reduction_rate_log2);
-//       
-//             table_convergence.add_value("FEM-dofs",model.get_number_of_dofs());
-//             table_convergence.add_value("It_{FEM}",model.solver_iterations());
-//       
-//             table_convergence.add_value("FEM-time",model.last_run_time());
-//             table_convergence.set_precision("FEM-time", 3);
-// 
-//             table_convergence.set_tex_format("FEM-dofs", "r");
-//             table_convergence.set_tex_format("It_{FEM}", "r");
-//             table_convergence.set_tex_format("FEM-time", "r");
-//             std::cout << "===== FEM Model_simple finished =====" << std::endl;
-//         }
-//       
-//       
-//         if(xfem)
-//         {
-//             std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
-//       
-//             xmodel.run (cycle);  
-//       
-//             //xmodel.output_distributed_solution(*fine_triangulation,cycle);
-//             std::cout << "===== XModel_simple finished =====" << std::endl;
-//       
-// //       std::cout << "L2 norm of exact solution = " << Comparing::L2_norm_exact(xmodel.get_output_triangulation(), 
-// //                                                                               exact_solution) << std::endl;
-//       
-// //       l2_norm_dif_xfem = Comparing::L2_norm_diff( xmodel.get_distributed_solution(),
-// //                                                   xmodel.get_output_triangulation(),
-// //                                                   exact_solution);
-//             Vector<double> diff_vector;
-//             l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
-//             
-//             table_convergence.add_value("X_L2",l2_norm_dif_xfem.second);
-//             table_convergence.set_tex_caption("X_L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
-//             table_convergence.set_precision("X_L2", 2);
-//             table_convergence.set_scientific("X_L2",true);
-//             
-//             table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate);
-//             table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate_log2);
-//       
-// //       table_convergence.add_value("X_L2 nodal",l2_norm_dif_xfem.first);
-// //       table_convergence.set_tex_caption("X_L2 nodal","$\\|x_{XFEM}-x_{exact}\\|_{L^2(N)}$");
-// //       table_convergence.set_precision("X_L2 nodal", 2);
-// //       table_convergence.set_scientific("X_L2 nodal",true);
-// //       
-// //       table_convergence.evaluate_convergence_rates("X_L2 nodal", ConvergenceTable::reduction_rate);
-// //       table_convergence.evaluate_convergence_rates("X_L2 nodal", ConvergenceTable::reduction_rate_log2);
-//       
-//             table_convergence.add_value("XFEM-dofs",
-//                                         xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
-//             table_convergence.add_value("XFEM-enriched dofs",xmodel.get_number_of_dofs().second);
-//             table_convergence.add_value("It_{XFEM}",xmodel.solver_iterations());
-//             
-//             table_convergence.add_value("XFEM-time",xmodel.last_run_time());
-//             table_convergence.set_precision("XFEM-time", 3);
-//             
-//             table_convergence.set_tex_format("XFEM-dofs", "r");
-//             table_convergence.set_tex_format("XFEM-enriched dofs", "r");
-//             table_convergence.set_tex_format("It_{XFEM}", "r");
-//             table_convergence.set_tex_format("XFEM-time", "r");
-//         }
-//       
-//         //write the table every cycle (to have at least some results if program fails)
-//         table_convergence.write_text(std::cout);
-//         std::ofstream out_file;
-//         out_file.open(output_dir + xmodel.name() + ".tex");
-//         table_convergence.write_tex(out_file);
-//         out_file.close();
-//         
-//         out_file.open(output_dir + xmodel.name() + ".txt");
-//         table_convergence.write_text(out_file, 
-//                                     TableHandler::TextOutputFormat::table_with_separate_column_description);
-//         out_file.close();
-//         
-//         if(xfem)
-//         {
-// //         xmodel.compute_interpolated_exact(exact_solution);
-// //         xmodel.output_results(cycle);
-// //         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
-//         }
-//     } 
-//     
-//     delete well;
-//     delete exact_solution;
-//     delete rhs_function;
-//   
-//     std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE WITH SIN(x) - DONE ::::::::::::::::\n\n" << std::endl;
-// }
 
 
 void test_multiple_wells(std::string output_dir)
@@ -2413,7 +1643,7 @@ void test_solution(std::string output_dir)
       
 
       Vector<double> diff_vector;
-      l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, *exact_solution);
+      l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
       
       xmodel.compute_interpolated_exact(exact_solution);
       xmodel.output_results();
@@ -2974,9 +2204,9 @@ int main ()
   //test_circle_grid_creation(input_dir);
 //    test_convergence_square(output_dir);
 //     test_radius_convergence_square(output_dir);
-//     test_radius_convergence_sin(output_dir);
+    test_radius_convergence_sin(output_dir);
 //   test_convergence_sin(output_dir);
-  test_convergence_sin_2(output_dir);
+//   test_convergence_sin_2(output_dir);
 //   test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);

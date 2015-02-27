@@ -962,8 +962,10 @@ void Model::output_foreign_results(const unsigned int cycle, const Vector<double
 
 
 
-std::pair< double, double > Model::integrate_difference(dealii::Vector< double >& diff_vector, 
-                                                        const Function< 2 >& exact_solution)
+std::pair< double, double > Model::integrate_difference(Vector< double >& diff_vector, 
+                                                        ExactBase* exact_solution, 
+                                                        bool h1
+                                                       )
 {
     std::pair<double,double> norms;
 
@@ -971,11 +973,11 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
     unsigned int dofs_per_cell = fe.dofs_per_cell,
                  index = 0;
                  
-    double exact_value, value, cell_norm, total_norm, nodal_norm, total_nodal_norm;
+    double exact_value, value, cell_norm, total_norm, nodal_norm, total_nodal_norm, grad_cell_norm, total_grad_cell_norm;
     //double distance_treshold = 5.0;
              
     QGauss<2> temp_quad(3);
-    FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
+    FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values | update_gradients);
     std::vector<unsigned int> local_dof_indices (temp_fe_values.dofs_per_cell);   
   
     //Check if the dofs of FE_DGQ are corresponding.
@@ -991,6 +993,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
         
     Vector<double> diff_nodal_vector(dof_handler->n_dofs());
     diff_vector.reinit(dof_handler->get_tria().n_active_cells());
+    Vector<double> diff_grad_vector(dof_handler->get_tria().n_active_cells());
     
     DoFHandler<2>::active_cell_iterator
         cell = dof_handler->begin_active(),
@@ -998,6 +1001,7 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
     for (; cell!=endc; ++cell)
     {
         cell_norm = 0;
+        grad_cell_norm = 0;
         //DBGMSG("cell: %d\n",cell->index());
         // is there is NOT a user pointer on the cell == is not enriched?
         temp_fe_values.reinit(cell);
@@ -1014,9 +1018,24 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
                 for(unsigned int i=0; i < dofs_per_cell; i++)
                     value += block_solution(local_dof_indices[i]) * temp_fe_values.shape_value(i,q);
                 
-                exact_value = exact_solution.value(temp_fe_values.quadrature_point(q));
+                exact_value = exact_solution->value(temp_fe_values.quadrature_point(q));
                 value = value - exact_value;                         // u_h - u
                 cell_norm += value * value * temp_fe_values.JxW(q);  // (u_h-u)^2 * JxW
+            }
+            
+            if(h1)
+            {
+                for(unsigned int q=0; q < temp_fe_values.n_quadrature_points; q++)
+                {
+                    Tensor<1,2> grad_value, grad_exact_value;
+                    
+                    for(unsigned int i=0; i < dofs_per_cell; i++)
+                        grad_value += block_solution(local_dof_indices[i]) * temp_fe_values.shape_grad(i,q);
+                    
+                    grad_exact_value = exact_solution->grad(temp_fe_values.quadrature_point(q));
+                    grad_value = grad_value - grad_exact_value;                    // grad u_h - grad u
+                    grad_cell_norm += grad_value * grad_value * temp_fe_values.JxW(q);  // (grad u_h - grad u)^2 * JxW
+                }
             }
         }
         //TODO: use also adaptive integration
@@ -1042,6 +1061,12 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
         cell_norm = std::sqrt(cell_norm);// / cell->measure());   // square root
         diff_vector[index] = cell_norm;     // save L2 norm on cell
         
+        if(h1)
+        {
+            grad_cell_norm = std::sqrt(grad_cell_norm);
+            diff_grad_vector[index] = grad_cell_norm;
+        }
+        
     //Check if the dofs of FE_DGQ are corresponding.
 //         my_cell->get_dof_indices(my_local_dof_indices);
 //         my_vector[index] = my_local_dof_indices[0];
@@ -1052,13 +1077,19 @@ std::pair< double, double > Model::integrate_difference(dealii::Vector< double >
         //node values should be exactly equal FEM dofs
         for(unsigned int i=0; i < dofs_per_cell; i++)
         {
-            nodal_norm = block_solution(local_dof_indices[i]) - exact_solution.value(cell->vertex(i));
+            nodal_norm = block_solution(local_dof_indices[i]) - exact_solution->value(cell->vertex(i));
             diff_nodal_vector[local_dof_indices[i]] = std::abs(nodal_norm);
         }
     }
     
     total_nodal_norm = diff_nodal_vector.l2_norm();
+    
     total_norm = diff_vector.l2_norm();
+    if(h1) 
+    {   
+        total_grad_cell_norm = diff_grad_vector.l2_norm();
+        total_norm = total_norm + total_grad_cell_norm;
+    }
     std::cout << "\t" << total_norm << "\t vertex l2 norm: " << total_nodal_norm << std::endl;
     
     if(output_options_ & OutputOptions::output_error)

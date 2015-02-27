@@ -3,6 +3,7 @@
 
 #include "model_base.hh"
 #include "system.hh"
+#include "comparing.hh"
 #include <deal.II/base/function.h>
 
 #include <dirent.h>
@@ -292,7 +293,7 @@ void ModelBase::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doubl
 
 
 
-std::pair< double, double > ModelBase::integrate_difference(dealii::Vector< double >& diff_vector, const Function< 2 >& exact_solution)
+std::pair< double, double > ModelBase::integrate_difference(dealii::Vector< double >& diff_vector, ExactBase * exact_solution, bool h1)
 {
     MASSERT(0,"Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
     return std::make_pair<double, double>(0,0);

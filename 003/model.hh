@@ -22,6 +22,7 @@
 
 //#include "well.hh"
 #include "model_base.hh"
+#include "comparing.hh"
 
 using namespace dealii;
 
@@ -70,7 +71,7 @@ class Model : public ModelBase
                                      const unsigned int& cycle);
     
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
-                                                   const Function<2> &exact_solution) override;
+                                                   ExactBase * exact_solution, bool h1=false) override;
     
     ///@name Getters
     //@{

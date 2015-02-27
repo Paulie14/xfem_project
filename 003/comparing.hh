@@ -38,8 +38,11 @@ namespace Solution
         ///@param p is given point
         ///@param component is set to 0 cause it is a scalar function
         virtual double value (const Point<2>   &p,
-                              const unsigned int  component = 0) const = 0;    
-
+                              const unsigned int  component = 0) const = 0;
+                              
+        virtual Tensor<1,2> grad (const Point<2>   &p,
+                             const unsigned int  component = 0) const = 0;    
+                              
         inline double a() {return a_;}
         inline double b() {return b_;}
         inline double radius() {return radius_;}
@@ -55,12 +58,24 @@ namespace Solution
     };
 
     
+    class ExactSolutionZero : public ExactBase
+    {
+    public:
+      ExactSolutionZero() : ExactBase(nullptr, 0, 0) {}
+      double value (const Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+      Tensor<1,2> grad (const Point<2>   &p,
+                        const unsigned int  component = 0) const override;   
+    };
+    
     class ExactSolution : public ExactBase
     {
     public:
       ExactSolution(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
+      Tensor<1,2> grad (const Point<2>   &p,
+                        const unsigned int  component = 0) const override;   
     };
     
     class ExactSolution1 : public ExactBase
@@ -70,6 +85,8 @@ namespace Solution
         
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
+      Tensor<1,2> grad (const Point<2>   &p,
+                        const unsigned int  component = 0) const override;   
     protected:
         double k_, amplitude_;
         
@@ -92,6 +109,8 @@ namespace Solution
       ExactSolution2(Well *well, double radius, double k) : ExactBase(well, radius, 0), k_(k) {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
+      Tensor<1,2> grad (const Point<2>   &p,
+                        const unsigned int  component = 0) const override;   
     protected:
         double k_;
     
@@ -115,6 +134,8 @@ namespace Solution
         
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
+      Tensor<1,2> grad (const Point<2>   &p,
+                        const unsigned int  component = 0) const override;   
     protected:
         double k_, amplitude_;
         
