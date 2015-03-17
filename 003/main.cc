@@ -2188,6 +2188,143 @@ void test_enr_error(std::string output_dir)
     std::cout << "\n\n:::::::::::::::: TEST ENRICHMENT RADIUS ERROR - DONE ::::::::::::::::\n\n" << std::endl;
 }
 
+
+void test_wells_in_element(std::string output_dir)
+{
+    std::cout << "\n\n:::::::::::::::: WELLS IN ELEMENT TEST ::::::::::::::::\n\n" << std::endl;
+    
+    //------------------------------SETTING----------------------------------
+    std::string test_name = "wells_in_element_";
+    bool fem = false, 
+         fem_create = false;
+    
+    double p_a = 2.0,    //area of the model
+            p_b = 2.0,
+            well_radius = 0.02,
+            well_pressure = 5,
+            perm2fer = Parameters::perm2fer, 
+            perm2tard = Parameters::perm2tard,
+            transmisivity = Parameters::transmisivity,
+            enrichment_radius = 0.4;
+            
+    unsigned int n_well_q_points = 100,
+                refinement = 3;
+            
+    
+    //--------------------------END SETTING----------------------------------
+    
+    Point<2> down_left(-p_a,-p_a);
+    Point<2> up_right(p_a, p_a);
+    std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+    
+    
+    //vector of wells
+    std::vector<Well*> wells;
+    
+    wells.push_back( new Well( well_radius,
+                               Point<2>(-0.375,-0.125)
+                             )
+                   );
+    
+    wells.push_back( new Well( Parameters::radius,
+                               Point<2>(-0.125,-0.375)
+                             )
+                   );
+        
+    //   wells.push_back( new Well( Parameters::radius,
+    //                              Point<2>(-10.0,8.0), 
+    //                              Parameters::perm2fer, 
+    //                              Parameters::perm2tard));
+    //     
+    //   wells.push_back( new Well( Parameters::radius,
+    //                              Point<2>(8.0,9.0), 
+    //                              Parameters::perm2fer, 
+    //                              Parameters::perm2tard));
+    //     
+    //   wells.push_back( new Well( Parameters::radius,
+    //                              Point<2>(5.0,-10.0), 
+    //                              Parameters::perm2fer, 
+    //                              Parameters::perm2tard));
+        
+    //setting BC - pressure at the top of the wells
+    wells[0]->set_pressure(well_pressure);
+    wells[1]->set_pressure(well_pressure);
+    //   wells[2]->set_pressure(2*Parameters::pressure_at_top);
+    //   wells[3]->set_pressure(Parameters::pressure_at_top);
+    //   wells[4]->set_pressure(3*Parameters::pressure_at_top);
+    
+    for(unsigned int w=0; w < wells.size(); w++)
+    {
+        wells[w]->evaluate_q_points(n_well_q_points);
+        wells[w]->set_perm2aquifer(0,perm2fer);
+        wells[w]->set_perm2aquitard({perm2tard, 0.0});
+    }
+
+    
+    XModel xmodel(wells);  
+    xmodel.set_name(test_name + "sgfem");
+    xmodel.set_enrichment_method(Enrichment_method::sgfem);
+    //   xmodel.set_name(test_name + "xfem_shift");
+    //   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+    
+    xmodel.set_output_dir(output_dir);
+    xmodel.set_area(down_left,up_right);
+    xmodel.set_transmisivity(transmisivity,0);
+    xmodel.set_initial_refinement(refinement);                                     
+    xmodel.set_enrichment_radius(enrichment_radius);
+    xmodel.set_grid_create_type(ModelBase::rect);
+    //xmodel.set_dirichlet_function(dirichlet);
+    xmodel.set_adaptivity(true);
+    //xmodel.set_well_computation_type(Well_computation::sources);
+
+
+    unsigned int n_cycles = 1;
+    double l2_norm_dif;
+    
+    TableHandler table;
+    
+    for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
+    { 
+        table.add_value("Cycle",cycle);
+    
+        std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
+        
+        xmodel.run (cycle);  
+        xmodel.output_results(cycle);
+//       xmodel.output_distributed_solution(model_fem.get_triangulation(),cycle);
+        std::cout << "===== XModel_simple finished =====" << std::endl;
+      
+//       l2_norm_dif = Comparing::L2_norm_diff( model_fem.get_solution(),
+//                                              xmodel.get_distributed_solution(),
+//                                              model_fem.get_triangulation()
+//                                            );
+//       
+//       table.add_value("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$",l2_norm_dif);
+//       table.set_precision("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$", 2);
+//       table.set_scientific("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$",true);
+//       
+//       table.add_value("dofs",xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
+//       table.add_value("enriched dofs",xmodel.get_number_of_dofs().second);
+//       table.add_value("Iterations",xmodel.solver_iterations());
+// 
+//       
+//       //write the table every cycle (to have at least some results if program fails)
+//       table.write_text(std::cout);
+//       std::ofstream out_file;
+//       out_file.open(output_dir + xmodel.name() + ".tex");
+//       table.write_tex(out_file);
+//       out_file.close();
+    } 
+  //*/
+  
+    for(unsigned int w=0; w < wells.size(); w++)
+    {
+        delete wells[w];
+    }
+    std::cout << "\n\n:::::::::::::::: WELLS IN ELEMENT TEST END ::::::::::::::::\n\n" << std::endl;
+}
+
+
 int main ()
 {
   std::string input_dir = "../input/";
@@ -2204,13 +2341,14 @@ int main ()
   //test_circle_grid_creation(input_dir);
 //    test_convergence_square(output_dir);
 //     test_radius_convergence_square(output_dir);
-    test_radius_convergence_sin(output_dir);
+//     test_radius_convergence_sin(output_dir);
 //   test_convergence_sin(output_dir);
 //   test_convergence_sin_2(output_dir);
 //   test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);
 //    test_enr_error(output_dir);
+  test_wells_in_element(output_dir);
   return 0;
 }
 
