@@ -137,6 +137,7 @@ class Model : public ModelBase
     virtual void refine_grid() override;
     void setup_system () override;
     void assemble_system () override;
+    void assemble_dirichlet (unsigned int m) override;
     void solve () override;
 
     ///Function finding the cells through which the well boundary goes.
