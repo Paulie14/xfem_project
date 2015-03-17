@@ -157,6 +157,7 @@ class XModel : public ModelBase
      * @param points is the vector of points where we want to evaluate
      * TODO: OBSOLETE - remove or inovate
      */
+    template<Enrichment_method::Type EnrType> 
     void compute_distributed_solution(const std::vector< Point< 2 > >& points);
     //@}
     
