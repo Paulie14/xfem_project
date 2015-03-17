@@ -1,6 +1,14 @@
 #include "well.hh"
 #include <cmath> //M_PI
 
+Well::Well()
+: active_(false),
+  radius_(0), 
+  pressure_(0),
+  pressure_set_(false),
+  center_(Point<2>(0,0))
+{}
+
 Well::Well(double r, Point< 2 > cent)
 : active_(true),
   radius_(r), 

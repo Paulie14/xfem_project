@@ -61,7 +61,8 @@ namespace Solution
     class ExactSolutionZero : public ExactBase
     {
     public:
-      ExactSolutionZero() : ExactBase(nullptr, 0, 0) {}
+      ExactSolutionZero() : ExactBase(new Well(), 0, 0)
+      {}
       double value (const Point<2>   &p,
                     const unsigned int  component = 0) const override; 
       Tensor<1,2> grad (const Point<2>   &p,

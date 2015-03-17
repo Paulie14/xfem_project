@@ -16,8 +16,7 @@ class Well
   public:
     
     /// Default constructor.
-    Well () 
-      {}
+    Well ();
     
     /// Main constructor with well's geometry parameters definition.
     Well (double r, Point<2> cent);
