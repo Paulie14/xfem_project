@@ -43,7 +43,7 @@ public:
     
     ///Returns number of wells comunicating with the cell
     inline unsigned int n_wells()
-    { return n_wells_; } 
+    { return wells_.size(); } 
     
     inline int user_index() const {return user_index_;}
     
@@ -101,7 +101,6 @@ protected:
     
     int user_index_;                      ///< Supplements the user index of cell.
     
-    unsigned int n_wells_;                ///< Number of wells that affect the cell.
     unsigned int n_vertices_;             ///< Number of vertices.
   
     /** Pointers to quadrature points of wells that lies inside the cell.

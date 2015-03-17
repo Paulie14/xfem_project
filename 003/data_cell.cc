@@ -13,25 +13,24 @@ DataCellBase::DataCellBase(const DoFHandler<2>::active_cell_iterator &cell,
   wells_.push_back(well);
   wells_indices_.push_back(well_index);
   well_dof_indices_.push_back(0);
-  n_wells_ = wells_.size();
   n_vertices_ = 4;
 }
 
 Well* DataCellBase::get_well(const unsigned int& local_well_index)
 {
-  MASSERT(local_well_index < n_wells_,"Index of well exceeded the size of the vector.");
+  MASSERT(local_well_index < wells_.size(),"Index of well exceeded the size of the vector.");
   return wells_[local_well_index]; 
 }
 
 unsigned int DataCellBase::get_well_index(const unsigned int &local_well_index)
 {
-  MASSERT(local_well_index < n_wells_,"Index of well exceeded the size of the vector.");
+  MASSERT(local_well_index < wells_.size(),"Index of well exceeded the size of the vector.");
   return wells_indices_[local_well_index];
 }
 
 unsigned int DataCellBase::get_well_dof_index(const unsigned int& local_well_index)
 {
-  MASSERT(local_well_index < n_wells_,"Index of well exceeded the size of the vector.");
+  MASSERT(local_well_index < wells_.size(),"Index of well exceeded the size of the vector.");
   return well_dof_indices_[local_well_index];
 }
 
@@ -39,7 +38,7 @@ const std::vector< const Point< 2 >* >& DataCellBase::q_points(unsigned int loca
 {
 //     MASSERT(local_well_index < wells_.size(),"Index of well exceeded the size of the vector.");
 //     return q_points_[local_well_index]; 
-    MASSERT(local_well_index < n_wells_,"Index of well exceeded the size of the vector.");
+    MASSERT(local_well_index < wells_.size(),"Index of well exceeded the size of the vector.");
     if(local_well_index < q_points_.size())
         return q_points_[local_well_index]; 
     else
@@ -49,7 +48,7 @@ const std::vector< const Point< 2 >* >& DataCellBase::q_points(unsigned int loca
 const std::vector< Point< 2 > >& DataCellBase::mapped_q_points(unsigned int local_well_index)
 {
     MASSERT(mapped_q_points_.size() > 0, "Quadrature points of the well have not been mapped yet. Call map_well_quadrature_points() at first!");
-    MASSERT(local_well_index < n_wells_, "Index of well exceeded the size of the vector.");
+    MASSERT(local_well_index < wells_.size(), "Index of well exceeded the size of the vector.");
     
     return mapped_q_points_[local_well_index];
 }
@@ -70,7 +69,7 @@ void DataCellBase::map_well_quadrature_points(const Mapping< 2 >& mapping)
 
 void DataCellBase::set_well_dof_indices(const std::vector<unsigned int> &well_dof_indices)
 {
-  MASSERT(well_dof_indices.size() == n_wells_, "Sizes of vectors wells and well_dof_indices must be equal.");
+  MASSERT(well_dof_indices.size() == wells_.size(), "Sizes of vectors wells and well_dof_indices must be equal.");
   well_dof_indices_.clear();
   well_dof_indices_ = well_dof_indices;
 }
@@ -80,7 +79,6 @@ void DataCellBase::add_data(Well* well, const unsigned int& well_index)
 {
   wells_.push_back(well);
   wells_indices_.push_back(well_index);
-  n_wells_++;
 }
 
 
@@ -103,7 +101,6 @@ void DataCell::add_data(Well* well,
   wells_.push_back(well);
   wells_indices_.push_back(well_index);
   q_points_.push_back(q_points);
-  n_wells_++;
 }
 
 
@@ -145,13 +142,13 @@ XDataCell::XDataCell(const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
 
 const std::vector< unsigned int >& XDataCell::global_enriched_dofs(const unsigned int& local_well_index)
 {
-  MASSERT(local_well_index < n_wells_,"Index of well exceeded the size of the vector.");
+  MASSERT(local_well_index < wells_.size(),"Index of well exceeded the size of the vector.");
   return global_enriched_dofs_[local_well_index];
 }
 
 const std::vector< unsigned int >& XDataCell::weights(const unsigned int& local_well_index)
 {
-  MASSERT(local_well_index < n_wells_,"Index of well exceeded the size of the vector.");
+  MASSERT(local_well_index < wells_.size(),"Index of well exceeded the size of the vector.");
   return weights_[local_well_index];
 }
 
@@ -221,11 +218,11 @@ void XDataCell::get_dof_indices(std::vector< unsigned int >& local_dof_indices, 
 {
     local_dof_indices.resize(fe_dofs_per_cell);
     cell_->get_dof_indices(local_dof_indices);          //standard dofs
-    n_enriched_dofs_per_well_.resize(n_wells_);
+    n_enriched_dofs_per_well_.resize(wells_.size());
     n_enriched_dofs_ = 0;
     n_wells_inside_ = 0;
     //getting enriched dof indices and well indices
-    for(unsigned int w = 0; w < n_wells_; w++)          //enriched dofs
+    for(unsigned int w = 0; w < wells_.size(); w++)          //enriched dofs
     {   
         n_enriched_dofs_per_well_[w] = 0;
         for(unsigned int i = 0; i < n_vertices_; i++)
@@ -239,7 +236,7 @@ void XDataCell::get_dof_indices(std::vector< unsigned int >& local_dof_indices, 
             }
         }
     }   
-    for(unsigned int w = 0; w < n_wells_; w++)          //well dofs
+    for(unsigned int w = 0; w < wells_.size(); w++)          //well dofs
     { 
         if(w < q_points_.size())
         if(q_points_[w].size() > 0)
