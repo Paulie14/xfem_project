@@ -23,7 +23,8 @@ SET(TARGET_SRC
   bem_model.cc
   exact_model.cc
   adaptive_integration.cc    
-  xmodel.cc    
+  xmodel.cc
+  xmodel_tests.cc
   simple_models.cc        
   comparing.cc
   # You can specify additional files here!
