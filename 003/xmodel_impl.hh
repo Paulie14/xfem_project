@@ -74,11 +74,13 @@ void XModel::prepare_shape_well_averiges(vector< std::map< unsigned int, double 
                     shape_val_vec[i] += xfevalues.shape_value(i,q)*dx; 
                 // filling enrichment shape values
                 unsigned int index = dofs_per_cell;
-                for(unsigned int k = 0; k < n_vertices; k++)
+                
+                for(unsigned int ww = 0; ww < n_wells; ww++)   //iterate over all well affecting the cell
+                for(unsigned int k = 0; k < xdata->n_enriched_dofs(ww); k++)
                 {
-                    if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node
+                    if(xdata->global_enriched_dofs(ww)[k] == 0) continue;  //skip unenriched node
                     
-                    double temp = xfevalues.enrichment_value(k,w,q)*dx;
+                    double temp = xfevalues.enrichment_value(k,ww,q)*dx;
                     //if(index==7) DBGMSG("s=%d k=%d w=%d index=%d q=%d \t val=%e\n",s,k,w,index,q,temp);
                     shape_val_vec[index] += temp;
                     
