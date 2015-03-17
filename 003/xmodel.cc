@@ -464,14 +464,14 @@ void XModel::find_enriched_cells(unsigned int m)
         data_out.build_patches ();
 
         std::stringstream filename;
-        filename << output_dir_ << "xfem_enrichment_" << cycle_ << ".vtk";
+        filename << output_dir_ << "xfem_enrichment_" << cycle_ << "_" << w << ".vtk";
    
         std::ofstream output (filename.str());
         if(output.is_open())
         {
             data_out.write_vtk (output);
             data_out.clear();
-            std::cout << "\noutput(error) written in:\t" << filename.str() << std::endl;
+            std::cout << "\nenrichment area written in:\t" << filename.str() << std::endl;
         }
         else
         {
@@ -488,7 +488,7 @@ void XModel::find_enriched_cells(unsigned int m)
     //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
     DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata_[m].size(), triangulation->n_active_cells());
-    //print_xdata();
+    print_xdata();
 }
 
 void XModel::print_xdata()
@@ -497,10 +497,12 @@ void XModel::print_xdata()
   for(unsigned int m=0; m < xdata_.size(); m++)
   for(unsigned int i=0; i < xdata_[m].size(); i++)
   {
-    std::cout << "(" << setw(5) << xdata_[m][i]->get_cell()->index() << ") ";
+    std::cout << "(" << setw(5) << xdata_[m][i]->get_cell()->index() << ")  ";
     for(unsigned int xw=0; xw < xdata_[m][i]->n_wells(); xw++)
     {
-      std::cout << " w=" << setw(3) << xw << " well center: " << setw(7)
+      int width_well = 2;
+      if(xw > 0) width_well = 11; 
+      std::cout << setw(width_well) << "w=" << setw(3) << xw << " well center: " << setw(7)
       << xdata_[m][i]->get_well(xw)->center() << "\tglobal_enrich_dofs: [";
       
       for(unsigned int j=0; j < fe.dofs_per_cell; j++)
@@ -1430,12 +1432,12 @@ void XModel::assemble_subsystem (unsigned int m)
                 break;
             }
             //printing enriched nodes and dofs
-        //       DBGMSG("Printing dof_indices:  [");
-        //       for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
-        //       {
-        //           std::cout << std::setw(3) << enrich_dof_indices[a] << "  ";
-        //       }
-        //       std::cout << "]" << std::endl;
+              DBGMSG("Printing dof_indices:  [");
+              for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
+              {
+                  std::cout << std::setw(3) << enrich_dof_indices[a] << "  ";
+              }
+              std::cout << "]" << std::endl;
             
                 //FILLING MATRIX BLOCKs
             block_matrix[m].add(enrich_dof_indices,enrich_cell_matrix);
@@ -2092,6 +2094,7 @@ const dealii::Vector< double >& XModel::get_solution()
 
 void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& points)
 {
+  unsigned int m=1;
   unsigned int n_points = points.size(),
                n_vertices = GeometryInfo<2>::vertices_per_cell;
   //clearing distributed solution vectors
@@ -2112,8 +2115,9 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
   std::vector<unsigned int> local_dof_indices (dofs_per_cell);
   std::vector<double> local_shape_values (dofs_per_cell);
   
-  double xshape;
+  XFEValues<Enrichment_method::sgfem> xfevalues(fe,quadrature_formula, UpdateFlags::update_default);
   
+  double xshape;
   Point<2> unit_point;
   unsigned int n=1,
                n_const = points.size() / 10;            //how often we will write DBGMSG
@@ -2140,240 +2144,223 @@ void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& point
     cell_and_point = GridTools::find_active_cell_around_point<2>(fe_values.get_mapping(), *dof_handler, points[p]);
 
     unit_point = GeometryInfo<2>::project_to_unit_cell(cell_and_point.second); //recommended due to roundoffs
+    DoFHandler<2>::active_cell_iterator cell = cell_and_point.first;
     
-    fe_values.reinit (cell_and_point.first);
+//     fe_values.reinit (cell_and_point.first);
     //unit_point = fe_values.get_mapping().transform_real_to_unit_cell(cell_and_point.first,points[p]);
     
-    cell_and_point.first->get_dof_indices(local_dof_indices);
-
-    //compute shape values (will be used futher down) and unenriched part
-    for(unsigned int j=0; j < dofs_per_cell; j++)
-    {
-      local_shape_values[j] = fe.shape_value(j, unit_point);
-      dist_unenriched[p] += block_solution.block(0)(local_dof_indices[j]) *
-                            local_shape_values[j];
-    }
-
+//     cell_and_point.first->get_dof_indices(local_dof_indices);
     
-    if (cell_and_point.first->user_pointer() != nullptr)
+    if (cell->user_pointer() == nullptr)
     {
-      cell_xdata = static_cast<XDataCell*>( cell_and_point.first->user_pointer() );
-      
-      for(unsigned int w = 0; w < cell_xdata->n_wells(); w++)
-      {
-        xshape = cell_xdata->get_well(w)->global_enrich_value(points[p]);
-        double ramp = 0;        
-        double xshape_inter = 0;
-        
-        switch(enrichment_method_)
+        cell->get_dof_indices(local_dof_indices);
+        for(unsigned int j=0; j < dofs_per_cell; j++)
         {
-          case Enrichment_method::xfem_shift:
-            //compute value (weight) of the ramp function
-            for(unsigned int l = 0; l < n_vertices; l++)
-            {
-              ramp += cell_xdata->weights(w)[l] * local_shape_values[l];
-            }
-            for(unsigned int k = 0; k < n_vertices; k++)
-            {
-              dist_enriched[p] += block_solution.block(0)(cell_xdata->global_enriched_dofs(w)[k]) *
-                                  ramp *
-                                  local_shape_values[k] *
-                                  (xshape - cell_xdata->get_well(w)->global_enrich_value(cell_and_point.first->vertex(k))); //shifted                      
-            }
-            break;
-            
-          case Enrichment_method::xfem_ramp: 
-            //compute value (weight) of the ramp function
-            for(unsigned int l = 0; l < n_vertices; l++)
-            {
-              ramp += cell_xdata->weights(w)[l] * local_shape_values[l];
-            }
-            for(unsigned int k = 0; k < n_vertices; k++)
-            {
-              dist_enriched[p] += block_solution.block(0)(cell_xdata->global_enriched_dofs(w)[k]) *
-                                  ramp *
-                                  local_shape_values[k] *
-                                  xshape;                      
-            }
-            break;
-
-          case Enrichment_method::sgfem:
-            //compute value interpolant
-            //DBGMSG("sgfem_compute_solution\n");
-            for(unsigned int l = 0; l < n_vertices; l++) //M_w
-            {
-              //xshape_inter += local_shape_values[l] * cell_xdata->node_enrich_value(w)[l];
-              xshape_inter += local_shape_values[l] * cell_xdata->node_enrich_value(w,l);
-            }
-            for(unsigned int k = 0; k < n_vertices; k++)
-            {
-              if(cell_xdata->global_enriched_dofs(w)[k] != 0)
-              dist_enriched[p] += block_solution.block(0)(cell_xdata->global_enriched_dofs(w)[k]) *
-                                  local_shape_values[k] *
-                                  (xshape - xshape_inter);
-                                  
-              //DBGMSG("dist_enriched[%d] = %e \t\t block=%e \t loc_sh=%e \t\t x_int=%e\n",p,dist_enriched[p],block_solution(cell_xdata->global_enriched_dofs(w)[k]), local_shape_values[k], xshape_inter);
-            }
-            break;
-        } //switch
+            dist_unenriched[p] += block_solution.block(m)(local_dof_indices[j]) 
+                                  * fe.shape_value(j, unit_point);
+        }
+    }
+    else
+    {
+        cell_xdata = static_cast<XDataCell*>(cell->user_pointer());
+        xfevalues.reinit(cell_xdata);
+        cell_xdata->get_cell()->get_dof_indices(local_dof_indices);
         
-      } //for w
-    } //if
+        for(unsigned int j=0; j < dofs_per_cell; j++)
+        {
+            dist_unenriched[p] += block_solution.block(m)(local_dof_indices[j])
+                                  * fe.shape_value(j, unit_point);
+        }
+        
+        //enriched solution
+        for(unsigned int w=0; w < cell_xdata->n_wells(); w++)
+        {
+            for(unsigned int j=0; j < dofs_per_cell; j++)
+            {
+                if(cell_xdata->global_enriched_dofs(w)[j] == 0) continue;  //skip unenriched node_enrich_value
+                
+                dist_enriched[p] += block_solution.block(m)(cell_xdata->global_enriched_dofs(w)[j]) *
+                                                            xfevalues.enrichment_value(j,w,points[p]);
+            }
+        }
+    }
     
-    dist_solution[p] = dist_enriched[p] + dist_unenriched[p];
+//     //compute shape values (will be used futher down) and unenriched part
+//     for(unsigned int j=0; j < dofs_per_cell; j++)
+//     {
+//       local_shape_values[j] = fe.shape_value(j, unit_point);
+//       dist_unenriched[p] += block_solution.block(m)(local_dof_indices[j]) *
+//                             local_shape_values[j];
+//     }
+// 
+//     
+//     if (cell_and_point.first->user_pointer() != nullptr)
+//     {
+//       cell_xdata = static_cast<XDataCell*>( cell_and_point.first->user_pointer() );
+//       
+//       for(unsigned int w = 0; w < cell_xdata->n_wells(); w++)
+//       {
+//         xshape = cell_xdata->get_well(w)->global_enrich_value(points[p]);
+//         double ramp = 0;        
+//         double xshape_inter = 0;
+//         
+//         switch(enrichment_method_)
+//         {
+//           case Enrichment_method::xfem_shift:
+//             //compute value (weight) of the ramp function
+//             for(unsigned int l = 0; l < n_vertices; l++)
+//             {
+//               ramp += cell_xdata->weights(w)[l] * local_shape_values[l];
+//             }
+//             for(unsigned int k = 0; k < n_vertices; k++)
+//             {
+//               dist_enriched[p] += block_solution.block(m)(cell_xdata->global_enriched_dofs(w)[k]) *
+//                                   ramp *
+//                                   local_shape_values[k] *
+//                                   (xshape - cell_xdata->get_well(w)->global_enrich_value(cell_and_point.first->vertex(k))); //shifted                      
+//             }
+//             break;
+//             
+//           case Enrichment_method::xfem_ramp: 
+//             //compute value (weight) of the ramp function
+//             for(unsigned int l = 0; l < n_vertices; l++)
+//             {
+//               ramp += cell_xdata->weights(w)[l] * local_shape_values[l];
+//             }
+//             for(unsigned int k = 0; k < n_vertices; k++)
+//             {
+//               dist_enriched[p] += block_solution.block(m)(cell_xdata->global_enriched_dofs(w)[k]) *
+//                                   ramp *
+//                                   local_shape_values[k] *
+//                                   xshape;                      
+//             }
+//             break;
+// 
+//           case Enrichment_method::sgfem:
+//             //compute value interpolant
+//             //DBGMSG("sgfem_compute_solution\n");
+//             for(unsigned int l = 0; l < n_vertices; l++) //M_w
+//             {
+//               //xshape_inter += local_shape_values[l] * cell_xdata->node_enrich_value(w)[l];
+//               xshape_inter += local_shape_values[l] * cell_xdata->node_enrich_value(w,l);
+//             }
+//             for(unsigned int k = 0; k < n_vertices; k++)
+//             {
+//               if(cell_xdata->global_enriched_dofs(w)[k] != 0)
+//               dist_enriched[p] += block_solution.block(m)(cell_xdata->global_enriched_dofs(w)[k]) *
+//                                   local_shape_values[k] *
+//                                   (xshape - xshape_inter);
+//                                   
+//               //DBGMSG("dist_enriched[%d] = %e \t\t block=%e \t loc_sh=%e \t\t x_int=%e\n",p,dist_enriched[p],block_solution(cell_xdata->global_enriched_dofs(w)[k]), local_shape_values[k], xshape_inter);
+//             }
+//             break;
+//         } //switch
+//         
+//       } //for w
+//     } //if
+//     
+     dist_solution[p] = dist_enriched[p] + dist_unenriched[p];
   } //for p
 }
 
 void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_tria, const unsigned int& cycle, const unsigned int& m_aquifer)
 {
-    // MATRIX OUTPUT
-    if(output_options_ & OutputOptions::output_matrix)
-    {
-        //TODO: output whole system matrix
-        std::stringstream matrix_name;
-        matrix_name << "matrix_" << cycle;
-        //write_block_sparse_matrix(block_matrix[0],matrix_name.str());
-    }
-      // MESH OUTPUT
-    if(output_options_ & OutputOptions::output_gmsh_mesh)
-    {
-        std::stringstream filename; 
-        filename << output_dir_ << "xfem_mesh_" << cycle;
-        std::ofstream output (filename.str() + ".msh");
-        GridOut grid_out;
-        grid_out.write_msh<2> (*triangulation, output);
-        std::cout << "\nXFEM  gmsh mesh written in:\t" << filename.str() << ".msh" << std::endl;
-        
-        //output of refinement flags of persistent triangulation
-        std::stringstream filename_flags;
-        filename_flags << output_dir_ << "ref_flags_" << cycle << ".ptf";
-        output.close();
-        output.clear();
-        output.open(filename_flags.str());
-        triangulation->write_flags(output);
-    }
-   
-    // dummy solution for displaying mesh in Paraview
-    if(output_options_ & OutputOptions::output_vtk_mesh)
-    {
-        std::stringstream filename; 
-        filename << output_dir_ << "xfem_mesh_" << cycle;
-        DataOut<2> data_out;
-        data_out.attach_dof_handler (*dof_handler);
-        Vector<double> dummys_solution(dof_handler->n_dofs());
-        data_out.add_data_vector (dummys_solution, "xfem_grid");
-        data_out.build_patches (0);
-        std::ofstream output (filename.str()+".vtk");
-        data_out.write_vtu (output); 
-        std::cout << "\nXFEM vtk mesh written in:\t" << filename.str() << ".vtk" << std::endl;
-    }
+    DataOut<2> data_out;
+  
+    QGauss<2>        dist_quadrature(2);
+    FE_Q<2>          dist_fe(1);                    
+    DoFHandler<2>    dist_dof_handler;
+    FEValues<2>      dist_fe_values(dist_fe, dist_quadrature, update_default);
+    ConstraintMatrix dist_hanging_node_constraints;
+
+    //====================distributing dofs
+    dist_dof_handler.initialize(dist_tria,dist_fe);
     
-  
-  DataOut<2> data_out;
-  
-  QGauss<2>        dist_quadrature(2);
-  FE_Q<2>          dist_fe(1);                    
-  DoFHandler<2>    dist_dof_handler;
-  FEValues<2>      dist_fe_values(dist_fe, dist_quadrature, update_default);
-  ConstraintMatrix dist_hanging_node_constraints;
+    DoFTools::make_hanging_node_constraints (dist_dof_handler, dist_hanging_node_constraints);  
+    dist_hanging_node_constraints.close();
 
-  //====================distributing dofs
-  dist_dof_handler.initialize(dist_tria,dist_fe);
-  
-  DoFTools::make_hanging_node_constraints (dist_dof_handler, dist_hanging_node_constraints);  
-  dist_hanging_node_constraints.close();
+    //====================computing solution on the triangulation
+    std::vector< Point< 2 > > support_points(dist_dof_handler.n_dofs());
+    
+    DoFTools::map_dofs_to_support_points<2>(dist_fe_values.get_mapping(), dist_dof_handler, support_points);
+    std::cout << "Distributing solution on a given mesh..." << std::endl;
+    std::cout << "...number of nodes in the mesh:   " << dist_dof_handler.n_dofs() << std::endl;
+    std::cout << "...number of nodes in the xfem mesh:   " << dof_handler->n_dofs() << std::endl;
+    std::cout << "...number of dofs in the xfem mesh:   " << dof_handler->n_dofs() << " unenriched and " 
+                << n_enriched_dofs_ << " enriched" << std::endl;
 
-  //====================computing solution on the triangulation
-  std::vector< Point< 2 > > support_points(dist_dof_handler.n_dofs());
-  
-  DoFTools::map_dofs_to_support_points<2>(dist_fe_values.get_mapping(), dist_dof_handler, support_points);
-  std::cout << "...computing solution on:   " << mesh_file << std::endl;
-  std::cout << "...number of nodes in the mesh:   " << dist_dof_handler.n_dofs() << std::endl;
-  std::cout << "...number of nodes in the xfem mesh:   " << dof_handler->n_dofs() << std::endl;
-  std::cout << "...number of dofs in the xfem mesh:   " << dof_handler->n_dofs() << " unenriched and " 
-            << n_enriched_dofs_ << " enriched" << std::endl;
-
-  //====================vtk output
-  //DataOut<2> data_out;
-  data_out.attach_dof_handler (dist_dof_handler);
-  
-  //Vector<double> dist_solution(dist_dof_handler->n_dofs());
-  //get_solution_at_points(support_points, dist_solution);
-  //data_out.add_data_vector (dist_solution, "solution");
-  
-  std::cout << "computing solution on given mesh" << std::endl;
-  
-  compute_distributed_solution(support_points);
-  
-  dist_hanging_node_constraints.distribute(dist_unenriched);
-  dist_hanging_node_constraints.distribute(dist_enriched);
-  dist_hanging_node_constraints.distribute(dist_solution);
-  
-  if(output_options_ & OutputOptions::output_decomposed)
-  {
-    data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
-    data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
-  }
-  data_out.add_data_vector (dist_solution, "xfem_solution");
-
-  
-  data_out.build_patches ();
-
-  std::stringstream filename;
-  filename << output_dir_ << "xmodel_dist_solution_" << cycle << ".vtk";
-   
-  std::ofstream output (filename.str());
-  data_out.write_vtk (output);
-  data_out.clear();
-  
-  std::cout << "\noutput written in:\t" << filename.str() << std::endl;
-  
-  
-  if(output_options_ & OutputOptions::output_shape_functions)
-  {
-    unsigned int n_dofs = dof_handler->n_dofs();
+    //====================vtk output
+    //DataOut<2> data_out;
     data_out.attach_dof_handler (dist_dof_handler);
-    std::vector<Vector<double> > dist_dof_func;
-    //writing only half of the enriched functions
-    for(unsigned int i = n_dofs; i < n_enriched_dofs_/2+n_dofs; i++)
+    
+    //Vector<double> dist_solution(dist_dof_handler->n_dofs());
+    //get_solution_at_points(support_points, dist_solution);
+    //data_out.add_data_vector (dist_solution, "solution");
+    
+    std::cout << "computing solution on given mesh" << std::endl;
+            
+    compute_distributed_solution(support_points);
+    
+    dist_hanging_node_constraints.distribute(dist_unenriched);
+    dist_hanging_node_constraints.distribute(dist_enriched);
+    dist_hanging_node_constraints.distribute(dist_solution);
+    
+    if(output_options_ & OutputOptions::output_decomposed)
     {
-      dist_dof_func.push_back(Vector<double>(dist_dof_handler.n_dofs()));
-      get_dof_func(support_points,i, dist_dof_func.back() );
-      DBGMSG("output of xfem shape function of enriched dof %d\n",i);
+        data_out.add_data_vector (dist_unenriched, "xfem_unenriched");
+        data_out.add_data_vector (dist_enriched, "xfem_enriched"); 
     }
-  
-    for(unsigned int i = 0; i < dist_dof_func.size(); i++)
-    {
-      std::stringstream func_name;
-      func_name << "func_" << i+n_dofs;
-      data_out.add_data_vector (dist_dof_func[i], func_name.str());
-    }
+    data_out.add_data_vector (dist_solution, "xfem_solution");
+
     
     data_out.build_patches ();
+
+    std::stringstream filename;
+    filename << output_dir_ << "xmodel_dist_solution_" << cycle << ".vtk";
+    
+    std::ofstream output (filename.str());
+    data_out.write_vtk (output);
+    data_out.clear();
+    
+    std::cout << "\noutput written in:\t" << filename.str() << std::endl;
   
-    std::stringstream filename_x;
-    filename_x << output_dir_ << "xshape_func" << ".vtk";
-   
-    std::ofstream output_x (filename_x.str());
-    data_out.write_vtk (output_x);
-  }
   
-  //clearing data, releasing pointers (expecially to DofHandler)
-  data_out.clear();
+    if(output_options_ & OutputOptions::output_shape_functions)
+    {
+        unsigned int n_dofs = dof_handler->n_dofs();
+        data_out.attach_dof_handler (dist_dof_handler);
+        std::vector<Vector<double> > dist_dof_func;
+        //writing only half of the enriched functions
+        for(unsigned int i = n_dofs; i < n_enriched_dofs_/2+n_dofs; i++)
+        {
+        dist_dof_func.push_back(Vector<double>(dist_dof_handler.n_dofs()));
+        get_dof_func(support_points,i, dist_dof_func.back() );
+        DBGMSG("output of xfem shape function of enriched dof %d\n",i);
+        }
+    
+        for(unsigned int i = 0; i < dist_dof_func.size(); i++)
+        {
+        std::stringstream func_name;
+        func_name << "func_" << i+n_dofs;
+        data_out.add_data_vector (dist_dof_func[i], func_name.str());
+        }
+        
+        data_out.build_patches ();
+    
+        std::stringstream filename_x;
+        filename_x << output_dir_ << "xshape_func" << ".vtk";
+    
+        std::ofstream output_x (filename_x.str());
+        data_out.write_vtk (output_x);
+    }
+    
+    //clearing data, releasing pointers (expecially to DofHandler)
+    data_out.clear();
 }
 
 
 void XModel::output_distributed_solution(const std::string& mesh_file, const std::string &flag_file, bool is_circle, const unsigned int& cycle, const unsigned int &m_aquifer)
-{
-    // MATRIX OUTPUT
-    if(output_options_ & OutputOptions::output_matrix)
-    {
-        //TODO: output whole system matrix
-        std::stringstream matrix_name;
-        matrix_name << "matrix_" << cycle;
-        //write_block_sparse_matrix(block_matrix[0],matrix_name.str());
-    }
-  
+{ 
   //triangulation for distributing solution onto domain
   Triangulation<2> dist_coarse_tria;  
   PersistentTriangulation<2> *dist_tria;  
@@ -2423,6 +2410,7 @@ void XModel::output_distributed_solution(const std::string& mesh_file, const std
   //restore in both cases (flags or not)
   dist_tria->restore();
   
+  std::cout << "...computing solution on:   " << mesh_file << std::endl;
   output_distributed_solution(*dist_tria, cycle, m_aquifer);
   
   //destroy persistent triangulation, release pointer to coarse triangulation
