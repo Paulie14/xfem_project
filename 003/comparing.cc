@@ -1,19 +1,10 @@
 
 #include <deal.II/grid/tria.h>
-#include <deal.II/grid/tria_accessor.h>
-#include <deal.II/grid/tria_iterator.h>
-
-//input/output of grid
-#include <deal.II/grid/grid_in.h> 
-
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/dofs/dof_accessor.h>
-#include <deal.II/dofs/dof_tools.h>
 
 
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_values.h>
-#include <deal.II/fe/mapping_q.h>
 #include <deal.II/base/quadrature_lib.h>
 
 #include <deal.II/base/function.h>
@@ -23,77 +14,11 @@
 #include <iostream>
 #include <cmath>
 
-#include "parameters.hh"
 #include "comparing.hh"
 #include "system.hh"
 #include "well.hh"
 
-std::vector<Point<2> > Comparing::get_all_quad_points(const std::string mesh_file)
-{
-  //triangulation for distributing solution onto domain
-  Triangulation<2> dist_tria;
-  QGauss<2>        dist_quadrature(2);
-  FE_Q<2>          dist_fe(1);                    
-  DoFHandler<2>    dist_dof_handler(dist_tria);
-
-  //====================opening mesh
-  //open filestream with mesh from GMSH
-  std::ifstream in;
-  GridIn<2> gridin;
-  
-  in.open(mesh_file);
-  //attaching object of triangulation
-  gridin.attach_triangulation(dist_tria);
-  //reading data from filestream
-  gridin.read_msh(in);
-  
-  //====================distributing dofs
-  dist_dof_handler.distribute_dofs(dist_fe);
-  FEValues<2>  dist_fe_values(dist_fe, dist_quadrature,update_quadrature_points);
-  
-  const unsigned int n_q_points = dist_fe_values.n_quadrature_points;
-  
-  //std::vector<unsigned int> local_dof_indices(dist_fe.dofs_per_cell);
-   
-  //std::vector<Point<2> > support_points(dist_dof_handler.n_dofs());
-  //DoFTools::map_dofs_to_support_points<1,2>( dist_fe_values.get_mapping(), dist_dof_handler, support_points);
-
-  std::cout << "number of cells:" << dist_tria.n_active_cells() << std::endl;
-  std::cout << "number of q_points:" << n_q_points << std::endl;
-  std::cout << "number of all q_points:" << dist_tria.n_active_cells()*n_q_points << std::endl;
-  
-  std::vector<Point<2> > points;
-  points.reserve(dist_tria.n_active_cells()*n_q_points);
-  
-  typename DoFHandler<2>::active_cell_iterator
-      cell = dist_dof_handler.begin_active(),
-      endc = dist_dof_handler.end();
-  
-  //iteration over cells - on each cell computing addition to every point
-  for (; cell != endc; ++cell)
-  {
-    dist_fe_values.reinit(cell);
-  
-    const std::vector<Point<2> > &q_points = dist_fe_values.get_quadrature_points();
-         
-    //iteration over quadrature points (integrating)
-    for (unsigned int q=0; q<n_q_points; ++q)
-      {
-        double r = Parameters::radius;
-        Point<2> center1(Parameters::x_dec, 0.0);
-        Point<2> center2((-1)*Parameters::x_dec, 0.0);
-        
-        //checking if the point lies outside the well
-        if((q_points[q].distance(center1) > r) && 
-            (q_points[q].distance(center2) > r))
-        {
-          //adding quadrature points
-          points.push_back(q_points[q]);
-        }
-      }
-  }
-  return points;
-}
+using namespace dealii;
 
 double Comparing::L2_norm_diff(const dealii::Vector< double >& v1, 
                                const dealii::Vector< double >& v2,

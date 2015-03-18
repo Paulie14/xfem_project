@@ -1,6 +1,9 @@
 #include "well.hh"
 #include <cmath> //M_PI
 
+#include <deal.II/base/tensor.h>
+#include <deal.II/base/point.h>
+
 Well::Well()
 : active_(false),
   radius_(0), 

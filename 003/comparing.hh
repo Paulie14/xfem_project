@@ -2,13 +2,15 @@
 #ifndef comparing_h
 #define comparing_h
 
-#include <deal.II/numerics/vector_tools.h>
-#include <deal.II/grid/tria.h>
+
 #include <deal.II/base/function.h>
 
 #include "well.hh"
 
-using namespace dealii;
+//forward declaration
+namespace dealii{
+    template<int,int> class Triangulation;
+}
 
 /** Groups together the exact solutions and source terms.
  * All the classes are descendants of abstract templated class @p dealii::Function<2>
@@ -24,7 +26,7 @@ namespace Solution
    *   \f}
    * @p value returns value of exact solution in given point.
    */
-  class ExactBase : public Function<2>
+  class ExactBase : public dealii::Function<2>
     {
       public:
         /** @brief Constructor.
@@ -37,10 +39,10 @@ namespace Solution
         ///Returns value of exact soution in given point @p p.
         ///@param p is given point
         ///@param component is set to 0 cause it is a scalar function
-        virtual double value (const Point<2>   &p,
+        virtual double value (const dealii::Point<2>   &p,
                               const unsigned int  component = 0) const = 0;
                               
-        virtual Tensor<1,2> grad (const Point<2>   &p,
+        virtual dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
                              const unsigned int  component = 0) const = 0;    
                               
         inline double a() {return a_;}
@@ -63,20 +65,20 @@ namespace Solution
     public:
       ExactSolutionZero() : ExactBase(new Well(), 0, 0)
       {}
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
-      Tensor<1,2> grad (const Point<2>   &p,
-                        const unsigned int  component = 0) const override;   
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
     };
     
     class ExactSolution : public ExactBase
     {
     public:
       ExactSolution(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
-      Tensor<1,2> grad (const Point<2>   &p,
-                        const unsigned int  component = 0) const override;   
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
     };
     
     class ExactSolution1 : public ExactBase
@@ -84,10 +86,10 @@ namespace Solution
     public:
       ExactSolution1(Well *well, double radius, double k, double amplitude);
         
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
-      Tensor<1,2> grad (const Point<2>   &p,
-                        const unsigned int  component = 0) const override;   
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
     protected:
         double k_, amplitude_;
         
@@ -100,7 +102,7 @@ namespace Solution
       //Source1(Well *well, double radius, double k) : ExactSolution1(well, radius, k) {}
       Source1(ExactSolution1 &ex_sol) 
         : ExactSolution1(ex_sol.well_, ex_sol.radius_, ex_sol.k_, ex_sol.amplitude_) {}
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
     
@@ -108,10 +110,10 @@ namespace Solution
     {
     public:
       ExactSolution2(Well *well, double radius, double k) : ExactBase(well, radius, 0), k_(k) {}
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
-      Tensor<1,2> grad (const Point<2>   &p,
-                        const unsigned int  component = 0) const override;   
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
     protected:
         double k_;
     
@@ -123,7 +125,7 @@ namespace Solution
     public:
       Source2(Well *well, double radius, double k) : ExactSolution2(well, radius, k) {}
       Source2(ExactSolution2 &ex_sol) : ExactSolution2(ex_sol.well_, ex_sol.radius_, ex_sol.k_) {}
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
 
@@ -133,10 +135,10 @@ namespace Solution
     public:
       ExactSolution3(Well *well, double radius, double k, double amplitude);
         
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
-      Tensor<1,2> grad (const Point<2>   &p,
-                        const unsigned int  component = 0) const override;   
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
     protected:
         double k_, amplitude_;
         
@@ -149,7 +151,7 @@ namespace Solution
       //Source1(Well *well, double radius, double k) : ExactSolution1(well, radius, k) {}
       Source3(ExactSolution3 &ex_sol) 
         : ExactSolution3(ex_sol.well_, ex_sol.radius_, ex_sol.k_, ex_sol.amplitude_) {}
-      double value (const Point<2>   &p,
+      double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
 }  
@@ -167,21 +169,15 @@ using namespace Solution;
 class Comparing
 {
 public:
-  /** Gets quadrature points.
-    * Takes mesh, compute quadrature points and
-    * removes those that lie inside the well.
-    */
-  static std::vector<Point<2> > get_all_quad_points(const std::string mesh_file);
-  
   /// Returns \f$L^2\f$ norm of difference between two dealii vectors.
   /** Return -1 if sizes does not match.
    * @param v1
    * @param v2
    * @param tria
    */
-  static double L2_norm_diff (const Vector<double> &v1, 
-                              const Vector<double> &v2,
-                              const Triangulation< 2 > &tria
+  static double L2_norm_diff (const dealii::Vector<double> &v1, 
+                              const dealii::Vector<double> &v2,
+                              const dealii::Triangulation< 2 > &tria
                              );
  
   /// Returns \f$L^2\f$ norm of difference between two dealii vectors.
@@ -191,9 +187,9 @@ public:
    * @param well
    * @param area_radius
    */
-  static double L2_norm_diff (const Vector<double> &input_vector, 
-                              const Triangulation< 2 > &tria, 
-                              Function<2>* exact_solution);
+  static double L2_norm_diff (const dealii::Vector<double> &input_vector, 
+                              const dealii::Triangulation< 2 > &tria, 
+                              dealii::Function<2>* exact_solution);
 
   /// Returns \f$L^2\f$ norm of difference between two dealii vectors.
   /** Return -1 if sizes does not match.
@@ -201,15 +197,15 @@ public:
    * @param well
    * @param area_radius
    */
-  static double L2_norm_exact (const Triangulation< 2 > &tria, 
-                               Function<2>* exact_solution);
+  static double L2_norm_exact (const dealii::Triangulation< 2 > &tria, 
+                               dealii::Function<2>* exact_solution);
   
   ///Returns \f$L^2\f$ norm of the vector on the given triangulation
   /**
    * @param input_vector
    * @param tria
    */
-  static double L2_norm(const Vector< double >& input_vector, 
+  static double L2_norm(const dealii::Vector< double >& input_vector, 
                         const dealii::Triangulation< 2 >& tria);
 };
 

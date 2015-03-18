@@ -2,21 +2,17 @@
 #define Exact_model_h
 
 #include <deal.II/grid/tria.h>
-#include <deal.II/grid/persistent_tria.h>
-#include <deal.II/dofs/dof_handler.h>
- 
-
 #include <deal.II/lac/vector.h>
 
-
-
-
 #include "model_base.hh"
-#include "comparing.hh"
 
-using namespace dealii;
+// forward declarations
+namespace dealii{
+    template<int,int> class PersistentTriangulation;
+}
 
 class Well;
+namespace Solution{ class ExactBase; }
 
 /// class ExactModel
 /**
@@ -33,18 +29,16 @@ class ExactModel
     /**
      * @param exact_solution is function representing exact solution
      */
-    ExactModel (ExactBase *exact_solution);
+    ExactModel (Solution::ExactBase *exact_solution);
     
     ///Destructor
     ~ExactModel();
     
     ///Returns reference to exact solution vector.
-    inline const Vector<double> &get_solution()
-    { return solution; }
+    const dealii::Vector<double> &get_solution();
     
     ///Returns reference to the triangulation on which the exact solution was computed.
-    inline const Triangulation<2> &get_triangulation()
-    { return *dist_tria; }
+    const dealii::Triangulation<2> &get_triangulation();
     
     ///Outputs exact solution on the circle grid (only refinement flags of grid is needed to create mesh)
     /**
@@ -59,17 +53,27 @@ class ExactModel
      * @param dist_tria is triangulation on which the exact solution should be computed.
      * @param cycle is not needed
      */
-    void output_distributed_solution (const Triangulation<2> &dist_tria,
+    void output_distributed_solution (const dealii::Triangulation<2> &dist_tria,
                                       const unsigned int &cycle=0);
 
   private:   
-    ExactBase *exact_solution;  
+    Solution::ExactBase *exact_solution;  
       
     ///Triangulation for distributing the solution.
-    Triangulation<2> dist_coarse_tria; 
-    PersistentTriangulation<2> *dist_tria; 
+    dealii::Triangulation<2> dist_coarse_tria; 
+    dealii::PersistentTriangulation<2> *dist_tria; 
 
-    Vector<double> solution;
+    dealii::Vector<double> solution;
 };
+
+
+
+/****************************************            Implementation          ********************************/
+
+inline const dealii::Vector<double> & ExactModel::get_solution()
+{ return solution; }
+
+inline const dealii::Triangulation<2> & ExactModel::get_triangulation()
+{ return *dist_tria; }
 
 #endif  //Exact_model_h

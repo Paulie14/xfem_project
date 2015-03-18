@@ -1,19 +1,12 @@
-#include <deal.II/grid/tria_accessor.h>
-#include <deal.II/grid/tria_iterator.h>
-#include <deal.II/grid/tria_boundary_lib.h>
 
+#include <deal.II/base/quadrature_lib.h>
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/dofs/dof_tools.h>
 
-//input/output of grid
+//grid
+#include <deal.II/grid/tria_boundary_lib.h>
 #include <deal.II/grid/grid_generator.h>
-#include <deal.II/grid/grid_in.h> 
-#include <deal.II/grid/grid_out.h>
-#include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/persistent_tria.h>
-
-
-//for adaptive refinement
-#include <deal.II/grid/grid_refinement.h>
 
 //output
 #include <deal.II/numerics/data_out.h>
@@ -22,7 +15,7 @@
 
 #include "system.hh"
 #include "exact_model.hh"
-#include "well.hh"
+#include "comparing.hh"
 
 ExactModel::ExactModel()
 {

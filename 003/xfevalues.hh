@@ -2,11 +2,15 @@
 #ifndef XFEValues_h
 #define XFEValues_h
 
-#include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/fe/fe_values.h>
-#include "data_cell.hh"
 #include "system.hh"
+
+namespace dealii{
+    template<int,int> class FiniteElement;
+}
+
+class XDataCell;
 
 /** Enumerates methods of enrichment.
    */
@@ -26,11 +30,11 @@ template<Enrichment_method::Type>
 class XFEValues : public dealii::FEValues< 2 >
 {
 public:
-  XFEValues(const FiniteElement<2> &fe, const Quadrature<2> &quadrature, const UpdateFlags update_flags) 
-    : FEValues<2>(fe, quadrature, update_flags),
+  XFEValues(const dealii::FiniteElement<2> &fe, const dealii::Quadrature<2> &quadrature, const dealii::UpdateFlags update_flags) 
+    : dealii::FEValues<2>(fe, quadrature, update_flags),
       xdata_(nullptr)
   {
-    n_vertices_ = GeometryInfo<2>::vertices_per_cell;
+    n_vertices_ = dealii::GeometryInfo<2>::vertices_per_cell;
   }
   
   using dealii::FEValues<2>::reinit;
@@ -46,15 +50,15 @@ public:
   
   /** Returns the value of the enrichment test function at given point.
    */
-  double enrichment_value(const unsigned int function_no, const unsigned int w, const Point<2> p);
+  double enrichment_value(const unsigned int function_no, const unsigned int w, const dealii::Point<2> p);
   
   /** Returns the value of the gradient of the enrichment test function at quadrature point (according to used quadrature).
    */
-  Tensor<1,2> enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q);
+  dealii::Tensor<1,2> enrichment_grad(const unsigned int function_no, const unsigned int w, const unsigned int q);
   
   /** NOT WORKING. Returns the value of the gradient of the enrichment test function at given point.
    */
-  Tensor<1,2> enrichment_grad(const unsigned int function_no, const unsigned int w, const Point<2> p);
+  dealii::Tensor<1,2> enrichment_grad(const unsigned int function_no, const unsigned int w, const dealii::Point<2> p);
   
 private:
   /// Vector of values of the enrichment test function at quadrature points.
@@ -73,6 +77,14 @@ private:
 };
 
 
+
+
+
+/*******************************************     IMPLEMENTATION                   ***************************/
+
+#include "well.hh"
+#include "data_cell.hh"
+
 template<Enrichment_method::Type T> 
 void XFEValues<T>::reinit(XDataCell* xdata)
 {
@@ -82,9 +94,9 @@ void XFEValues<T>::reinit(XDataCell* xdata)
   this->reinit(cell_);
   
   
-  if(update_quadrature_points & this->get_update_flags())
+  if(dealii::update_quadrature_points & this->get_update_flags())
   {
-    if(update_values & this->get_update_flags())
+    if(dealii::update_values & this->get_update_flags())
     {
       q_enrich_values_.resize(n_wells_);
   

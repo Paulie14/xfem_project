@@ -1,8 +1,9 @@
 #ifndef Well_h
 #define Well_h
 
-#include <deal.II/numerics/vector_tools.h>
-#include <deal.II/dofs/dof_tools.h>
+
+#include <deal.II/base/tensor.h>
+#include <deal.II/base/point.h>
 
 #include "massert.h"
 
@@ -31,86 +32,62 @@ class Well
     //@{
     
     /// returns radius
-    inline double radius()
-    {return radius_;}
+    double radius();
   
     /// returns center
-    inline Point<2> center()
-    {return center_;}
+    Point<2> center();
     
     /// Returns permeability to @p m-th aquifer.
-    inline double perm2aquifer(unsigned int m)
-    {   MASSERT(m < perm2aquifer_.size(), "Aquifer index exceeded."); 
-        return perm2aquifer_[m]; }
+    double perm2aquifer(unsigned int m);
     
     /// Returns permeability to @p m-th aquitard.
-    inline double perm2aquitard(unsigned int m)
-    {   MASSERT(m < perm2aquitard_.size(), "Aquitard index exceeded."); 
-        return perm2aquitard_[m]; }
-  
+    double perm2aquitard(unsigned int m);
+    
     /// returns pressure in the well
-    inline double pressure()
-    {   MASSERT(pressure_set_, "Pressure not set.");
-        return pressure_; }
+    double pressure();
     
     /// returns pressure in the well (piezometric help)
-    inline double pressure(const Point<2> &p)
-    {   MASSERT(pressure_set_, "Pressure not set.");
-        return pressure_ - p[1]; }
+    double pressure(const Point<2> &p);
     
     /// Is true if the pressure at the top is set.
-    inline bool is_pressure_set()
-    {return pressure_set_;}
+    bool is_pressure_set();
     
-    inline const std::vector<Point<2> > &q_points()
-    {return q_points_;}
+    const std::vector<Point<2> > &q_points();
     
-    inline bool is_active()
-    { return active_;}
+    bool is_active();
     //@}
   
   
     /// @name Setters
     //@{
     /// Sets permeability to @p m-th aquifer.
-    inline void set_perm2aquifer(unsigned int m, double perm)
-    {   MASSERT(m < perm2aquifer_.size(), "Aquifer index exceeded."); 
-        perm2aquifer_[m] = perm;}
+    void set_perm2aquifer(unsigned int m, double perm);
     
     /// Sets permeability to @p m-th aquitard.
-    inline void set_perm2aquitard(unsigned int m, double perm)
-    {   MASSERT(m < perm2aquitard_.size(), "Aquitard index exceeded."); 
-        perm2aquitard_[m] = perm;}
+    void set_perm2aquitard(unsigned int m, double perm);
+
     
     /// Sets permeability to all aquifers.
-    inline void set_perm2aquifer(std::vector<double> perm)
-    { perm2aquifer_ = perm;}
+    void set_perm2aquifer(std::vector<double> perm);
     
     /// Sets permeability to all aquitards.
-    inline void set_perm2aquitard(std::vector<double> perm)
-    { perm2aquitard_ = perm;}
+    void set_perm2aquitard(std::vector<double> perm);
     
     /// sets pressure
-    inline void set_pressure(double press)
-    {   pressure_ = press;
-        pressure_set_ = true;
-    }
+    void set_pressure(double press);
     
-    inline void set_active()
-    { active_ = true; }
+    // Activates the well.
+    void set_active();
     
-    inline void set_inactive()
-    { active_ = false; }
+    // Deactivates the well - has no influence in the model.
+    void set_inactive();
     //@}
     
     /// Computes circumference of the well_edge
     double circumference();
     
     /// returns true if the given point lies within the well radius
-    inline bool points_inside(const Point<2> &point)
-    {
-      return point.distance(center_) <= radius_;
-    }
+    bool points_inside(const Point<2> &point);
     
     /// computes @p n points equally distributed on the well boundary
     void evaluate_q_points(const unsigned int &n);
@@ -157,6 +134,71 @@ class Well
     
 };
 
+
+
+/****************************************            Implementation          ********************************/
+inline double Well::radius()
+{return radius_;}
+
+inline Point<2> Well::center()
+{return center_;}
+
+inline double Well::perm2aquifer(unsigned int m)
+{   MASSERT(m < perm2aquifer_.size(), "Aquifer index exceeded."); 
+    return perm2aquifer_[m]; }
+
+inline double Well::perm2aquitard(unsigned int m)
+{   MASSERT(m < perm2aquitard_.size(), "Aquitard index exceeded."); 
+    return perm2aquitard_[m]; }
+
+inline double Well::pressure()
+{   MASSERT(pressure_set_, "Pressure not set.");
+    return pressure_; }
+
+inline double Well::pressure(const Point<2> &p)
+{   MASSERT(pressure_set_, "Pressure not set.");
+    return pressure_ - p[1]; }
+
+inline bool Well::is_pressure_set()
+{return pressure_set_;}
+
+inline const std::vector<Point<2> > & Well::q_points()
+{return q_points_;}
+
+inline bool Well::is_active()
+{ return active_;}
+
+
+inline void Well::set_perm2aquifer(unsigned int m, double perm)
+{   MASSERT(m < perm2aquifer_.size(), "Aquifer index exceeded."); 
+    perm2aquifer_[m] = perm;}
+
+inline void Well::set_perm2aquitard(unsigned int m, double perm)
+{   MASSERT(m < perm2aquitard_.size(), "Aquitard index exceeded."); 
+    perm2aquitard_[m] = perm;}
+
+inline void Well::set_perm2aquifer(std::vector<double> perm)
+{ perm2aquifer_ = perm;}
+
+inline void Well::set_perm2aquitard(std::vector<double> perm)
+{ perm2aquitard_ = perm;}
+
+inline void Well::set_pressure(double press)
+{   pressure_ = press;
+    pressure_set_ = true;
+}
+
+inline void Well::set_active()
+{ active_ = true; }
+
+inline void Well::set_inactive()
+{ active_ = false; }
+
+
+inline bool Well::points_inside(const Point<2> &point)
+{
+  return point.distance(center_) <= radius_;
+}
 
 
 #endif // Exact_solution_h

@@ -169,12 +169,12 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   }
   
    
-//     if(n_wells_inside > 0)
-//     {
-//         std::cout << "cell_matrix" << std::endl;
-//         cell_matrix.print_formatted(std::cout);
-//         std::cout << std::endl;
-//     }
+    if(n_wells_inside > 0)
+    {
+        std::cout << "cell_matrix" << std::endl;
+        cell_matrix.print_formatted(std::cout);
+        std::cout << std::endl;
+    }
   
 //   //------------------------------------------------------------------------------ BOUNDARY INTEGRAL
 // #ifdef BC_NEWTON //------------------------------------------------------------------------bc_newton

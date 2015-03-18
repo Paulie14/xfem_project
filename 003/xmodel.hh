@@ -12,8 +12,6 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/base/quadrature_lib.h>
 
-#include <deal.II/lac/vector.h>
-
 //block things
 #include <deal.II/lac/block_sparsity_pattern.h>
 #include <deal.II/lac/block_sparse_matrix.h>
@@ -25,10 +23,13 @@
 #include "xfevalues.hh"
 
 using namespace dealii;
+using namespace Solution;
 
 class Well;
 class XDataCell;
-
+namespace Solution {
+    class ExactBase;
+}
 
 /** \mainpage
  * 

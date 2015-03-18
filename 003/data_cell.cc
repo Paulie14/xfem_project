@@ -2,6 +2,8 @@
 #include "system.hh"
 #include "well.hh"
 
+#include <deal.II/fe/mapping.h>
+
 using namespace dealii;
 
 DataCellBase::DataCellBase(const DoFHandler<2>::active_cell_iterator &cell, 

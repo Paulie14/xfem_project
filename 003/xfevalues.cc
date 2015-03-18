@@ -1,6 +1,10 @@
 #include "xfevalues.hh"
 #include "system.hh"
 
+#include <deal.II/fe/fe.h>
+#include <deal.II/dofs/dof_accessor.h>
+#include <deal.II/fe/fe_values.h>
+
 //************************************************************************************************** prepare()
 template<>
 void XFEValues<Enrichment_method::xfem>::prepare()

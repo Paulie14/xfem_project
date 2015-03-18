@@ -2,30 +2,32 @@
 #define Model_h
 
 #include <deal.II/grid/tria.h>
-#include <deal.II/grid/persistent_tria.h>
-#include <deal.II/dofs/dof_handler.h>
 
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_values.h>
 
 #include <deal.II/dofs/dof_accessor.h>
  
-#include <deal.II/fe/fe_values.h>
 #include <deal.II/base/quadrature_lib.h>
-
-#include <deal.II/lac/vector.h>
 
 //block things
 #include <deal.II/lac/block_sparsity_pattern.h>
 #include <deal.II/lac/block_sparse_matrix.h>
 #include <deal.II/lac/block_matrix.h>
 #include <deal.II/lac/block_vector.h>
+#include <deal.II/lac/vector.h>
 
-//#include "well.hh"
 #include "model_base.hh"
-#include "comparing.hh"
 
 using namespace dealii;
 
+//forward declarations
+namespace dealii{
+    template<int, int> class PersistentTriangulation;
+    template<int,int> class DoFHandler;
+}
+
+namespace Solution{ class ExactBase; }
 class Well;
 class DataCell;
 
@@ -53,8 +55,8 @@ class Model : public ModelBase
     
     virtual ~Model();
     
-    //virtual void run (const unsigned int cycle=0);
-    
+    ///@name Output
+    //@{
     //output results from another model but computed on the model mesh
     void output_foreign_results(const unsigned int cycle,const Vector<double> &foreign_solution);
     
@@ -71,8 +73,10 @@ class Model : public ModelBase
                                      const unsigned int& cycle);
     
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
-                                                   ExactBase * exact_solution, bool h1=false) override;
-    
+                                                   Solution::ExactBase * exact_solution, 
+                                                   bool h1=false) override;
+    //@}
+                                                   
     ///@name Getters
     //@{
     /** Returns constant reference to distributed solution.
@@ -84,12 +88,10 @@ class Model : public ModelBase
     const Vector< double > &get_distributed_solution() override;
     
     ///Returns pointer to the computational triangulation (PersistentTriangulation).
-    inline const Triangulation<2> &get_triangulation()
-    { return *triangulation; }
+    const Triangulation<2> &get_triangulation();
     
     ///Returns number of degrees of freedom
-    unsigned int get_number_of_dofs()
-    { return dof_handler->n_dofs(); }
+    unsigned int get_number_of_dofs();
     //@}
     
     ///@name Setters
@@ -98,22 +100,14 @@ class Model : public ModelBase
       * @param ref is percentage of refinement
       * @param coarse is percentage of coarsening
       */
-    inline void set_ref_coarse_percentage(float ref, float coarse)
-    { 
-      refinement_percentage = ref;
-      coarsing_percentage = coarse;
-    }
-    
+    void set_ref_coarse_percentage(float ref, float coarse);
+
     /**Sets file path to a mesh file. 
      * Grid creation type @p grid_create is set to @p load.
      * @param coarse_mesh is the path to the GMSH file to be loaded
      * @param ref_flags is the path to the file with refinement flags
      */
-    inline void set_computational_mesh (std::string coarse_mesh, std::string ref_flags = "")
-    { this->coarse_grid_file = coarse_mesh;
-      this->ref_flags_file = ref_flags;
-      grid_create = load;
-    }
+    void set_computational_mesh (std::string coarse_mesh, std::string ref_flags = "");
     
     /**Sets file path to a mesh file. 
      * Grid creation type @p grid_create is set to @p load_circle.
@@ -121,15 +115,9 @@ class Model : public ModelBase
      * @param center is center of the circle
      * @param radius is the radius of the circle
      */
-    inline void set_computational_mesh_circle(std::string ref_flags, 
-                                              Point<2> center, 
-                                              double radius)
-    {
-      this->center = center;
-      this->radius = radius;
-      grid_create = load_circle;
-      this->ref_flags_file = ref_flags;
-    }
+    void set_computational_mesh_circle(std::string ref_flags, 
+                                       Point<2> center, 
+                                       double radius);
     //@}
 
   protected:
@@ -152,7 +140,9 @@ class Model : public ModelBase
      * @param cell is the cell which we are testing.
      * @param well is the well which boundary we are testing. We test only one well at time. 
      */
-    void add_data_to_cell(const DoFHandler<2>::active_cell_iterator cell, Well *well, unsigned int well_index);
+    void add_data_to_cell(const DoFHandler<2>::active_cell_iterator cell, 
+                          Well *well, 
+                          unsigned int well_index);
 
     
     ///path to computational mesh
@@ -189,7 +179,7 @@ class Model : public ModelBase
     ///2d polynomial finite element
     FE_Q<2>              fe;                    
     ///degrees of freedom handler
-    DoFHandler<2>       *dof_handler;
+    DoFHandler<2>*       dof_handler;
     
     ///Quadrature for integrating on elements
     QGauss<2>  quadrature_formula;
@@ -211,4 +201,34 @@ class Model : public ModelBase
     Vector<double>      dist_solution;
 };
 
+
+/****************************************            Implementation          ********************************/
+
+inline const Triangulation<2> & Model::get_triangulation()
+{ return *triangulation; }
+
+inline unsigned int Model::get_number_of_dofs()
+{ return dof_handler->n_dofs(); }
+    
+inline void Model::set_ref_coarse_percentage(float ref, float coarse)
+{ 
+  refinement_percentage = ref;
+  coarsing_percentage = coarse;
+}
+
+inline void Model::set_computational_mesh (std::string coarse_mesh, std::string ref_flags)
+{ this->coarse_grid_file = coarse_mesh;
+  this->ref_flags_file = ref_flags;
+  grid_create = load;
+}
+
+inline void Model::set_computational_mesh_circle(std::string ref_flags, 
+                                          Point<2> center, 
+                                          double radius)
+{
+  this->center = center;
+  this->radius = radius;
+  grid_create = load_circle;
+  this->ref_flags_file = ref_flags;
+}
 #endif  //Model_h

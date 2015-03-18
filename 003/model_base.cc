@@ -1,10 +1,9 @@
 
-
-
 #include "model_base.hh"
 #include "system.hh"
 #include "comparing.hh"
 #include <deal.II/base/function.h>
+#include <deal.II/lac/block_sparse_matrix.h>
 
 #include <dirent.h>
 #include <sys/stat.h>

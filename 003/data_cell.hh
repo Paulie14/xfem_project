@@ -1,11 +1,14 @@
 #ifndef DataCell_h
 #define DataCell_h
 
-#include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_accessor.h>
 
-#include "system.hh"
-#include "well.hh"
+//forward declarations
+namespace dealii{
+    template<int,int> class Mapping;
+}
+
+class Well;
 
 /** @brief Base class for data distributed umong cells.
  * We need to distribute some data from wells umong the cells
@@ -38,14 +41,12 @@ public:
     /// @name Getters
     //@{
     /// Returns pointer to the cell which this data belong to.
-    inline dealii::DoFHandler<2>::active_cell_iterator get_cell()
-    { return cell_; }
+    dealii::DoFHandler<2>::active_cell_iterator get_cell();
     
     ///Returns number of wells comunicating with the cell
-    inline unsigned int n_wells()
-    { return wells_.size(); } 
+    unsigned int n_wells();
     
-    inline int user_index() const {return user_index_;}
+    int user_index() const;
     
     /// Returns pointer to one of the wells comunicating with the cell this data belong to.
     /**
@@ -71,11 +72,11 @@ public:
     const std::vector<dealii::Point<2> > &mapped_q_points(unsigned int local_well_index);
     //@}
     
-    inline void set_user_index(int index) {user_index_ = index;}
-    inline void clear_user_index() {user_index_ = 0;}
+    void set_user_index(int index);
+    void clear_user_index();
     
     /// Maps the quadrature points lying in the cell to a reference cell.
-    void map_well_quadrature_points(const Mapping<2>& mapping);
+    void map_well_quadrature_points(const dealii::Mapping<2>& mapping);
     
     /// Sets global well indices of the wells in the cell.
     /** @param well_dof_indices is vector of global well indices.
@@ -286,5 +287,28 @@ class XDataCell : public DataCellBase
      */
     std::vector<std::vector<unsigned int> > weights_;
 };
+
+
+
+
+
+
+
+
+
+
+/****************************************            Implementation          ********************************/
+
+inline dealii::DoFHandler<2>::active_cell_iterator DataCellBase::get_cell()
+{ return cell_; }
+
+inline unsigned int DataCellBase::n_wells()
+{ return wells_.size(); } 
+
+inline int DataCellBase::user_index() const {return user_index_;}
+
+inline void DataCellBase::set_user_index(int index) {user_index_ = index;}
+
+inline void DataCellBase::clear_user_index() {user_index_ = 0;}
 
 #endif // DataCell_h

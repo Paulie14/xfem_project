@@ -3,14 +3,16 @@
 
 #include <deal.II/grid/tria.h>
 #include <deal.II/base/function.h>
-#include <deal.II/lac/block_sparse_matrix.h>
-#include "comparing.hh"
-
-using namespace dealii;
 
 //Forward declaration
 class Well;
-// class ExactBase;
+namespace Solution {
+    class ExactBase;
+}
+namespace dealii {
+    template<int> class Function;
+    template<typename> class BlockSparseMatrix;
+}
 
 /** @brief Base class for the model of multi-aquifer system with wells.
  * 
@@ -53,7 +55,7 @@ public:
    * @param n_aquifers is the number of aquifers (not used sofar)
    */
   ModelBase(const std::string &name, 
-             const unsigned int &n_aquifers=1);
+            const unsigned int &n_aquifers=1);
   
   ///Constructor.
   /**
@@ -62,8 +64,8 @@ public:
    * @param n_aquifers is the number of aquifers (not used sofar)
    */
   ModelBase(const std::vector<Well*> &wells,
-             const std::string &name, 
-             const unsigned int &n_aquifers=1);
+            const std::string &name, 
+            const unsigned int &n_aquifers=1);
   
   ///Kind of copy constructor.
   /**
@@ -110,8 +112,8 @@ public:
                                              const unsigned int &cycle=0, 
                                              const unsigned int &m_aquifer=0) = 0;
                                              
-  virtual std::pair<double,double> integrate_difference(Vector<double>& diff_vector, 
-                                                        ExactBase *exact_solution, bool h1=false);
+  virtual std::pair<double,double> integrate_difference(dealii::Vector<double>& diff_vector, 
+                                                        Solution::ExactBase *exact_solution, bool h1=false);
   
                                              
   /** @name Getters
@@ -120,11 +122,11 @@ public:
                                              
   /** Returns constant reference to the computed solution.
      */
-  virtual const Vector< double > &get_solution() = 0;
+  virtual const dealii::Vector< double > &get_solution() = 0;
   
   /** Returns constant reference to computed distributed solution (on different grid).
      */
-  virtual const Vector< double > &get_distributed_solution() = 0;
+  virtual const dealii::Vector< double > &get_distributed_solution() = 0;
     
   ///Gets support points of the model.
   ///So far the support points corresponds with nodes
@@ -171,7 +173,7 @@ public:
   ///Setter of area dimensions
   ///@param down_left is down left vertex of rectangle area
   ///@param up_right is up right vertex of rectangle area
-  void set_area(const Point<2> &down_left, const Point<2> &up_right);
+  void set_area(const dealii::Point<2> &down_left, const dealii::Point<2> &up_right);
   
   ///Setter of transmisivity
   ///@param trans is transmisivity to be set for \f$ m \f$-th aquifer
@@ -214,13 +216,13 @@ public:
   }
   
   ///Sets the function defining the Dirichlet function.
-  inline void set_dirichlet_function(Function<2> *func)
+  inline void set_dirichlet_function(dealii::Function<2> *func)
   {
     dirichlet_function = func;
   }
   
   ///Sets the function defining the Dirichlet function.
-  inline void set_rhs_function(Function<2> *func)
+  inline void set_rhs_function(dealii::Function<2> *func)
   {
     rhs_function = func;
   }
@@ -257,7 +259,8 @@ protected:
   //@}
   
   //Writes matrix in matlab .m file.
-  void write_block_sparse_matrix(const BlockSparseMatrix<double> &matrix, const std::string &filename);
+  void write_block_sparse_matrix(const dealii::BlockSparseMatrix<double> &matrix, 
+                                 const std::string &filename);
   
   ///Vector of wells.
   std::vector<Well*> wells;
@@ -266,13 +269,13 @@ protected:
   grid_create_type grid_create;
   
   
-  Point<2> down_left, ///< down left corner point
-           up_right;  ///< up right corner point
+  dealii::Point<2> down_left, ///< down left corner point
+                   up_right;  ///< up right corner point
   
   ///Pointer to function describing Dirichlet boundary condition.
-  Function<2> *dirichlet_function;         
+  dealii::Function<2> *dirichlet_function;         
   ///Pointer to function describing RHS - sources.
-  Function<2> *rhs_function;
+  dealii::Function<2> *rhs_function;
   
   ///flag is true if the triangulation has been changed in the current cycle
   bool triangulation_changed;
