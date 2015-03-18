@@ -8,6 +8,8 @@
 
 #include <deal.II/grid/persistent_tria.h>
 
+using namespace compare;
+
 void XModel::test_method(ExactBase* exact_solution)
 {
     // Setup part of run() method

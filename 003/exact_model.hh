@@ -12,7 +12,7 @@ namespace dealii{
 }
 
 class Well;
-namespace Solution{ class ExactBase; }
+namespace compare{ class ExactBase; }
 
 /// class ExactModel
 /**
@@ -29,7 +29,7 @@ class ExactModel
     /**
      * @param exact_solution is function representing exact solution
      */
-    ExactModel (Solution::ExactBase *exact_solution);
+    ExactModel (compare::ExactBase *exact_solution);
     
     ///Destructor
     ~ExactModel();
@@ -57,7 +57,7 @@ class ExactModel
                                       const unsigned int &cycle=0);
 
   private:   
-    Solution::ExactBase *exact_solution;  
+    compare::ExactBase *exact_solution;  
       
     ///Triangulation for distributing the solution.
     dealii::Triangulation<2> dist_coarse_tria; 

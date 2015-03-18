@@ -19,11 +19,14 @@
 #include "well.hh"
 
 using namespace dealii;
+using namespace compare;
 
-double Comparing::L2_norm_diff(const dealii::Vector< double >& v1, 
-                               const dealii::Vector< double >& v2,
-                               const Triangulation< 2 > &tria
-                              )
+namespace compare {
+    
+double L2_norm_diff(const Vector< double >& v1, 
+                    const Vector< double >& v2,
+                    const Triangulation< 2 > &tria
+                   )
 {
   unsigned int n1 = v1.size(),
                n2 = v2.size();
@@ -66,10 +69,10 @@ double Comparing::L2_norm_diff(const dealii::Vector< double >& v1,
 }
 
 
-double Comparing::L2_norm_diff(const dealii::Vector< double >& input_vector, 
-                               const Triangulation< 2 > &tria,
-                               Function<2>* exact_solution
-                              )
+double L2_norm_diff(const Vector< double >& input_vector, 
+                    const Triangulation< 2 > &tria,
+                    Function<2>* exact_solution
+                    )
 {
   FE_Q<2> fe(1);
   DoFHandler<2> dof_handler;
@@ -116,8 +119,8 @@ double Comparing::L2_norm_diff(const dealii::Vector< double >& input_vector,
   
 }
 
-double Comparing::L2_norm_exact(const dealii::Triangulation< 2 >& tria, 
-                                Function<2>* exact_solution)
+double L2_norm_exact(const Triangulation< 2 >& tria, 
+                     Function<2>* exact_solution)
 {
   FE_Q<2> fe(1);
   DoFHandler<2> dof_handler;
@@ -132,7 +135,8 @@ double Comparing::L2_norm_exact(const dealii::Triangulation< 2 >& tria,
   return difference.l2_norm();
 }
 
-double Comparing::L2_norm(const dealii::Vector< double >& input_vector, const dealii::Triangulation< 2 >& tria)
+double L2_norm(const Vector< double >& input_vector, 
+               const Triangulation< 2 >& tria)
 {
   FE_Q<2> fe(1);
   DoFHandler<2> dof_handler;
@@ -145,11 +149,11 @@ double Comparing::L2_norm(const dealii::Vector< double >& input_vector, const de
   
   return difference.l2_norm();
 }
-
+} // compare
 
 /******************         SOLUTIONS           **************************/
 
-Solution::ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
+ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
   : Function< 2 >(),
     well_(well),
     radius_(radius),
@@ -186,7 +190,7 @@ Tensor< 1, 2 > ExactSolutionZero::grad(const Point< 2 >& p, const unsigned int c
 
 
 
-double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigned int /*component*/) const
+double ExactSolution::value(const dealii::Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
   if(distance > well_->radius())
@@ -195,7 +199,7 @@ double Solution::ExactSolution::value(const dealii::Point< 2 >& p, const unsigne
     return a_ * std::log(well_->radius()) + b_;//well_->pressure();
 }
 
-Tensor< 1, 2 > Solution::ExactSolution::grad(const Point< 2 >& p, const unsigned int component) const
+Tensor< 1, 2 > ExactSolution::grad(const Point< 2 >& p, const unsigned int component) const
 {
     double distance = well_->center().distance(p);
     Tensor<1,2> grad;
@@ -244,7 +248,7 @@ ExactSolution1::ExactSolution1(Well* well, double radius, double k, double ampli
     }
 }
 
-double Solution::ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
+double ExactSolution1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
   if(distance > well_->radius())
@@ -261,12 +265,12 @@ Tensor< 1, 2 > ExactSolution1::grad(const Point< 2 >& p, const unsigned int comp
 }
 
 
-double Solution::Source1::value(const Point< 2 >& p, const unsigned int /*component*/) const
+double Source1::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   return amplitude_*k_*k_*std::sin(k_*p[0]);
 }
 
-double Solution::ExactSolution2::value(const Point< 2 >& p, const unsigned int /*component*/) const
+double ExactSolution2::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
   if(distance >= well_->radius())
@@ -283,7 +287,7 @@ Tensor< 1, 2 > ExactSolution2::grad(const Point< 2 >& p, const unsigned int comp
 }
 
 
-double Solution::Source2::value(const Point< 2 >& p, const unsigned int /*component*/) const
+double Source2::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   return k_*k_*std::sin(k_*p[1]);
 }
@@ -327,7 +331,7 @@ Tensor< 1, 2 > ExactSolution3::grad(const Point< 2 >& p, const unsigned int comp
 }
 
 
-double Solution::ExactSolution3::value(const Point< 2 >& p, const unsigned int /*component*/) const
+double ExactSolution3::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
   double distance = well_->center().distance(p);
   double distance_from_well = distance - well_->radius();
@@ -337,7 +341,7 @@ double Solution::ExactSolution3::value(const Point< 2 >& p, const unsigned int /
     return a_ * std::log(well_->radius()) + b_;
 }
 
-double Solution::Source3::value(const Point< 2 >& p, const unsigned int /*component*/) const
+double Source3::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
     double distance = well_->center().distance(p);
     double distance_from_well = distance - well_->radius();

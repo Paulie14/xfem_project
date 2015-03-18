@@ -15,7 +15,7 @@ namespace dealii{
 /** Groups together the exact solutions and source terms.
  * All the classes are descendants of abstract templated class @p dealii::Function<2>
  */
-namespace Solution
+namespace compare
 {
   /** @brief Class representing function of the exact solution.
    * 
@@ -154,8 +154,8 @@ namespace Solution
       double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
-}  
-using namespace Solution;
+
+
     
 /** @brief Class contains helpful methods for comparing models.
  * 
@@ -166,16 +166,14 @@ using namespace Solution;
  * Method @p L2_norm_diff computes \f$\|h-u\|_2\f$ where \f$h\f$ is the exact solution
  * and \f$u\f$ is given aproximating solution.
  */
-class Comparing
-{
-public:
+
   /// Returns \f$L^2\f$ norm of difference between two dealii vectors.
   /** Return -1 if sizes does not match.
    * @param v1
    * @param v2
    * @param tria
    */
-  static double L2_norm_diff (const dealii::Vector<double> &v1, 
+  double L2_norm_diff (const dealii::Vector<double> &v1, 
                               const dealii::Vector<double> &v2,
                               const dealii::Triangulation< 2 > &tria
                              );
@@ -187,7 +185,7 @@ public:
    * @param well
    * @param area_radius
    */
-  static double L2_norm_diff (const dealii::Vector<double> &input_vector, 
+  double L2_norm_diff (const dealii::Vector<double> &input_vector, 
                               const dealii::Triangulation< 2 > &tria, 
                               dealii::Function<2>* exact_solution);
 
@@ -197,7 +195,7 @@ public:
    * @param well
    * @param area_radius
    */
-  static double L2_norm_exact (const dealii::Triangulation< 2 > &tria, 
+  double L2_norm_exact (const dealii::Triangulation< 2 > &tria, 
                                dealii::Function<2>* exact_solution);
   
   ///Returns \f$L^2\f$ norm of the vector on the given triangulation
@@ -205,8 +203,9 @@ public:
    * @param input_vector
    * @param tria
    */
-  static double L2_norm(const dealii::Vector< double >& input_vector, 
+  double L2_norm(const dealii::Vector< double >& input_vector, 
                         const dealii::Triangulation< 2 >& tria);
-};
+
+} // compare
 
 #endif //end of comparing_h

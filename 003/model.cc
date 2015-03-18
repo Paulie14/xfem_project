@@ -53,6 +53,8 @@
 #include "well.hh"
 #include "data_cell.hh"
 
+using namespace compare;
+
 Model::Model ():
     ModelBase::ModelBase(),
     //constant

@@ -292,7 +292,8 @@ void ModelBase::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doubl
 
 
 
-std::pair< double, double > ModelBase::integrate_difference(dealii::Vector< double >& diff_vector, ExactBase * exact_solution, bool h1)
+std::pair< double, double > ModelBase::integrate_difference(dealii::Vector< double >& diff_vector, 
+                                                            compare::ExactBase * exact_solution, bool h1)
 {
     MASSERT(0,"Warning: method 'integrate_difference' needs to be implemented in descendants.\n");
     return std::make_pair<double, double>(0,0);

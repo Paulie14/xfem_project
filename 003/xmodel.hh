@@ -21,12 +21,11 @@
 #include "xfevalues.hh"
 
 using namespace dealii;
-using namespace Solution;
 
 // forward declarations
 class Well;
 class XDataCell;
-namespace Solution {
+namespace compare {
     class ExactBase;
 }
 namespace dealii{
@@ -154,7 +153,7 @@ class XModel : public ModelBase
                                       const unsigned int &m_aquifer=0);
     
     
-    void compute_interpolated_exact(ExactBase *exact_solution);
+    void compute_interpolated_exact(compare::ExactBase *exact_solution);
     
     /** Computes decomposed (enriched, unenriched and complete) solution at specified points.
      * It is called by @p output_distributed_solution with the nodes of the output triangulation.
@@ -218,12 +217,13 @@ class XModel : public ModelBase
     //@}
 
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
-                                                   ExactBase * exact_solution, bool h1=false) override;
+                                                   compare::ExactBase * exact_solution, 
+                                                   bool h1=false) override;
 
     /// @name Testing methods
     //@{
     /// Set the solution vector (dofs) accurately according to the exact solution and test XFEValues etc.
-    void test_method(ExactBase *exact_solution);
+    void test_method(compare::ExactBase *exact_solution);
     
     /// Computes the H1 norm of [log - approx(log)] on elements on the band of enrichment radius.
     void test_enr_error();
@@ -330,7 +330,7 @@ class XModel : public ModelBase
     
     template<Enrichment_method::Type EnrType>
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
-                                                   ExactBase * exact_solution);
+                                                   compare::ExactBase * exact_solution);
     
     ///Type of enrichment method
     Enrichment_method::Type enrichment_method_;

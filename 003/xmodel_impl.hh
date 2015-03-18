@@ -323,7 +323,8 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2,2  >& 
 /****************************            integrate_difference                 ***********************/
 
 template<Enrichment_method::Type EnrType>
-std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, ExactBase * exact_solution)
+std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& diff_vector, 
+                                                      compare::ExactBase * exact_solution)
 {
     unsigned int m = n_aquifers_;
 //     unsigned int m = 0;

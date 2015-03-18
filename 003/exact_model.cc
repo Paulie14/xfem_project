@@ -17,6 +17,8 @@
 #include "exact_model.hh"
 #include "comparing.hh"
 
+using namespace compare;
+
 ExactModel::ExactModel()
 {
 

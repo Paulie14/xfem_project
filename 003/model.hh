@@ -27,7 +27,7 @@ namespace dealii{
     template<int,int> class DoFHandler;
 }
 
-namespace Solution{ class ExactBase; }
+namespace compare{ class ExactBase; }
 class Well;
 class DataCell;
 
@@ -73,7 +73,7 @@ class Model : public ModelBase
                                      const unsigned int& cycle);
     
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
-                                                   Solution::ExactBase * exact_solution, 
+                                                   compare::ExactBase * exact_solution, 
                                                    bool h1=false) override;
     //@}
                                                    

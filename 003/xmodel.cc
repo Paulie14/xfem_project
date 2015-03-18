@@ -59,6 +59,8 @@
 #include "xfevalues.hh"
 #include "comparing.hh"
 
+using namespace compare;
+
 XModel::XModel () 
   : ModelBase(),
     enrichment_method_(Enrichment_method::xfem_shift),

@@ -6,7 +6,7 @@
 
 //Forward declaration
 class Well;
-namespace Solution {
+namespace compare {
     class ExactBase;
 }
 namespace dealii {
@@ -113,7 +113,7 @@ public:
                                              const unsigned int &m_aquifer=0) = 0;
                                              
   virtual std::pair<double,double> integrate_difference(dealii::Vector<double>& diff_vector, 
-                                                        Solution::ExactBase *exact_solution, bool h1=false);
+                                                        compare::ExactBase *exact_solution, bool h1=false);
   
                                              
   /** @name Getters

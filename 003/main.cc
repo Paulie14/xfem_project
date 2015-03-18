@@ -362,7 +362,7 @@ void test_convergence_square(std::string output_dir)
     well->evaluate_q_points(n_well_q_points);
     
     //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-    Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
+    compare::ExactBase* exact_solution = new compare::ExactSolution(well, radius);
     
     //FEM model creation
     Model_simple model_simple(well);  
@@ -590,8 +590,8 @@ void test_radius_convergence_square(std::string output_dir)
   well->evaluate_q_points(n_well_q_points);
   
   //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-  Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
-  //Function<2> *dirichlet_square = new Solution::ExactSolution(well,radius);
+  compare::ExactBase* exact_solution = new compare::ExactSolution(well, radius);
+  //Function<2> *dirichlet_square = new compare::ExactSolution(well,radius);
   
     std::vector<double> enrichment_radius;
     for(unsigned int r=0; r < 4; r++)
@@ -738,9 +738,9 @@ void test_radius_convergence_sin(std::string output_dir)
     well->set_pressure(well_pressure);
     well->evaluate_q_points(n_well_q_points);
     
-    ExactSolution3 *exact_solution = new Solution::ExactSolution3(well, radius, k_wave_num, amplitude);
+    compare::ExactSolution3 *exact_solution = new compare::ExactSolution3(well, radius, k_wave_num, amplitude);
     Function<2> *dirichlet_square = exact_solution;
-    Function<2> *rhs_function = new Solution::Source3(*exact_solution);
+    Function<2> *rhs_function = new compare::Source3(*exact_solution);
   
     if (fem)    //compute h1 norm of the error of the regular part ur
     {
@@ -750,8 +750,8 @@ void test_radius_convergence_sin(std::string output_dir)
         well_fem->evaluate_q_points(n_well_q_points);
         well_fem->set_inactive();
         
-        ExactSolution3 *exact_solution_fem = new Solution::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
-        Function<2> *rhs_function_fem = new Solution::Source3(*exact_solution_fem);
+        compare::ExactSolution3 *exact_solution_fem = new compare::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
+        Function<2> *rhs_function_fem = new compare::Source3(*exact_solution_fem);
         
         Model_simple model(well_fem);  
         model.set_name(test_name + "fem");
@@ -924,17 +924,17 @@ void test_convergence_sin(std::string output_dir)
     well->set_perm2aquitard({perm2tard, 0.0});
     well->evaluate_q_points(n_well_q_points);
     
-    ExactSolution1 *exact_solution = new Solution::ExactSolution1(well, radius, k_wave_num, amplitude);
+    compare::ExactSolution1 *exact_solution = new compare::ExactSolution1(well, radius, k_wave_num, amplitude);
     Function<2> *dirichlet_square = exact_solution;
-    Function<2> *rhs_function = new Solution::Source1(*exact_solution);
+    Function<2> *rhs_function = new compare::Source1(*exact_solution);
     
     //FEM model creation
     Well *well_fem = new Well(well);
     //well_fem->set_pressure(0);
     //well_fem->set_inactive();
     well_fem->evaluate_q_points(n_well_q_points);
-    ExactSolution1 *exact_solution_fem = new Solution::ExactSolution1(well_fem, radius, k_wave_num, amplitude);
-    Function<2> *rhs_function_fem = new Solution::Source1(*exact_solution_fem);
+    compare::ExactSolution1 *exact_solution_fem = new compare::ExactSolution1(well_fem, radius, k_wave_num, amplitude);
+    Function<2> *rhs_function_fem = new compare::Source1(*exact_solution_fem);
     Model_simple model(well_fem);  
     //Model_simple model(well);  
     model.set_name(test_name + "fem");
@@ -1142,17 +1142,17 @@ void test_convergence_sin_2(std::string output_dir)
     well->set_perm2aquitard({perm2tard, 0.0});
     well->evaluate_q_points(n_well_q_points);
     
-    ExactSolution3 *exact_solution = new Solution::ExactSolution3(well, radius, k_wave_num, amplitude);
+    compare::ExactSolution3 *exact_solution = new compare::ExactSolution3(well, radius, k_wave_num, amplitude);
     Function<2> *dirichlet_square = exact_solution;
-    Function<2> *rhs_function = new Solution::Source3(*exact_solution);
+    Function<2> *rhs_function = new compare::Source3(*exact_solution);
     
     //FEM model creation
     Well *well_fem = new Well(well);
 //     well_fem->set_pressure(0);
 //     well_fem->set_inactive();
     well_fem->evaluate_q_points(n_well_q_points);
-    ExactSolution3 *exact_solution_fem = new Solution::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
-    Function<2> *rhs_function_fem = new Solution::Source3(*exact_solution_fem);
+    compare::ExactSolution3 *exact_solution_fem = new compare::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
+    Function<2> *rhs_function_fem = new compare::Source3(*exact_solution_fem);
     Model_simple model(well_fem);    
     model.set_name(test_name + "fem");
     model.set_output_dir(output_dir);
@@ -1219,7 +1219,7 @@ void test_convergence_sin_2(std::string output_dir)
             Vector<double> diff_vector;
             l2_norm_dif_fem = model.integrate_difference(diff_vector, exact_solution_fem);
             
-            ExactSolutionZero zero_exact;
+            compare::ExactSolutionZero zero_exact;
             std::pair<double,double> l2_norm_solution = model.integrate_difference(diff_vector, &zero_exact);
             std::cout << "L2 norm of solution:  " << l2_norm_solution.second << std::endl;
             table_convergence.add_value("L2",l2_norm_dif_fem.second);
@@ -1435,7 +1435,7 @@ void test_multiple_wells(std::string output_dir)
     //model_fem.set_computational_mesh(coarse_file, ref_flags_fine);
     model_fem.set_computational_mesh(coarse_file);
     model_fem.run();
-    double l2_norm_fem = Comparing::L2_norm( model_fem.get_solution(),
+    double l2_norm_fem = compare::L2_norm( model_fem.get_solution(),
                                             model_fem.get_triangulation()
                                             );
     
@@ -1458,7 +1458,7 @@ void test_multiple_wells(std::string output_dir)
       xmodel.output_distributed_solution(model_fem.get_triangulation(),cycle);
       std::cout << "===== XModel_simple finished =====" << std::endl;
       
-      l2_norm_dif = Comparing::L2_norm_diff( model_fem.get_solution(),
+      l2_norm_dif = compare::L2_norm_diff( model_fem.get_solution(),
                                              xmodel.get_distributed_solution(),
                                              model_fem.get_triangulation()
                                            );
@@ -1524,7 +1524,7 @@ void test_output(std::string output_dir)
   well->evaluate_q_points(n_well_q_points);
   
   //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-  Function<2> *dirichlet = new ExactSolution(well,radius);
+  Function<2> *dirichlet = new compare::ExactSolution(well,radius);
   
   XModel_simple xmodel(well);  
   
@@ -1551,8 +1551,8 @@ void test_output(std::string output_dir)
   xmodel.run();
   xmodel.output_results();
   
-  ExactBase* exact_solution = new ExactSolution(well, radius);
-  double l2_norm_dif_xfem = Comparing::L2_norm_diff(xmodel.get_distributed_solution(),
+  compare::ExactBase* exact_solution = new compare::ExactSolution(well, radius);
+  double l2_norm_dif_xfem = compare::L2_norm_diff(xmodel.get_distributed_solution(),
                                                     xmodel.get_output_triangulation(),
                                                     exact_solution);
   std::cout << "l2_norm of difference to exact solution: " << l2_norm_dif_xfem << std::endl;
@@ -1596,8 +1596,8 @@ void test_solution(std::string output_dir)
   well->evaluate_q_points(n_well_q_points);
   
   //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
-  Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
-  //Function<2> *dirichlet_square = new Solution::ExactSolution(well,radius);
+  compare::ExactBase* exact_solution = new compare::ExactSolution(well, radius);
+  //Function<2> *dirichlet_square = new compare::ExactSolution(well,radius);
   
   XModel_simple xmodel(well);  
 //   xmodel.set_name(test_name + "sgfem_model"); 
@@ -2143,7 +2143,7 @@ void test_enr_error(std::string output_dir)
     well->set_pressure(well_pressure);
     well->evaluate_q_points(n_well_q_points);
     
-    Solution::ExactBase* exact_solution = new Solution::ExactSolution(well, radius);
+    compare::ExactBase* exact_solution = new compare::ExactSolution(well, radius);
 
     for(unsigned int refinement = 3; refinement < 8; refinement++)
     {
@@ -2276,7 +2276,7 @@ void test_wells_in_element(std::string output_dir)
     
     fem_model.set_grid_create_type(ModelBase::rect);
     //fem_model.set_computational_mesh(coarse_file);
-    ExactSolutionZero* zero = new ExactSolutionZero();
+    compare::ExactSolutionZero* zero = new compare::ExactSolutionZero();
     fem_model.set_dirichlet_function(zero);
     fem_model.set_adaptivity(true);
     fem_model.set_output_options(ModelBase::output_gmsh_mesh
@@ -2343,7 +2343,7 @@ void test_wells_in_element(std::string output_dir)
         xmodel.output_distributed_solution(fem_model.get_triangulation(),cycle);
         std::cout << "===== XModel_simple finished =====" << std::endl;
       
-        l2_norm_dif = Comparing::L2_norm_diff( fem_model.get_solution(),
+        l2_norm_dif = compare::L2_norm_diff( fem_model.get_solution(),
                                                 xmodel.get_distributed_solution(),
                                                 fem_model.get_triangulation()
                                             );
