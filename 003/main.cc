@@ -11,6 +11,7 @@
 #include <deal.II/base/convergence_table.h>
 
 #include "system.hh"
+#include "exact_model.hh"
 #include "model.hh"
 #include "xmodel.hh"
 #include "simple_models.hh"
@@ -18,7 +19,7 @@
 #include "comparing.hh"
 #include "well.hh"
 #include "parameters.hh"
-#include "exact_model.hh"
+
 
 #include "adaptive_integration.hh"
 
@@ -2195,7 +2196,7 @@ void test_wells_in_element(std::string output_dir)
     
     //------------------------------SETTING----------------------------------
     std::string test_name = "wells_in_element_";
-    bool fem = false, 
+    bool fem = true, 
          fem_create = false;
     
     double p_a = 2.0,    //area of the model
@@ -2247,25 +2248,50 @@ void test_wells_in_element(std::string output_dir)
     //                              Parameters::perm2tard));
         
     //setting BC - pressure at the top of the wells
-    wells[0]->set_pressure(well_pressure);
-    wells[1]->set_pressure(well_pressure);
+//     wells[0]->set_pressure(well_pressure);
+//     wells[1]->set_pressure(well_pressure);
     //   wells[2]->set_pressure(2*Parameters::pressure_at_top);
     //   wells[3]->set_pressure(Parameters::pressure_at_top);
     //   wells[4]->set_pressure(3*Parameters::pressure_at_top);
     
     for(unsigned int w=0; w < wells.size(); w++)
     {
+        wells[w]->set_active();
+        wells[w]->set_pressure(well_pressure);
         wells[w]->evaluate_q_points(n_well_q_points);
         wells[w]->set_perm2aquifer(0,perm2fer);
         wells[w]->set_perm2aquitard({perm2tard, 0.0});
     }
 
+
+    //FEM model creation
+    Model fem_model(wells);  
+    fem_model.set_name(test_name + "fem");
+    fem_model.set_output_dir(output_dir);
+    fem_model.set_area(down_left,up_right);
+    fem_model.set_transmisivity(transmisivity,0);
+    fem_model.set_initial_refinement(refinement);  
+    fem_model.set_ref_coarse_percentage(0.3,0.05);
+    //fem_model.set_ref_coarse_percentage(0.3,0.05);
     
+    fem_model.set_grid_create_type(ModelBase::rect);
+    //fem_model.set_computational_mesh(coarse_file);
+    ExactSolutionZero* zero = new ExactSolutionZero();
+    fem_model.set_dirichlet_function(zero);
+    fem_model.set_adaptivity(true);
+    fem_model.set_output_options(ModelBase::output_gmsh_mesh
+                                 | ModelBase::output_solution);
+ 
+
     XModel xmodel(wells);  
     xmodel.set_name(test_name + "sgfem");
     xmodel.set_enrichment_method(Enrichment_method::sgfem);
-    //   xmodel.set_name(test_name + "xfem_shift");
-    //   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//       xmodel.set_name(test_name + "xfem_shift");
+//       xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//     xmodel.set_name(test_name + "xfem_ramp");
+//     xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
+//     xmodel.set_name(test_name + "xfem");
+//     xmodel.set_enrichment_method(Enrichment_method::xfem);
     
     xmodel.set_output_dir(output_dir);
     xmodel.set_area(down_left,up_right);
@@ -2278,6 +2304,29 @@ void test_wells_in_element(std::string output_dir)
     //xmodel.set_well_computation_type(Well_computation::sources);
 
 
+    unsigned int n_fem_cycles = 8;
+    std::vector<double> fem_l2_norm(n_fem_cycles,0),
+                        fem_l2_diff(n_fem_cycles,0);;
+    if(fem)
+    {
+        for (unsigned int cycle=0; cycle < n_fem_cycles; ++cycle)
+        { 
+            fem_model.run(cycle);
+            fem_model.output_results (cycle);
+            
+            Vector<double> diff_vector;
+            fem_model.integrate_difference(diff_vector, zero, false);
+            
+            fem_l2_norm[cycle] = diff_vector.l2_norm();
+            
+            if(cycle > 0) fem_l2_diff[cycle] = std::abs(fem_l2_norm[cycle-1] - fem_l2_norm[cycle]);
+            
+            for(auto &v : fem_l2_diff)
+                std::cout << v << std::endl;
+            
+        }
+    }
+    
     unsigned int n_cycles = 1;
     double l2_norm_dif;
     
@@ -2291,13 +2340,14 @@ void test_wells_in_element(std::string output_dir)
         
         xmodel.run (cycle);  
         xmodel.output_results(cycle);
-//       xmodel.output_distributed_solution(model_fem.get_triangulation(),cycle);
+        xmodel.output_distributed_solution(fem_model.get_triangulation(),cycle);
         std::cout << "===== XModel_simple finished =====" << std::endl;
       
-//       l2_norm_dif = Comparing::L2_norm_diff( model_fem.get_solution(),
-//                                              xmodel.get_distributed_solution(),
-//                                              model_fem.get_triangulation()
-//                                            );
+        l2_norm_dif = Comparing::L2_norm_diff( fem_model.get_solution(),
+                                                xmodel.get_distributed_solution(),
+                                                fem_model.get_triangulation()
+                                            );
+        std::cout << l2_norm_dif <<std::endl;
 //       
 //       table.add_value("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$",l2_norm_dif);
 //       table.set_precision("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$", 2);
@@ -2321,6 +2371,7 @@ void test_wells_in_element(std::string output_dir)
     {
         delete wells[w];
     }
+    delete zero;
     std::cout << "\n\n:::::::::::::::: WELLS IN ELEMENT TEST END ::::::::::::::::\n\n" << std::endl;
 }
 
