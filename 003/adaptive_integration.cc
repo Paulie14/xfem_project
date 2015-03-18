@@ -2,11 +2,13 @@
 #include <string>
 
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/dofs/dof_accessor.h>
+#include <deal.II/base/point.h>
+#include <deal.II/base/tensor.h>
 
 #include "adaptive_integration.hh"
 #include "system.hh"
 #include "gnuplot_i.hpp"
-
 #include "data_cell.hh"
 #include "mapping.hh"
 #include "xfevalues.hh"

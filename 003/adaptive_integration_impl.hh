@@ -1,5 +1,8 @@
 #include "adaptive_integration.hh"
 
+#include <deal.II/base/function.h>
+#include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/mapping.h>
 /************************************ INLINE IMPLEMENTATION **********************************************/
 
 inline double Square::real_diameter() const

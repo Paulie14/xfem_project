@@ -1,13 +1,8 @@
 
-#include <deal.II/grid/tria_accessor.h>
-#include <deal.II/grid/tria_iterator.h>
-#include <deal.II/grid/tria_boundary_lib.h>
-
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/base/logstream.h>
 
 #include <deal.II/lac/full_matrix.h>
-
 #include <deal.II/lac/compressed_sparsity_pattern.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/precondition_selector.h>
@@ -31,8 +26,10 @@
 #include <deal.II/grid/grid_in.h> 
 #include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/grid_tools.h>
+#include <deal.II/grid/tria_accessor.h>
+#include <deal.II/grid/tria_iterator.h>
+#include <deal.II/grid/tria_boundary_lib.h>
 #include <deal.II/grid/persistent_tria.h>
-
 
 //for adaptive refinement
 #include <deal.II/grid/grid_refinement.h>
@@ -53,8 +50,8 @@
 #include <cmath>
 #include <vector>
 
-#include "model_base.hh"
 #include "xmodel.hh"
+#include "model_base.hh"
 #include "well.hh"
 #include "data_cell.hh"
 #include "adaptive_integration.hh"

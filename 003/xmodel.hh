@@ -2,8 +2,6 @@
 #define XModel_h
 
 #include <deal.II/grid/tria.h>
-#include <deal.II/grid/persistent_tria.h>
-#include <deal.II/dofs/dof_handler.h>
 
 #include <deal.II/fe/fe_q.h>
 
@@ -25,10 +23,15 @@
 using namespace dealii;
 using namespace Solution;
 
+// forward declarations
 class Well;
 class XDataCell;
 namespace Solution {
     class ExactBase;
+}
+namespace dealii{
+    template<int,int> class PersistentTriangulation;
+    template<int,int> class DofHandler;
 }
 
 /** \mainpage
@@ -318,7 +321,7 @@ class XModel : public ModelBase
     /// TODO:rename
     template<Enrichment_method::Type EnrType> 
     int recursive_output(double tolerance, 
-                         PersistentTriangulation<2> &output_grid, 
+                         PersistentTriangulation<2,2> &output_grid, 
                          DoFHandler<2> &temp_dof_handler, 
                          FE_Q<2> &temp_fe, 
                          const unsigned int iter,
@@ -361,7 +364,7 @@ class XModel : public ModelBase
                  n_dofs_;            ///< Number of enriched degrees of freedom per aquifer.
     
     ///2d triangulation of the aquifer
-    PersistentTriangulation<2> *triangulation;
+    PersistentTriangulation<2,2> *triangulation;
     ///coarse 2d triangulation of the aquifer, used by @p triangulation.
     Triangulation<2>            coarse_tria;
     
@@ -398,7 +401,7 @@ class XModel : public ModelBase
     Vector<double> dist_enriched;       ///< Output vector - enriched part of solution.
     Vector<double> dist_solution;       ///< Output vector - complete solution.
     
-    PersistentTriangulation<2>* output_triangulation;   ///< Output triangulation (adaptively refined).
+    PersistentTriangulation<2,2>* output_triangulation;   ///< Output triangulation (adaptively refined).
 };
 
 #include "xmodel_impl.hh"

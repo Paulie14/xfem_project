@@ -1,13 +1,10 @@
 #ifndef ADAPTIVE_INTEGRATION_H
 #define ADAPTIVE_INTEGRATION_H
 
-#include <deal.II/fe/fe_q.h>
 #include <deal.II/dofs/dof_accessor.h>
+#include <deal.II/base/point.h>
+#include <deal.II/base/tensor.h>
 #include <deal.II/base/quadrature_lib.h>
-#include <deal.II/lac/vector.h>
-#include <deal.II/lac/block_vector.h>
-#include <deal.II/fe/fe_values.h>
-#include <deal.II/base/function.h>
 
 #ifdef DEBUG
  // #define DECOMPOSED_CELL_MATRIX
@@ -19,8 +16,14 @@
 #include "mapping.hh"
 #include "xfevalues.hh"
 
-using namespace dealii;
 
+//forward declarations
+namespace dealii{
+    template<int> class Function;
+    template<int,int> class FE_Q;
+}
+
+class Well;
 class XDataCell;
 
 /** @brief Class representing squares of adaptive refinement of the reference cell.
@@ -39,14 +42,14 @@ public:
     //@{
         double real_diameter() const;               ///< Returns diameter in real coordinates.
         double unit_diameter() const;               ///< Returns diameter in unit cell coordinates.
-        Point<2> real_vertex(unsigned int i) const; ///< Returns @p i vertex in real coordinates.
-        Point<2> vertex(unsigned int i) const;      ///< Returns @p i vertex in unit cell coordinates.
-        Quadrature<2> const* quadrature() const;    ///< Returns square quadrature.
+        dealii::Point<2> real_vertex(unsigned int i) const; ///< Returns @p i vertex in real coordinates.
+        dealii::Point<2> vertex(unsigned int i) const;      ///< Returns @p i vertex in unit cell coordinates.
+        dealii::Quadrature<2> const* quadrature() const;    ///< Returns square quadrature.
     //@}
     
     /// Transforms the square into the real coordinates.
-    void transform_to_real_space(const DoFHandler< 2  >::active_cell_iterator& cell,
-                                 const Mapping<2> &mapping);
+    void transform_to_real_space(const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
+                                 const dealii::Mapping<2> &mapping);
     
   /** Vertices of the square.
     *
@@ -60,7 +63,7 @@ public:
     *   0-------1
     *       0
     */
-    Point<2> vertices[4];
+    dealii::Point<2> vertices[4];
   
     ///Object mappping data between the adaptively created square and unit cell
     MyMapping mapping;
@@ -72,10 +75,10 @@ public:
     bool processed;
   
     ///Pointer to Gauss quadrature, that owns the quadrature points and their weights.
-    QGauss<2> const *gauss;
+    dealii::QGauss<2> const *gauss;
   
 private:
-    Point<2> real_vertices_[4];
+    dealii::Point<2> real_vertices_[4];
     /// Length of diagonal in real space.
     double real_diameter_;
     /// Length of diagonal in real space.
@@ -99,9 +102,9 @@ class Adaptive_integration
       * @param fe is finite element used in FEM on this cell
       * @param mapping is mapping object that maps real cell to reference cell
       */ 
-    Adaptive_integration(const DoFHandler<2>::active_cell_iterator &cell, 
-                         const FE_Q<2> &fe,
-                         const Mapping<2>& mapping,
+    Adaptive_integration(const dealii::DoFHandler<2>::active_cell_iterator &cell, 
+                         const dealii::FE_Q<2,2> &fe,
+                         const dealii::Mapping<2>& mapping,
                          unsigned int m
                         );
     
@@ -109,8 +112,8 @@ class Adaptive_integration
     unsigned int level();
 
     /// Sets the dirichlet and right hand side functors.
-    void set_functors(Function<2>* dirichlet_function, 
-                      Function<2>* rhs_function);
+    void set_functors(dealii::Function<2>* dirichlet_function, 
+                      dealii::Function<2>* rhs_function);
     
     /// @brief Refinement along the well edge.
     /** If the square is crossed by the well edge
@@ -129,8 +132,8 @@ class Adaptive_integration
       * @param transmisivity is transmisivity defined on the cell for the Laplace member of the equation
       */        
     template<Enrichment_method::Type EnrType> 
-    void integrate( FullMatrix<double> &cell_matrix, 
-                    Vector<double> &cell_rhs,
+    void integrate( dealii::FullMatrix<double> &cell_matrix, 
+                    dealii::Vector<double> &cell_rhs,
                     std::vector<unsigned int> &local_dof_indices,
                     const double &transmisivity
                     );
@@ -141,7 +144,8 @@ class Adaptive_integration
       * @param exact_solution is the functor representing the exact solution
       */   
     template<Enrichment_method::Type EnrType> 
-    double integrate_l2_diff(const Vector<double> &solution, const Function<2> &exact_solution);
+    double integrate_l2_diff(const dealii::Vector<double> &solution, 
+                             const dealii::Function<2> &exact_solution);
     
 //     /** OBSOLETE First version of XFEM (without shift).
 //      * Does everything inside - no XFEValues.
@@ -217,10 +221,10 @@ class Adaptive_integration
     /// @name Test methods
     //@{
         /// Test - integrates the @p func using adaptive integration (used for circle characteristic function).
-        double test_integration(Function<2>* func); 
+        double test_integration(dealii::Function<2>* func); 
     
         /// Test - integrates the @p func using adaptive integration on different levels (used for \f$ 1/r^2) \f$.
-        std::pair<double,double> test_integration_2(Function<2>* func, unsigned int diff_levels);
+        std::pair<double,double> test_integration_2(dealii::Function<2>* func, unsigned int diff_levels);
     //@}
     
   private: 
@@ -229,7 +233,7 @@ class Adaptive_integration
     /// @param n_squares_to_refine is number of squares to be refined
     void refine(unsigned int n_squares_to_refine);
     
-    inline static bool remove_square_cond(Square sq) {return sq.refine_flag;}
+    static bool remove_square_cond(Square sq) {return sq.refine_flag;}
     
     /// Gathers the quadrature points and their weigths from squares into a single vector.
     void gather_w_points();
@@ -254,13 +258,13 @@ class Adaptive_integration
     //@}
     
     ///Current cell to integrate
-    const DoFHandler<2>::active_cell_iterator cell;
+    const dealii::DoFHandler<2>::active_cell_iterator cell;
     
     ///Finite element of FEM
-    const FE_Q<2>  *fe;
+    const dealii::FE_Q<2,2>  *fe;
     
     ///mapping from real cell to unit cell
-    const Mapping<2> *mapping;
+    const dealii::Mapping<2> *mapping;
     
         /// Index of aquifer on which we integrate.
     unsigned int m_;
@@ -276,13 +280,13 @@ class Adaptive_integration
     /// square[i][j] -> i-th square and its j-th vertex
     std::vector<Square> squares;
     
-    std::vector<Point<2> > q_points_all;
+    std::vector<dealii::Point<2> > q_points_all;
     std::vector<double> jxw_all;
     
     ///Pointer to function describing Dirichlet boundary condition.
-    Function<2> *dirichlet_function;         
+    dealii::Function<2> *dirichlet_function;         
     ///Pointer to function describing RHS - sources.
-    Function<2> *rhs_function;
+    dealii::Function<2> *rhs_function;
   
     ///Level of current refinement.
     unsigned int level_;
@@ -294,7 +298,7 @@ class Adaptive_integration
     ///TODO: Get rid of these
     ///helpful temporary data
     ///mapped well centers to unit cell
-    std::vector<Point<2> > m_well_center;
+    std::vector<dealii::Point<2> > m_well_center;
     
     ///mapped well radius to unit cell
     std::vector<double > m_well_radius;
@@ -309,7 +313,7 @@ class Adaptive_integration
     static const double c_empiric_, p_empiric_;
     
     /// Vector of Gauss quadrature of different order.
-    static const std::vector<QGauss<2> > quadratures_;
+    static const std::vector<dealii::QGauss<2> > quadratures_;
 };
 
 

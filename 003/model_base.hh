@@ -133,38 +133,29 @@ public:
  // virtual void get_support_points (std::vector<Point<2> > &support_points) = 0;
   
   ///Getter of initial refinement.
-  inline unsigned int initial_refinement() const
-  {return initial_refinement_;}
+  unsigned int initial_refinement() const;
   
   ///Getter of transmisivity
   ///@param m_aquifer is the number aquifer.
-  inline double transmisivity(const unsigned int &m_aquifer) const
-  {return transmisivity_[m_aquifer];}
+  double transmisivity(const unsigned int &m_aquifer) const;
   
   /// Returns model name.
-  inline std::string name() const
-  { return name_; }
+  std::string name() const;
   
   /// Returns cycle number.
-  inline unsigned int cycle() const
-  { return cycle_; }
+  unsigned int cycle() const;
   
   /// Returns number of iterations
-  inline unsigned int solver_iterations() const
-  {return solver_iterations_; }
+  unsigned int solver_iterations() const;
   
   /// Returns time of the last run - includes only methods @p setup, @p assemble and @p solve.
-  inline double last_run_time() const
-  { return last_run_time_;}
+  double last_run_time() const;
   
   /// Returns number of aquifers.
-  inline unsigned int n_aquifers() const
-  { return n_aquifers_; }
+  unsigned int n_aquifers() const;
   
   /// Returns path to the output directory.
-  inline std::string output_dir() const
-  { return output_dir_; }
-  
+  std::string output_dir() const;
   //@}
   
   /** @name Setters
@@ -186,8 +177,7 @@ public:
   
   ///Setter of initial refinement level. Default is 0.
   ///@param ref initial refinement level to be set
-  inline void set_initial_refinement(unsigned int ref)
-  {initial_refinement_ = ref;}
+  void set_initial_refinement(unsigned int ref);
   
   ///Setter of the main output directory.
   ///@param path file path a directory
@@ -195,40 +185,24 @@ public:
   
   ///Sets the name of the model and creates individual output directory. Default is 'model_base'.
   ///@param name is the name to be set
-  inline void set_name(const std::string &name)
-  { this->name_ = name;
-    set_output_dir(main_output_dir_); //reseting output directory
-  }
+  void set_name(const std::string &name);
   
   ///Sets how the grid should be created. Default is 'rect'.
-  void set_grid_create_type(grid_create_type type)
-  { grid_create = type; }
+  void set_grid_create_type(grid_create_type type);
   
   ///Sets adaptivity on and off. Default is false.
-  inline void set_adaptivity (bool is_on)
-  { this->is_adaptive = is_on;}
+  void set_adaptivity (bool is_on);
 
   ///Sets the vector of wells.
-  inline void set_wells(const std::vector<Well*> &wells)
-  { 
-    this->wells.clear();
-    this->wells = wells;
-  }
+  void set_wells(const std::vector<Well*> &wells);
   
   ///Sets the function defining the Dirichlet function.
-  inline void set_dirichlet_function(dealii::Function<2> *func)
-  {
-    dirichlet_function = func;
-  }
+  void set_dirichlet_function(dealii::Function<2> *func);
   
   ///Sets the function defining the Dirichlet function.
-  inline void set_rhs_function(dealii::Function<2> *func)
-  {
-    rhs_function = func;
-  }
+  void set_rhs_function(dealii::Function<2> *func);
   
-  inline void set_output_options(OutputOptionsType output_options)
-  { output_options_ = output_options;}
+  void set_output_options(OutputOptionsType output_options);
   //@}
     
     
@@ -324,5 +298,65 @@ protected:
     static const double output_element_tolerance_;
   //@}
 };
+
+
+
+
+
+/*******************************************     IMPLEMENTATION                   ***************************/
+
+
+  inline unsigned int ModelBase::initial_refinement() const
+  {return initial_refinement_;}
+
+  inline double ModelBase::transmisivity(const unsigned int &m_aquifer) const
+  {return transmisivity_[m_aquifer];}
+  
+  inline std::string ModelBase::name() const
+  { return name_; }
+  
+  inline unsigned int ModelBase::cycle() const
+  { return cycle_; }
+  
+  inline unsigned int ModelBase::solver_iterations() const
+  {return solver_iterations_; }
+
+  inline double ModelBase::last_run_time() const
+  { return last_run_time_;}
+  
+  inline unsigned int ModelBase::n_aquifers() const
+  { return n_aquifers_; }
+  
+  inline std::string ModelBase::output_dir() const
+  { return output_dir_; }
+  
+  
+  inline void ModelBase::set_initial_refinement(unsigned int ref)
+  {initial_refinement_ = ref;}
+  
+  inline void ModelBase::set_name(const std::string &name)
+  { this->name_ = name;
+    set_output_dir(main_output_dir_); //reseting output directory
+  }
+  
+  inline void ModelBase::set_grid_create_type(grid_create_type type)
+  { grid_create = type; }
+  
+  inline void ModelBase::set_adaptivity (bool is_on)
+  { this->is_adaptive = is_on;}
+
+  inline void ModelBase::set_wells(const std::vector<Well*> &wells)
+  { this->wells.clear();
+    this->wells = wells;
+  }
+  
+  inline void ModelBase::set_dirichlet_function(dealii::Function<2> *func)
+  { dirichlet_function = func; }
+  
+  inline void ModelBase::set_rhs_function(dealii::Function<2> *func)
+  { rhs_function = func; }
+  
+  inline void ModelBase::set_output_options(OutputOptionsType output_options)
+  { output_options_ = output_options;}
 
 #endif  //ModelBase_h

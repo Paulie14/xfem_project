@@ -1,14 +1,18 @@
 
 //output
-#include "xmodel.hh"
-
 #include <fstream>
 #include <iostream>
-#include "adaptive_integration.hh"
 
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/grid/grid_tools.h>
+#include <deal.II/dofs/dof_tools.h>
+#include <deal.II/numerics/vector_tools.h>
+#include <deal.II/grid/persistent_tria.h>
+
+#include "xmodel.hh"
+#include "comparing.hh"
+#include "adaptive_integration.hh"
 
 /************************************ TEMPLATE IMPLEMENTATION **********************************************/
 template<Enrichment_method::Type EnrType>
@@ -109,7 +113,7 @@ void XModel::prepare_shape_well_averiges(vector< std::map< unsigned int, double 
 
 
 template<Enrichment_method::Type EnrType>
-int XModel::recursive_output(double tolerance, PersistentTriangulation< 2  >& output_grid, 
+int XModel::recursive_output(double tolerance, PersistentTriangulation< 2,2  >& output_grid, 
                              DoFHandler<2> &temp_dof_handler, 
                              FE_Q<2> &temp_fe, 
                              const unsigned int iter,

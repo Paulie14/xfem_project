@@ -3,8 +3,6 @@
 
 #include "xmodel.hh"
 #include "model.hh"
-#include <deal.II/base/function.h>
-
 
 class Well;
 

@@ -6,6 +6,7 @@
 #include "xfevalues.hh"
 #include "comparing.hh"
 
+#include <deal.II/grid/persistent_tria.h>
 
 void XModel::test_method(ExactBase* exact_solution)
 {

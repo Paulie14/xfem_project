@@ -3,24 +3,9 @@
 #include <deal.II/grid/tria_iterator.h>
 #include <deal.II/grid/tria_boundary_lib.h>
 
-#include <deal.II/dofs/dof_tools.h>
-#include <deal.II/base/logstream.h>
-
-#include <deal.II/lac/full_matrix.h>
-
-#include <deal.II/lac/compressed_sparsity_pattern.h>
-#include <deal.II/lac/precondition.h>
-#include <deal.II/lac/solver_bicgstab.h>
-#include <deal.II/lac/solver_cg.h>
-
-#include <deal.II/lac/sparse_matrix.h>
 
 #include <deal.II/base/function.h>
 #include <deal.II/numerics/matrix_tools.h>
-#include <deal.II/numerics/vector_tools.h>
-
-//for adaptive meshes - hanging nodes must be taken care of
-#include <deal.II/lac/constraint_matrix.h>
 
 //input/output of grid
 #include <deal.II/grid/grid_generator.h>
@@ -35,17 +20,12 @@
 #include <deal.II/numerics/error_estimator.h>
 
 //output
-#include <deal.II/numerics/data_out.h>
 #include <fstream>
 #include <iostream>
-
-#define _USE_MATH_DEFINES       //we are using M_PI
-#include <cmath>
 
 #include "simple_models.hh"
 #include "well.hh"
 #include "data_cell.hh"
-#include "adaptive_integration.hh"
 #include "system.hh"
 
 
