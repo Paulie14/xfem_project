@@ -2390,7 +2390,7 @@ int main ()
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-//    test_convergence_square(output_dir);
+   test_convergence_square(output_dir);
 //     test_radius_convergence_square(output_dir);
 //     test_radius_convergence_sin(output_dir);
 //   test_convergence_sin(output_dir);
@@ -2399,7 +2399,7 @@ int main ()
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);
 //    test_enr_error(output_dir);
-  test_wells_in_element(output_dir);
+//   test_wells_in_element(output_dir);
   return 0;
 }
 

@@ -506,7 +506,7 @@ void XModel::find_enriched_cells(unsigned int m)
     //MASSERT(n_enriched_dofs > 1, "Must be solved. Crashes somewhere in Adaptive_integration.");
   
     DBGMSG("Printing xdata (n=%d), number of cells (%d)\n",xdata_[m].size(), triangulation->n_active_cells());
-    print_xdata();
+//     print_xdata();
 }
 
 void XModel::print_xdata()
@@ -1251,15 +1251,15 @@ void XModel::setup_subsystem(unsigned int m)
         break;
     }
     
-    DBGMSG("Precomputed shape functions integral on the well edge:\n");
-    for(unsigned int w =0; w < wells.size(); w++) 
-    {
-        DBGMSG("Well %d:\n",w);
-        for(std::map<unsigned int,double>::iterator val = shape_well_averiges[w].begin(); val != shape_well_averiges[w].end(); ++val)
-        {
-            std::cout << "func number: " << val->first << " \t val: " << val->second << std::endl;
-        }
-    }
+//     DBGMSG("Precomputed shape functions integral on the well edge:\n");
+//     for(unsigned int w =0; w < wells.size(); w++) 
+//     {
+//         DBGMSG("Well %d:\n",w);
+//         for(std::map<unsigned int,double>::iterator val = shape_well_averiges[w].begin(); val != shape_well_averiges[w].end(); ++val)
+//         {
+//             std::cout << "func number: " << val->first << " \t val: " << val->second << std::endl;
+//         }
+//     }
     
     //well averaging
     for (unsigned int w=0; w < wells.size(); ++w)
@@ -1448,12 +1448,12 @@ void XModel::assemble_subsystem (unsigned int m)
                 break;
             }
             //printing enriched nodes and dofs
-              DBGMSG("Printing dof_indices:  [");
-              for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
-              {
-                  std::cout << std::setw(3) << enrich_dof_indices[a] << "  ";
-              }
-              std::cout << "]" << std::endl;
+//               DBGMSG("Printing dof_indices:  [");
+//               for(unsigned int a=0; a < enrich_dof_indices.size(); a++)
+//               {
+//                   std::cout << std::setw(3) << enrich_dof_indices[a] << "  ";
+//               }
+//               std::cout << "]" << std::endl;
             
                 //FILLING MATRIX BLOCKs
             block_matrix[m].add(enrich_dof_indices,enrich_cell_matrix);
