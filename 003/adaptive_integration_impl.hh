@@ -14,8 +14,14 @@ inline double Square::unit_diameter() const
 inline Point<2> Square::real_vertex(unsigned int i) const
 { return real_vertices_[i]; }
 
+inline const dealii::Point<2>* Square::real_vertices() const
+{ return real_vertices_; }
+
 inline Point<2> Square::vertex(unsigned int i) const
-{ return vertices[i]; }
+{ return vertices_[i]; }
+
+inline const dealii::Point<2>* Square::vertices() const
+{ return vertices_; }
 
 inline Quadrature<2> const* Square::quadrature() const
 { return gauss; }

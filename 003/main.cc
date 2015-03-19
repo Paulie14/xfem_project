@@ -164,9 +164,9 @@ void test_squares()
     
     Square square(a,b);
     
-    for(Point<2> &p:  square.vertices)
+    for(unsigned int i=0; i<4; i++)
     {
-        std::cout << p[0] << "   " << p[1] << std::endl;
+        std::cout << square.vertex(i)[0] << "   " << square.vertex(i)[1] << std::endl;
     }
     square.mapping.print(std::cout);
     std::cout << "jacobian = " << square.mapping.jakobian() << std::endl;
@@ -2302,6 +2302,7 @@ void test_wells_in_element(std::string output_dir)
     //xmodel.set_dirichlet_function(dirichlet);
     xmodel.set_adaptivity(true);
     //xmodel.set_well_computation_type(Well_computation::sources);
+    xmodel.set_output_options(ModelBase::output_adaptive_plot);
 
 
     unsigned int n_fem_cycles = 8;

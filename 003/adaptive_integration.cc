@@ -5,6 +5,7 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/base/point.h>
 #include <deal.II/base/tensor.h>
+#include <boost/graph/graph_concepts.hpp>
 
 #include "adaptive_integration.hh"
 #include "system.hh"
@@ -75,44 +76,44 @@ Square::Square(const Point< 2 > &p1, const Point< 2 > &p2)
   //renumbering vertices - got 1 and 3
   if(p1[0] > p2[0] && p1[1] < p2[1])
   {
-    vertices[0] = Point<2>(p2[0], p1[1]);
-    vertices[1] = p1;
-    vertices[2] = Point<2>(p1[0], p2[1]);
-    vertices[3] = p2;
-    mapping = MyMapping(vertices[0],vertices[2]);
+    vertices_[0] = Point<2>(p2[0], p1[1]);
+    vertices_[1] = p1;
+    vertices_[2] = Point<2>(p1[0], p2[1]);
+    vertices_[3] = p2;
+    mapping = MyMapping(vertices_[0],vertices_[2]);
     return;
   }
   
   //renumbering vertices - got 3 and 1
   if(p1[0] < p2[0] && p1[1] > p2[1])
   {
-    vertices[0] = Point<2>(p1[0], p2[1]);
-    vertices[1] = p2;
-    vertices[2] = Point<2>(p2[0], p1[1]);
-    vertices[3] = p1;
-    mapping = MyMapping(vertices[0],vertices[2]);
+    vertices_[0] = Point<2>(p1[0], p2[1]);
+    vertices_[1] = p2;
+    vertices_[2] = Point<2>(p2[0], p1[1]);
+    vertices_[3] = p1;
+    mapping = MyMapping(vertices_[0],vertices_[2]);
     return;
   }
   
   //renumbering vertices - got 2 and 0
   if(p1[0] > p2[0])
   {
-    vertices[0] = p2;
-    vertices[1] = Point<2>(p1[0],p2[1]);
-    vertices[2] = p1;
-    vertices[3] = Point<2>(p2[0],p1[1]);
-    mapping = MyMapping(vertices[0],vertices[2]);
+    vertices_[0] = p2;
+    vertices_[1] = Point<2>(p1[0],p2[1]);
+    vertices_[2] = p1;
+    vertices_[3] = Point<2>(p2[0],p1[1]);
+    mapping = MyMapping(vertices_[0],vertices_[2]);
     return;
   }
   
    //renumbering vertices - got 0 and 2
-  vertices[0] = p1;
-  vertices[1] = Point<2>(p2[0],p1[1]);
-  vertices[2] = p2;
-  vertices[3] = Point<2>(p1[0],p2[1]);
+  vertices_[0] = p1;
+  vertices_[1] = Point<2>(p2[0],p1[1]);
+  vertices_[2] = p2;
+  vertices_[3] = Point<2>(p1[0],p2[1]);
   
   unit_diameter_ = p1.distance(p2);
-  mapping = MyMapping(vertices[0],vertices[2]);
+  mapping = MyMapping(vertices_[0],vertices_[2]);
 }
 
 
@@ -124,8 +125,7 @@ void Square::transform_to_real_space(const DoFHandler< 2  >::active_cell_iterato
         //mapping.print(cout);
         for(unsigned int i=0; i<4; i++)
         {
-            //real_vertices_[i] = mapping.map_unit_to_real(vertices[i]);  //map to unit cell
-            real_vertices_[i] = cell_mapping.transform_unit_to_real_cell(cell,vertices[i]); // map to real cell
+            real_vertices_[i] = cell_mapping.transform_unit_to_real_cell(cell,vertices_[i]); // map to real cell
         }
         real_diameter_ = std::max(real_vertices_[0].distance(real_vertices_[2]),
                                   real_vertices_[1].distance(real_vertices_[3]));
@@ -142,7 +142,6 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
                                            unsigned int m
                                           )
   : cell(cell), fe(&fe), mapping (&mapping), m_(m),
-    cell_mapping(cell->vertex(0), cell->vertex(3)),
     dirichlet_function(nullptr),
     rhs_function(nullptr),
     level_(0)
@@ -154,11 +153,6 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
       
       //first square
       squares.push_back(Square(Point<2>(0,0), Point<2>(1,1)));
-      
-      //mapping well radius to unit measure and well center to unit cell
-      m_well_center.resize(xdata->n_wells());
-      m_well_radius.resize(xdata->n_wells());
-      Tensor<1,2> well_radius;
       
       for(unsigned int w = 0; w < xdata->n_wells(); w++)
       {
@@ -191,8 +185,6 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
 //             }
 //             
 //         }
-//         
-//         if( well_inside[w] )
           
         //if the whole square is inside the well
         if(refine_criterion_nodes_in_well(squares[0],*(xdata->get_well(w))) == 4)
@@ -200,27 +192,7 @@ Adaptive_integration::Adaptive_integration(const DoFHandler< 2  >::active_cell_i
             squares[0].gauss = &(Adaptive_integration::quadratures_[0]);
             squares[0].processed = true;
         }
-
-        if( xdata->q_points(w).size() > 0)    // is the well inside ?
-        {
-            //m_well_center[w] = cell_mapping.map_real_to_unit(xdata->get_well(w)->center());
-            //DBGMSG("Map well center:\n");
-            m_well_center[w] = mapping.transform_real_to_unit_cell(cell, xdata->get_well(w)->center());
-            //DBGMSG("%f %f\n", m_well_center[w][0], m_well_center[w][1]);
-            well_radius[0] = xdata->get_well(w)->radius();
-            well_radius = cell_mapping.scale_inverse(well_radius);
-            m_well_radius[w] = well_radius[0];
-            //DBGMSG("m_well_radius=%e\n",m_well_radius[w]);
-        }
-        //else DBGMSG("adaptive refinement on cell without well, index = %d\n",cell->index());
-
       }
-      
-      //DBGMSG("Printing cell mapping:\n");
-      //cell_mapping.print(std::cout);
-      
-      //for(unsigned int i=0; i < 4; i++)
-      //  std::cout << cell_mapping.map_real_to_unit(cell->vertex(i)) << "  ";
 }
 
 bool Adaptive_integration::refine_criterion_a(Square& square, Well& well)
@@ -330,12 +302,16 @@ bool Adaptive_integration::refine_edge()
                     continue;
                 }
       
+                // temporary shortcuts
+                const Point<2>* vertices = squares[i].real_vertices();
+                Point<2> well_center = well->center();
+                
                 //if the whole well is inside the square              ------------------------------------[3]
                 if ( n_nodes_in_well == 0 
-                    && (m_well_center[w][0] >= squares[i].vertices[0][0]) 
-                    && (m_well_center[w][0] <= squares[i].vertices[2][0])
-                    && (m_well_center[w][1] >= squares[i].vertices[0][1]) 
-                    && (m_well_center[w][1] <= squares[i].vertices[2][1]) 
+                    && well_center[0] >= vertices[0][0]
+                    && well_center[0] <= vertices[2][0]
+                    && well_center[1] >= vertices[0][1]
+                    && well_center[1] <= vertices[2][1]
                     ) 
                 {
                     //squares outside the well obtain three point quadrature
@@ -351,25 +327,25 @@ bool Adaptive_integration::refine_edge()
                 //check if the sum of distances of neighbour lines from center is equal the side of square
                 for(unsigned int j = 0; j < 3; j++)
                 {
-                    direction_vectors[j] = squares[i].vertices[j+1] - squares[i].vertices[j];
+                    direction_vectors[j] = vertices[j+1] - vertices[j];
                     lines_parameters[j] = ( direction_vectors[j] * 
-                                            (m_well_center[w] - squares[i].vertices[j])
+                                            (well_center - vertices[j])
                                         ) / direction_vectors[j].norm_square();
                                         
-                    t_points[j] = lines_parameters[j]*direction_vectors[j] + squares[i].vertices[j];
-                    distances[j] = m_well_center[w].distance(t_points[j]);
+                    t_points[j] = lines_parameters[j]*direction_vectors[j] + vertices[j];
+                    distances[j] = well_center.distance(t_points[j]);
                 }
-                direction_vectors[3] = squares[i].vertices[0] - squares[i].vertices[3];
-                lines_parameters[3] = (direction_vectors[3] * (m_well_center[w] - squares[i].vertices[3])) 
+                direction_vectors[3] = vertices[0] - vertices[3];
+                lines_parameters[3] = (direction_vectors[3] * (well_center - vertices[3])) 
                                       / direction_vectors[3].norm_square();
-                t_points[3] = lines_parameters[3]*direction_vectors[3] + squares[i].vertices[3];
-                distances[3] = m_well_center[w].distance(t_points[3]);
+                t_points[3] = lines_parameters[3]*direction_vectors[3] + vertices[3];
+                distances[3] = well_center.distance(t_points[3]);
                 
                 //std::cout << "distance\t";
                 for(unsigned int j = 0; j < 4; j++)
                 {
                     //std::cout << distances[j] << " _ ";
-                    if(distances[j] <= m_well_radius[w])
+                    if(distances[j] <= well->radius())
                     {
                     int a = j-1,
                         b = j+1;
@@ -380,7 +356,7 @@ bool Adaptive_integration::refine_edge()
                     
                     //then the well edge crosses the square line------------------------------------[4]
                     if( std::abs(distances[a] + distances[b] - 
-                                    squares[i].vertices[0].distance(squares[i].vertices[1])) < 1e-13) 
+                                    vertices[0].distance(vertices[1])) < 1e-13) 
                     {
                         //squares on the edge of the well obtain three point quadrature
                         squares[i].gauss = &(Adaptive_integration::quadratures_[3]);
@@ -391,6 +367,7 @@ bool Adaptive_integration::refine_edge()
                     }
                     }
                 }
+
                 if(squares[i].refine_flag) continue;
                 
                 //minimum distance from well criterion      ------------------------------------[5]
@@ -638,10 +615,10 @@ void Adaptive_integration::refine(unsigned int n_squares_to_refine)
   {
     if(squares[i].refine_flag)
     {
-      center = (squares[i].vertices[0] + squares[i].vertices[2]) / 2;
+      center = (squares[i].vertex(0) + squares[i].vertex(2)) / 2;
       for(unsigned int j = 0; j < 4; j++)
       {
-        squares.push_back(Square(squares[i].vertices[j],center));
+        squares.push_back(Square(squares[i].vertex(j),center));
         
         for(unsigned int w = 0; w < xdata->n_wells(); w++)        
         {
@@ -710,45 +687,26 @@ void Adaptive_integration::gather_w_points()
             if(squares[i].gauss == nullptr) continue;
             if( *(squares[i].gauss) == Adaptive_integration::quadratures_[0]) continue;
             
-            //TODO: this will not include the squares with cross-section with well and no nodes inside
-            //all the squares on the edge of the well
-            bool on_well_edge = false;
-            for(unsigned int w=0; w < xdata->n_wells(); w++)
+            // TODO: try to save the mapped quad point for later usage 
+            // (perhaps, put in xshape value both unit and real point)
+            std::vector<Point<2> > temp(squares[i].gauss->get_points());
+            squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
+            
+            for(unsigned int j = 0; j < temp.size(); j++)
             {
-                unsigned int n = refine_criterion_nodes_in_well(squares[i],*(xdata->get_well(w)));
-                if( (n > 0) && (n < 4)) on_well_edge = true;
-            }
-            if(on_well_edge)    
-            {
-                std::vector<Point<2> > temp(squares[i].gauss->get_points());
-                //temp = squares[i].gauss->get_points(); 
-                squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
-
+                bool include_point = true;
                 for(unsigned int w=0; w < xdata->n_wells(); w++)
-                for(unsigned int j = 0; j < temp.size(); j++)
                 {
                     //include only points outside the well
-                    //TODO: this will not work on non-square mesh
-                    if(m_well_center[w].distance(temp[j]) >= m_well_radius[w])
-                    {
-                    q_points_all.push_back(temp[j]);
-                    jxw_all.push_back( squares[i].gauss->weight(j) *
-                                   squares[i].mapping.jakobian() );
-                    }
+                    Point<2> real_quad = mapping->transform_unit_to_real_cell(cell, temp[j]);
+                    if(xdata->get_well(w)->center().distance(real_quad) <= xdata->get_well(w)->radius())
+                        include_point = false;
                 }
-            }
-            //all the squares around the well
-            else
-            {
-                std::vector<Point<2> > temp(squares[i].gauss->get_points());
-                //temp = squares[i].gauss->get_points(); 
-                squares[i].mapping.map_unit_to_real(temp);  //mapped from unit square to unit cell
-    
-                for(unsigned int j = 0; j < temp.size(); j++)
+                if(include_point)
                 {
                     q_points_all.push_back(temp[j]);
                     jxw_all.push_back( squares[i].gauss->weight(j) *
-                                   squares[i].mapping.jakobian() );
+                                    squares[i].mapping.jakobian() );
                 }
             }
         }
@@ -795,19 +753,6 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
         //g1.set_title("adaptive_integration\nrefinement");
         //g1.set_grid();
         
-        /*
-        std::vector<double> x(squares.size()), y(squares.size());
-
-        for (unsigned int i = 0; i < squares.size(); i++)
-        {
-          for (unsigned int j = 0; j < 4; j++) 
-          {
-            x.push_back(squares[i].vertices[j][0]);          
-            y.push_back(squares[i].vertices[j][1]);
-          }
-        }
-        */
-        
         std::ofstream felements_file;
         felements_file.open (output_dir + felements, ios_base::app);
         if (felements_file.is_open()) 
@@ -837,7 +782,6 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
           {
             if(real)
                 myfile1 << squares[i].real_vertex(j);
-              //myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[j]);
             else
               myfile1 << squares[i].vertex(j);
             
@@ -845,10 +789,8 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
           }
           if(real)
               myfile1 << squares[i].real_vertex(0);
-              //myfile1 << mapping->transform_unit_to_real_cell(cell, squares[i].vertices[0]);
             else
               myfile1 << squares[i].vertex(0);
-              //myfile1 << squares[i].vertices[0];
 
           myfile1 << "\n\n";
         }
@@ -873,20 +815,6 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
                     myfile2 << q_points_all[q];
             myfile2 << "\n";
             }
-        
-//         for (unsigned int i = 0; i < squares.size(); i++)
-//         {
-//           for (unsigned int j = 0; j < squares[i].gauss->get_points().size(); j++) 
-//           {
-//             if(real)
-//               myfile2 << mapping->transform_unit_to_real_cell(cell, squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-//               //myfile2 << cell_mapping.map_unit_to_real(squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]));
-//             else
-//               myfile2 << squares[i].mapping.map_unit_to_real(squares[i].gauss->get_points()[j]);
-//              
-//             myfile2 << "\n";
-//           }
-//         }
         
             std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
         }
@@ -918,19 +846,22 @@ void Adaptive_integration::gnuplot_refinement(const std::string &output_dir, boo
            * fy(t) = r*sin(t)
            * plot fx(t),fy(t)
            */
+          Well* well = xdata->get_well(w);
           if(real)
           {
-            strs << "fx" << w << "(t) = " << xdata->get_well(w)->center()[0] 
-                << " + "<< xdata->get_well(w)->radius() << "*cos(t)\n";
-            strs << "fy" << w << "(t) = " << xdata->get_well(w)->center()[1] 
-                << " + "<< xdata->get_well(w)->radius() << "*sin(t)\n";
+            strs << "fx" << w << "(t) = " << well->center()[0] 
+                << " + "<< well->radius() << "*cos(t)\n";
+            strs << "fy" << w << "(t) = " << well->center()[1] 
+                << " + "<< well->radius() << "*sin(t)\n";
           }
           else
           {
-            strs << "fx" << w << "(t) = " << m_well_center[w][0] 
-                << " + "<< m_well_radius[w] << "*cos(t)\n";
-            strs << "fy" << w << "(t) = " << m_well_center[w][1] 
-                << " + "<< m_well_radius[w] << "*sin(t)\n";
+            Point<2> real_well_center = mapping->transform_real_to_unit_cell(cell, well->center());
+                    
+            strs << "fx" << w << "(t) = " << real_well_center[0] 
+                << " + "<< well->radius() << "*cos(t)\n";
+            strs << "fy" << w << "(t) = " << real_well_center[1] 
+                << " + "<< well->radius() << "*sin(t)\n";
           }
         }
         
@@ -1052,8 +983,8 @@ std::pair< double, double > Adaptive_integration::test_integration_2(Function< 2
             for(unsigned int j = 0; j < temp.size(); j++)
             {
                 //include only points outside the well
-                //TODO: this will not work on non-square mesh
-                if(m_well_center[w].distance(temp[j]) >= m_well_radius[w])
+                Point<2> real_quad = mapping->transform_unit_to_real_cell(cell, temp[j]);
+                if(xdata->get_well(w)->center().distance(real_quad) >= xdata->get_well(w)->radius())
                 {
                 q_points_all.push_back(temp[j]);
                 jxw_all.push_back( squares[i].gauss->weight(j) *
@@ -1127,8 +1058,8 @@ std::pair< double, double > Adaptive_integration::test_integration_2(Function< 2
             for(unsigned int j = 0; j < temp.size(); j++)
             {
                 //include only points outside the well
-                //TODO: this will not work on non-square mesh
-                if(m_well_center[w].distance(temp[j]) >= m_well_radius[w])
+                Point<2> real_quad = mapping->transform_unit_to_real_cell(cell, temp[j]);
+                if(xdata->get_well(w)->center().distance(real_quad) >= xdata->get_well(w)->radius())
                 {
                 q_points_all.push_back(temp[j]);
 //                 DBGMSG("i=%d \t w=%f \t j=%f\n",i,squares[i].gauss->weight(j), squares[i].mapping.jakobian());

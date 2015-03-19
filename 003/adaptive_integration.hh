@@ -42,28 +42,18 @@ public:
     //@{
         double real_diameter() const;               ///< Returns diameter in real coordinates.
         double unit_diameter() const;               ///< Returns diameter in unit cell coordinates.
-        dealii::Point<2> real_vertex(unsigned int i) const; ///< Returns @p i vertex in real coordinates.
-        dealii::Point<2> vertex(unsigned int i) const;      ///< Returns @p i vertex in unit cell coordinates.
         dealii::Quadrature<2> const* quadrature() const;    ///< Returns square quadrature.
+        
+        dealii::Point<2> real_vertex(unsigned int i) const; ///< Returns @p i vertex in real coordinates.
+        const dealii::Point<2>*  real_vertices() const;     ///< Returns vertices in real coordinates.
+        
+        dealii::Point<2> vertex(unsigned int i) const;      ///< Returns @p i vertex in unit cell coordinates.
+        const dealii::Point<2>* vertices() const;           ///< Returns vertices in unit coordinates.
     //@}
     
     /// Transforms the square into the real coordinates.
     void transform_to_real_space(const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
                                  const dealii::Mapping<2> &mapping);
-    
-  /** Vertices of the square.
-    *
-    * Numbering of the squares:
-    * (is different from DealII)
-    *       2
-    *   3-------2
-    *   |       |
-    * 3 |       | 1
-    *   |       |
-    *   0-------1
-    *       0
-    */
-    dealii::Point<2> vertices[4];
   
     ///Object mappping data between the adaptively created square and unit cell
     MyMapping mapping;
@@ -78,6 +68,20 @@ public:
     dealii::QGauss<2> const *gauss;
   
 private:
+      /** Vertices of the square.
+    *
+    * Numbering of the squares:
+    * (is different from DealII)
+    *       2
+    *   3-------2
+    *   |       |
+    * 3 |       | 1
+    *   |       |
+    *   0-------1
+    *       0
+    */
+    dealii::Point<2> vertices_[4];
+    
     dealii::Point<2> real_vertices_[4];
     /// Length of diagonal in real space.
     double real_diameter_;
@@ -272,15 +276,13 @@ class Adaptive_integration
     ///pointer to XFEM data belonging to the cell
     XDataCell *xdata;
     
-    ///TODO: Use only DealII mapping for cell_mapping
-    ///mapping data of the cell to unit cell
-    MyMapping cell_mapping;
-    
     ///Vector of refined squares.
     /// square[i][j] -> i-th square and its j-th vertex
     std::vector<Square> squares;
     
+    // Vector gathering all quadrature points from the unit square quadratures.
     std::vector<dealii::Point<2> > q_points_all;
+    // Vector gathering all jxw values from the unit square quadratures.
     std::vector<double> jxw_all;
     
     ///Pointer to function describing Dirichlet boundary condition.
@@ -293,15 +295,6 @@ class Adaptive_integration
     
     /// Tolerance for refine_error method.
     double alpha_tolerance_;
-    
-    
-    ///TODO: Get rid of these
-    ///helpful temporary data
-    ///mapped well centers to unit cell
-    std::vector<dealii::Point<2> > m_well_center;
-    
-    ///mapped well radius to unit cell
-    std::vector<double > m_well_radius;
     
     // Square refinement criteria constant on the cells without well inside.
     static const double square_refinement_criteria_factor_;
