@@ -15,7 +15,6 @@
 (collect the data in one file from different runs, then call script and print all)
 - clean output methods
 
-- convergence rate SGFEM, XFEM, FEM on simple model and with sin(x)
 - study scaled condition number - SGFEM is not better
 
 - check the behaviour with more wells / more wells in one element
@@ -28,3 +27,6 @@ BUGs:
 - pdf print in adaptive refinement script - "set terminal pdf; set output "out.pdf"; replot;" provides broken pdf
 (to ps and then call from unix ps2pdf works, but without colors)
 
+
+003:
+- convergence rate SGFEM, XFEM, FEM on simple model and with sin(x) - done

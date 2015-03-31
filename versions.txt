@@ -21,6 +21,16 @@ doc_diplomka
 
   
 003:
-  - remove well mapping on unit cell and do it in real space
   - multiple aquifer - done
   - standard XFEM - done
+  - convergence rate SGFEM, XFEM, FEM on simple model and with sin(x) - done
+  - model with source - done
+  - shape function averaging on the well boundary - done
+  - optimal convergence for all pum methods - done
+  - multiple wells in single element - done
+  - remove well mapping on unit cell and do it in real space - done
+  - rectangular elements (due to above well mapping) possible - done
+  - clear header files, use forward declarations
+  
+  
+  - adaptive integration using phi and 1-phi function and radially spaced quad points

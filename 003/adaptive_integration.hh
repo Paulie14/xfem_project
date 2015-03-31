@@ -151,68 +151,6 @@ class Adaptive_integration
     double integrate_l2_diff(const dealii::Vector<double> &solution, 
                              const dealii::Function<2> &exact_solution);
     
-//     /** OBSOLETE First version of XFEM (without shift).
-//      * Does everything inside - no XFEValues.
-//      */
-//     void integrate_xfem( FullMatrix<double> &cell_matrix, 
-//                          Vector<double> &cell_rhs,
-//                          std::vector<unsigned int> &local_dof_indices,
-//                          const double &transmisivity
-//                        );
-//     
-//     /** OBSOLETE XFEM with shift.
-//      * Adds shift to @p integrate_xfem().
-//      * Does everything inside - no XFEValues.
-//      */
-//     void integrate_xfem_shift( FullMatrix<double> &cell_matrix, 
-//                                Vector<double> &cell_rhs,
-//                                std::vector<unsigned int> &local_dof_indices,
-//                                const double &transmisivity
-//                              );
-//     
-//     /** OBSOLETE XFEM with shift.
-//      * Uses XFEValues for the first time, with quadrature points precomputed.
-//      * Used as scheme for reimplementation in template method.
-//      */
-//     void integrate_xfem_shift2( FullMatrix<double> &cell_matrix, 
-//                                Vector<double> &cell_rhs,
-//                                std::vector<unsigned int> &local_dof_indices,
-//                                const double &transmisivity
-//                              );
-//     
-//     /** OBSOLETE SGFEM.
-//      * First version of SGFEM method.
-//      * Uses XFEValues for the first time, but not for gradients.
-//      */
-//     void integrate_sgfem( FullMatrix<double> &cell_matrix, 
-//                           Vector<double> &cell_rhs,
-//                           std::vector<unsigned int> &local_dof_indices,
-//                           const double &transmisivity
-//                         );
-//     
-//     /** OBSOLETE SGFEM.
-//      * First version of SGFEM method.
-//      * Does everything inside - no XFEValues.
-//      */
-//     void integrate_sgfem2( FullMatrix<double> &cell_matrix, 
-//                           Vector<double> &cell_rhs,
-//                           std::vector<unsigned int> &local_dof_indices,
-//                           const double &transmisivity
-//                         );
-//     
-//     /** OBSOLETE SGFEM.
-//      * Third version of SGFEM method.
-//      * Uses XFEValues with precomputed quadrature points.
-//      * Used as scheme for reimplementation in template method.
-//      */
-//     void integrate_sgfem3( FullMatrix<double> &cell_matrix, 
-//                           Vector<double> &cell_rhs,
-//                           std::vector<unsigned int> &local_dof_indices,
-//                           const double &transmisivity
-//                         );
-    
-
-    
     /** @brief Calls gnuplot to create image of refined element.
      * 
       * Also can save the gnuplot script to file.

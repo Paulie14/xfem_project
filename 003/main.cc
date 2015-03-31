@@ -327,7 +327,6 @@ void test_convergence_square(std::string output_dir)
          xfem = true;
     
     double p_a = 100.0,    //area of the model
-           p_b = 100.0,
            excenter = 4.89,//5.43,
            radius = p_a*std::sqrt(2),
            well_radius = 0.2,
@@ -555,11 +554,9 @@ void test_radius_convergence_square(std::string output_dir)
   
   //------------------------------SETTING----------------------------------
   std::string test_name = "square_radius_convergence_";
-  bool xfem = true,
-       ex = false;
+  bool xfem = true;
   
   double p_a = 100.0,    //area of the model
-         p_b = 100.0,
          excenter = 5.43,
          radius = p_a*std::sqrt(2),
          well_radius = 0.2,
@@ -710,7 +707,6 @@ void test_radius_convergence_sin(std::string output_dir)
     bool fem = 1;   //compute h1 norm of the error of the regular part ur
     
     double p_a = 2.0,    //area of the model
-            p_b = 2.0,
             excenter = 0,
             radius = p_a*std::sqrt(2),
             well_radius = 0.003,
@@ -891,11 +887,9 @@ void test_convergence_sin(std::string output_dir)
     //------------------------------SETTING----------------------------------
     std::string test_name = "sin_square_convergence_";
     bool fem = false,
-         xfem = true,
-         ex = false;
+         xfem = true;
   
     double p_a = 100.0,    //area of the model
-           p_b = 100.0,
            excenter = 4.89,//5.43,
            radius = p_a*std::sqrt(2),
            well_radius = 0.2,
@@ -1113,7 +1107,6 @@ void test_convergence_sin_2(std::string output_dir)
          xfem = true;
   
     double p_a = 2.0,    //area of the model
-           p_b = 2.0,
            excenter = 0.004,
            radius = p_a*std::sqrt(2),
            well_radius = 0.003,
@@ -1319,7 +1312,6 @@ void test_multiple_wells(std::string output_dir)
        fem_create = true;
   
   double p_a = 15.0,    //area of the model
-         p_b = 15.0,
          well_radius = 0.02,
          perm2fer = Parameters::perm2fer, 
          perm2tard = Parameters::perm2tard,
@@ -1347,30 +1339,30 @@ void test_multiple_wells(std::string output_dir)
   //vector of wells
   std::vector<Well*> wells;
   
-  wells.push_back( new Well( Parameters::radius,
+  wells.push_back( new Well( well_radius,
                              Point<2>(-10.0,-10.0),
-                             Parameters::perm2fer, 
-                             Parameters::perm2tard));
+                             perm2fer, 
+                             perm2tard));
   
-  wells.push_back( new Well( Parameters::radius,
+  wells.push_back( new Well( well_radius,
                              Point<2>(0.0,0.0), 
-                             Parameters::perm2fer, 
-                             Parameters::perm2tard));
+                             perm2fer, 
+                             perm2tard));
     
-  wells.push_back( new Well( Parameters::radius,
+  wells.push_back( new Well( well_radius,
                              Point<2>(-10.0,8.0), 
-                             Parameters::perm2fer, 
-                             Parameters::perm2tard));
+                             perm2fer, 
+                             perm2tard));
     
-  wells.push_back( new Well( Parameters::radius,
+  wells.push_back( new Well( well_radius,
                              Point<2>(8.0,9.0), 
-                             Parameters::perm2fer, 
-                             Parameters::perm2tard));
+                             perm2fer, 
+                             perm2tard));
     
-  wells.push_back( new Well( Parameters::radius,
+  wells.push_back( new Well( well_radius,
                              Point<2>(5.0,-10.0), 
-                             Parameters::perm2fer, 
-                             Parameters::perm2tard));
+                             perm2fer, 
+                             perm2tard));
     
   //setting BC - pressure at the top of the wells
   wells[0]->set_pressure(-2.5*Parameters::pressure_at_top);
@@ -1491,7 +1483,6 @@ void test_output(std::string output_dir)
 {
   std::string test_name = "test_output_";
   double p_a = 10.0,    //area of the model
-         p_b = 10.0,
          radius = p_a*std::sqrt(2),
          well_radius = 0.02,
          perm2fer = Parameters::perm2fer, 
@@ -1567,7 +1558,6 @@ void test_solution(std::string output_dir)
   std::string test_name = "test_solution_";
   
   double p_a = 10.0,    //area of the model
-         p_b = 10.0,
          excenter = 0,//0.06, //0.05,
          radius = p_a*std::sqrt(2),
          well_radius = 0.02,
@@ -1632,7 +1622,6 @@ void test_solution(std::string output_dir)
 //   }
   
   
-  double l2_norm_dif_fem;
   std::pair<double,double> l2_norm_dif_xfem;
  
       std::cout << "===== XModel_simple running   =====" << std::endl;
@@ -2008,7 +1997,6 @@ void test_two_aquifers(std::string output_dir)
   std::string test_name = "two_aquifers_";
   
   double p_a = 10.0,    //area of the model
-         p_b = 10.0,
          well_radius = 0.02,
          enrichment_radius = 2.0,
          input_pressure = 5;
@@ -2034,13 +2022,13 @@ void test_two_aquifers(std::string output_dir)
   //vector of wells
   std::vector<Well*> wells;
   
-  wells.push_back( new Well( Parameters::radius,
+  wells.push_back( new Well( well_radius,
                              Point<2>(-5.0,-1.1)));
   wells[0]->set_pressure(input_pressure);
   wells[0]->set_perm2aquifer(perm2fer_1);
   wells[0]->set_perm2aquitard(perm2tard_1);
   
-  wells.push_back( new Well( Parameters::radius,
+  wells.push_back( new Well( well_radius,
                              Point<2>(5.0,1.0)));
   //wells[1]->set_pressure(0.0);
   wells[1]->set_perm2aquifer(perm2fer_2);
@@ -2115,7 +2103,6 @@ void test_enr_error(std::string output_dir)
     
     //------------------------------SETTING----------------------------------
     double p_a = 10.0,    //area of the model
-            p_b = 10.0,
             excenter = 0,
             radius = p_a*std::sqrt(2),
             well_radius = 0.2,
@@ -2169,7 +2156,6 @@ void test_enr_error(std::string output_dir)
                                 | ModelBase::output_error);
         
         
-        double l2_norm_dif_fem;
         std::pair<double,double> l2_norm_dif_xfem;
     
         std::cout << "===== XModel_simple running   =====" << std::endl;
@@ -2196,11 +2182,9 @@ void test_wells_in_element(std::string output_dir)
     
     //------------------------------SETTING----------------------------------
     std::string test_name = "wells_in_element_";
-    bool fem = true, 
-         fem_create = false;
+    bool fem = true;
     
     double p_a = 2.0,    //area of the model
-            p_b = 2.0,
             well_radius = 0.02,
             well_pressure = 5,
             perm2fer = Parameters::perm2fer, 
