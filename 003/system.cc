@@ -2,6 +2,11 @@
 
 #include "system.hh"
 
+//create directory
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sstream>
+
 
 /// @brief INTERNAL DEFINITIONS FOR XPRINTF
 /// @{
@@ -85,4 +90,23 @@ int _xprintf(const char * const xprintf_file, const char * const xprintf_func, c
     }
   }
   return rc;
+}
+
+
+std::string create_subdirectory(std::string parent_dir, std::string new_dir)
+{
+    std::stringstream dir_name;
+    dir_name << parent_dir << "/" << new_dir << "/";
+    DIR *dir;
+    dir = opendir(dir_name.str().c_str());
+    if(dir == NULL) {
+        int ret = mkdir(dir_name.str().c_str(), 0777);
+
+        if(ret != 0) {
+            xprintf(Err, "Couldn't create directory: %s\n", dir_name.str().c_str());
+        }
+    } else {
+        closedir(dir);
+    }
+    return dir_name.str();
 }

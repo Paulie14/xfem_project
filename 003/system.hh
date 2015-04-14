@@ -31,6 +31,8 @@ typedef enum MessageType {
 
 int     _xprintf(const char * const xprintf_file, const char * const xprintf_func, const int xprintf_line, MessageType type, const char * const fmt, ... );
 
+string create_subdirectory(string parent_dir, string new_dir);
+
 
 //http://www.devarticles.com/c/a/Cplusplus/C-plus-plus-Preprocessor-Always-Assert-Your-Code-Is-Right/2/
 //#ifndef MASSERT_H
