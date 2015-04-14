@@ -12,17 +12,27 @@ SET(TARGET "main")
 #
 SET(TARGET_SRC
   ${TARGET}.cc
-  system.cc   
+  system.cc
+  gnuplot_i.cc
   parameters.cc    
   well.cc
+  
+  mapping.cc
+  xquadrature_base.cc
+  xquadrature_cell.cc
+  xquadrature_well.cc
+  
   data_cell.cc
   xfevalues.cc
-  mapping.cc
+  
+  adaptive_integration_base.cc    
+  adaptive_integration.cc   
+  
   model_base.cc
   model.cc
   bem_model.cc
   exact_model.cc
-  adaptive_integration.cc    
+
   xmodel.cc
   xmodel_tests.cc
   simple_models.cc        

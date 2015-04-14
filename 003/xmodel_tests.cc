@@ -5,6 +5,7 @@
 #include "system.hh"
 #include "xfevalues.hh"
 #include "comparing.hh"
+#include "xquadrature_base.hh"
 
 #include <deal.II/grid/persistent_tria.h>
 
@@ -211,20 +212,19 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
         fe_values.reinit (cell);
         MASSERT(cell->user_pointer() != nullptr, "Not enriched cell.");
   
+        XDataCell * xdata = static_cast<XDataCell*>( cell->user_pointer() );
+        XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
+                                                            fe_values.get_mapping(), 
+                                                            XQuadratureCell::Refinement::edge);
+        xquadrature->refine(level);
+        DBGMSG("cell %d - adaptive refinement level %d\n",cell->index(), xquadrature->level());
         
-        Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping(),0);
-      
-        unsigned int t;
-        for(t=0; t < level; t++)
-        {
+        xquadrature->gnuplot_refinement(output_dir_);
+        
             
-            //DBGMSG("refinement level: %d\n", t);
-            if ( ! adaptive_integration.refine_edge())
-                break;
-        }
-        DBGMSG("cell %d - adaptive refinement level %d\n",cell->index(), t);
+        Adaptive_integration adaptive_integration(cell, fe, (XQuadratureBase*)xquadrature, 0);
         
-        //adaptive_integration.gnuplot_refinement(output_dir_);
+        
         
         adaptive_integral += adaptive_integration.test_integration(func);
     }

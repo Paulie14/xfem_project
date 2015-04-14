@@ -19,6 +19,8 @@
 #include "comparing.hh"
 #include "well.hh"
 #include "parameters.hh"
+#include "xquadrature_cell.hh"
+#include "xquadrature_well.hh"
 
 
 #include "adaptive_integration.hh"
@@ -403,9 +405,9 @@ void test_convergence_square(std::string output_dir)
     //xmodel.set_adaptive_refinement_by_error(1e-2);
     //xmodel.set_well_computation_type(Well_computation::sources);
     xmodel.set_output_options(ModelBase::output_gmsh_mesh
-    //                           | ModelBase::output_solution
-    //                           | ModelBase::output_decomposed
-//                               | ModelBase::output_adaptive_plot
+                              | ModelBase::output_solution
+                              | ModelBase::output_decomposed
+                              | ModelBase::output_adaptive_plot
                             | ModelBase::output_error);
 
     //   // Exact model
@@ -535,9 +537,9 @@ void test_convergence_square(std::string output_dir)
         {
             xmodel.compute_interpolated_exact(exact_solution);
             xmodel.output_results(cycle);
-//             ExactModel* exact = new ExactModel(exact_solution);
-//             exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
-//             delete exact;
+            ExactModel* exact = new ExactModel(exact_solution);
+            exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+            delete exact;
         } 
     }   // for cycle
       
@@ -1650,7 +1652,6 @@ void test_solution(std::string output_dir)
 void test_adaptive_integration(std::string output_dir)
 {
   output_dir += "test_adaptive_integration/";
-  std::string test_name = "test_integration_";
   double p_a = 2.0,    //area of the model
          well_radius = 0.02,
          excenter = 0,//0.61,
@@ -1715,12 +1716,16 @@ void test_adaptive_integration(std::string output_dir)
   cell->set_user_pointer(xdata);
   fe_values.reinit(cell);
 
-  Adaptive_integration adapt(cell, fe,fe_values.get_mapping(),0);
   
-  for(unsigned int i=0; i < 10; i++)
-    adapt.refine_edge();
   
-  adapt.gnuplot_refinement(output_dir,true, true);
+  XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
+                                                      fe_values.get_mapping(),
+                                                      XQuadratureCell::Refinement::edge
+                                                     );
+  xquadrature->refine(10);
+  xquadrature->gnuplot_refinement(output_dir,true, true);
+  
+  Adaptive_integration adapt(cell, fe,xquadrature,0);
   
   TestIntegration* func = new TestIntegration(well);
   
@@ -1738,107 +1743,107 @@ void test_adaptive_integration(std::string output_dir)
 }
 
 
-void test_adaptive_integration2(std::string output_dir)
-{
-    output_dir += "test_adaptive_integration_2/";
-  
-    unsigned int start_level = 5,
-               fine_level = 12;
-               
-    double p_a = 2.0,    //area of the model
-           well_radius = 1.0,
-           excenter = 0;
-         
-    Point<2> well_center(0+excenter,0+excenter);
-  
-    //--------------------------END SETTING----------------------------------
-  
-    Point<2> down_left(-p_a,-p_a);
-    Point<2> up_right(p_a, p_a);
-    std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
-  
-  
-    Well *well = new Well( well_radius,
-                           well_center);
-    well->set_pressure(1.0);
-    well->set_perm2aquifer(0,0);
-    well->set_perm2aquitard({0,0});
-    well->evaluate_q_points(100);
-    
-    Triangulation<2> tria;
-    GridGenerator::hyper_rectangle<2>(tria,down_left, up_right);
-    DBGMSG("tria size: %d\n",tria.n_active_cells());
-    
-    FE_Q<2> fe(1);
-    QGauss<2> quad(1);
-    FEValues<2> fe_values(fe, quad, UpdateFlags::update_default);
-    DoFHandler<2> dof_handler;
-    dof_handler.initialize(tria, fe);
-    
-    DoFHandler<2>::active_cell_iterator cell = dof_handler.begin_active();  
-    
-    std::vector<unsigned int> enriched_dofs(fe.dofs_per_cell);
-    enriched_dofs[0] = 4;
-    enriched_dofs[1] = 5;
-    enriched_dofs[2] = 6;
-    enriched_dofs[3] = 7;
-    std::vector<unsigned int> weights(fe.dofs_per_cell,0);
-    
-    std::vector<const Point<2>* > points (well->q_points().size());
-    //std::vector<const Point<2>* > points2 (well2->q_points().size());
-    for(unsigned int p=0; p < well->q_points().size(); p++)
-    {
-            points[p] = &(well->q_points()[p]);
-            //points2[p] = &(well2->q_points()[p]);
-    }
-    DBGMSG("N quadrature points: %d\n",points.size());
-    XDataCell* xdata = new XDataCell(cell, well,0,enriched_dofs, weights, points);
-    //xdata->add_data(well,1,enriched_dofs,weights,points2);
-    
-    cell->set_user_pointer(xdata);
-    fe_values.reinit(cell);
-
-    TestIntegration_r2* func = new TestIntegration_r2(well);
-    
-    ConvergenceTable table_convergence;
-            
-    for(unsigned int i=0; i < fine_level-start_level-1; i++)
-    {
-        Adaptive_integration adapt(cell, fe,fe_values.get_mapping(),0);
-           
-        // compute integral of the function on the well edge
-        for(unsigned int j=0; j < start_level+i; j++)
-            adapt.refine_edge();
-  
-    //     adapt.gnuplot_refinement(output_dir,true, true);
-        // test, fine
-        std::pair<double, double> integrals = adapt.test_integration_2(func, fine_level-start_level-i);
-    
-        double difference = integrals.second-integrals.first;
-        std::cout << setprecision(16) << difference << std::endl;
-        
-        table_convergence.add_value("Refinement level",start_level+i);
-        table_convergence.set_tex_format("Refinement level", "r");
-      
-        table_convergence.add_value("difference",difference);
-        table_convergence.set_precision("difference", 3);
-        table_convergence.set_scientific("difference",true);
-  
-        table_convergence.evaluate_convergence_rates("difference", ConvergenceTable::reduction_rate);
-        table_convergence.evaluate_convergence_rates("difference", ConvergenceTable::reduction_rate_log2);
-        table_convergence.write_text(std::cout);
-    }
-    table_convergence.write_text(std::cout);
-    std::ofstream out_file;
-    out_file.open(output_dir + "convergence.tex");
-    table_convergence.write_tex(out_file);
-    out_file.close();
-        
-    out_file.open(output_dir + "convergence.txt");
-    table_convergence.write_text(out_file, 
-                                 TableHandler::TextOutputFormat::table_with_separate_column_description);
-    out_file.close();
-}
+// void test_adaptive_integration2(std::string output_dir)
+// {
+//     output_dir += "test_adaptive_integration_2/";
+//   
+//     unsigned int start_level = 5,
+//                fine_level = 12;
+//                
+//     double p_a = 2.0,    //area of the model
+//            well_radius = 1.0,
+//            excenter = 0;
+//          
+//     Point<2> well_center(0+excenter,0+excenter);
+//   
+//     //--------------------------END SETTING----------------------------------
+//   
+//     Point<2> down_left(-p_a,-p_a);
+//     Point<2> up_right(p_a, p_a);
+//     std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+//   
+//   
+//     Well *well = new Well( well_radius,
+//                            well_center);
+//     well->set_pressure(1.0);
+//     well->set_perm2aquifer(0,0);
+//     well->set_perm2aquitard({0,0});
+//     well->evaluate_q_points(100);
+//     
+//     Triangulation<2> tria;
+//     GridGenerator::hyper_rectangle<2>(tria,down_left, up_right);
+//     DBGMSG("tria size: %d\n",tria.n_active_cells());
+//     
+//     FE_Q<2> fe(1);
+//     QGauss<2> quad(1);
+//     FEValues<2> fe_values(fe, quad, UpdateFlags::update_default);
+//     DoFHandler<2> dof_handler;
+//     dof_handler.initialize(tria, fe);
+//     
+//     DoFHandler<2>::active_cell_iterator cell = dof_handler.begin_active();  
+//     
+//     std::vector<unsigned int> enriched_dofs(fe.dofs_per_cell);
+//     enriched_dofs[0] = 4;
+//     enriched_dofs[1] = 5;
+//     enriched_dofs[2] = 6;
+//     enriched_dofs[3] = 7;
+//     std::vector<unsigned int> weights(fe.dofs_per_cell,0);
+//     
+//     std::vector<const Point<2>* > points (well->q_points().size());
+//     //std::vector<const Point<2>* > points2 (well2->q_points().size());
+//     for(unsigned int p=0; p < well->q_points().size(); p++)
+//     {
+//             points[p] = &(well->q_points()[p]);
+//             //points2[p] = &(well2->q_points()[p]);
+//     }
+//     DBGMSG("N quadrature points: %d\n",points.size());
+//     XDataCell* xdata = new XDataCell(cell, well,0,enriched_dofs, weights, points);
+//     //xdata->add_data(well,1,enriched_dofs,weights,points2);
+//     
+//     cell->set_user_pointer(xdata);
+//     fe_values.reinit(cell);
+// 
+//     TestIntegration_r2* func = new TestIntegration_r2(well);
+//     
+//     ConvergenceTable table_convergence;
+//             
+//     for(unsigned int i=0; i < fine_level-start_level-1; i++)
+//     {
+//         Adaptive_integration adapt(cell, fe,fe_values.get_mapping(),0);
+//            
+//         // compute integral of the function on the well edge
+//         for(unsigned int j=0; j < start_level+i; j++)
+//             adapt.refine_edge();
+//   
+//     //     adapt.gnuplot_refinement(output_dir,true, true);
+//         // test, fine
+//         std::pair<double, double> integrals = adapt.test_integration_2(func, fine_level-start_level-i);
+//     
+//         double difference = integrals.second-integrals.first;
+//         std::cout << setprecision(16) << difference << std::endl;
+//         
+//         table_convergence.add_value("Refinement level",start_level+i);
+//         table_convergence.set_tex_format("Refinement level", "r");
+//       
+//         table_convergence.add_value("difference",difference);
+//         table_convergence.set_precision("difference", 3);
+//         table_convergence.set_scientific("difference",true);
+//   
+//         table_convergence.evaluate_convergence_rates("difference", ConvergenceTable::reduction_rate);
+//         table_convergence.evaluate_convergence_rates("difference", ConvergenceTable::reduction_rate_log2);
+//         table_convergence.write_text(std::cout);
+//     }
+//     table_convergence.write_text(std::cout);
+//     std::ofstream out_file;
+//     out_file.open(output_dir + "convergence.tex");
+//     table_convergence.write_tex(out_file);
+//     out_file.close();
+//         
+//     out_file.open(output_dir + "convergence.txt");
+//     table_convergence.write_text(out_file, 
+//                                  TableHandler::TextOutputFormat::table_with_separate_column_description);
+//     out_file.close();
+// }
 
 
 void test_adaptive_integration3(std::string output_dir)
@@ -2361,6 +2366,58 @@ void test_wells_in_element(std::string output_dir)
 }
 
 
+void test_xquadrature_well(std::string output_dir)
+{
+    output_dir += "test_xquadrature_well/";
+    double well_radius = 0.02,
+           width = 4*well_radius,
+           excenter = 0.5;
+            
+    unsigned int n_well_q_points = 500;
+            
+    Point<2> well_center(0+excenter,0+excenter);
+    
+    //--------------------------END SETTING----------------------------------
+
+    
+    Well *well = new Well( well_radius,
+                           well_center,
+                           0, 
+                           0);
+    well->set_pressure(well_radius);
+    well->evaluate_q_points(n_well_q_points);
+    
+    XQuadratureWell xquad(well, width);
+    xquad.refine(6);
+    xquad.gnuplot_refinement(output_dir, true, false);
+    
+    double sum = 0;
+    for(unsigned int i=0; i < xquad.size(); i++)
+        sum += xquad.weight(i);
+    
+    std::cout << "Control sum of weights: " << sum
+     << "\t" << 4*well_radius * 2*M_PI << std::endl;
+    
+    SmoothStep smooth_step(well, width);
+    
+    unsigned int n = 300;
+    double dd = 0.1 / n,
+           x = well_center[0];
+           std::cout << setw(15) << "r" << "\t" << setw(10) << "s.value(p)" << "\t"
+                  << setw(10) << "s.value(dis)" << std::endl;
+    for(unsigned int i=0; i < n; i++)
+    {
+        Point<2> p(x,x);
+        double dis = well_center.distance(p);
+        std::cout << setprecision(16);
+        std::cout << setw(15) << dis << "\t" << setw(10) << smooth_step.value(p) << "\t"
+                  << setw(10) << smooth_step.value(dis) << std::endl;
+        x += dd;
+    }
+    
+    delete well;
+}
+
 int main ()
 {
   std::string input_dir = "../input/";
@@ -2385,6 +2442,7 @@ int main ()
 //   test_output(output_dir);
 //    test_enr_error(output_dir);
 //   test_wells_in_element(output_dir);
+//   test_xquadrature_well(output_dir);
   return 0;
 }
 
