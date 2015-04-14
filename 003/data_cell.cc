@@ -117,7 +117,8 @@ XDataCell::XDataCell(const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
     n_enriched_dofs_(0),              
     n_wells_inside_(0),
     n_standard_dofs_(0),
-    n_dofs_(0)
+    n_dofs_(0),
+    n_polar_quadratures_(0)
 {
   global_enriched_dofs_.push_back(enriched_dofs);
   weights_.push_back(weights);
@@ -135,7 +136,8 @@ XDataCell::XDataCell(const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
     n_enriched_dofs_(0),              
     n_wells_inside_(0),
     n_standard_dofs_(0),
-    n_dofs_(0)
+    n_dofs_(0),
+    n_polar_quadratures_(0)
 {
   q_points_.push_back(q_points);
   global_enriched_dofs_.push_back(enriched_dofs);
@@ -190,6 +192,11 @@ unsigned int XDataCell::n_dofs()
 {
     MASSERT(n_dofs_ > 0, "Call get_dof_indices() before!");
     return n_dofs_;
+}
+
+unsigned int XDataCell::n_polar_quadratures(void)
+{
+    return n_polar_quadratures_;
 }
 
 
@@ -276,6 +283,30 @@ void XDataCell::add_data(Well* well,
   weights_.push_back(weights);
   q_points_.push_back(q_points);
 }
+
+void XDataCell::set_polar_quadrature(XQuadratureWell* xquad)
+{   
+    well_xquadratures_.push_back(xquad); 
+    if(xquad != nullptr) n_polar_quadratures_++;
+}
+
+void XDataCell::clear_polar_quadratures(void)
+{
+    well_xquadratures_.clear();
+}
+
+XQuadratureWell* XDataCell::polar_quadrature(unsigned int local_well_index)
+{
+    MASSERT(local_well_index < well_xquadratures_.size(),"Index of well exceeded the size of the vector.");
+    return well_xquadratures_[local_well_index];
+}
+
+std::vector<XQuadratureWell*> XDataCell::polar_quadratures(void)
+{
+    return well_xquadratures_;
+}
+
+
 
 
       

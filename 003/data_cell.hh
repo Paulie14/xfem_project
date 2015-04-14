@@ -3,6 +3,7 @@
 
 #include <deal.II/dofs/dof_accessor.h>
 
+class XQuadratureWell;
 //forward declarations
 namespace dealii{
     template<int,int> class Mapping;
@@ -54,6 +55,13 @@ public:
      * @return pointer to well
      */
     Well* get_well(const unsigned int &local_well_index);
+    
+     /// Returns pointer to one of the wells comunicating with the cell this data belong to.
+    /**
+     * @param local_well_index is local well index in the cell
+     * @return constant reference to a vector of pointers to wells
+     */
+    const std::vector<Well*> & get_wells();
     
     /// Returns global index of the well.
     /** @param local_well_index is local well index in the cell
@@ -235,6 +243,12 @@ class XDataCell : public DataCellBase
       
       /// Number of all degrees of freedom on the cell.
       unsigned int n_dofs();
+      
+      /// Number of polar quadratures for wells.
+      unsigned int n_polar_quadratures(void);
+      
+      XQuadratureWell * polar_quadrature(unsigned int local_well_index);
+      std::vector<XQuadratureWell *> polar_quadratures(void);
     //@}
     
     /// Add enriched data (without q_points).
@@ -249,6 +263,10 @@ class XDataCell : public DataCellBase
                   const std::vector<unsigned int> &enriched_dofs,
                   const std::vector<unsigned int> &weights,
                   const std::vector<const dealii::Point<2>* > &q_points);
+    
+    void set_polar_quadrature(XQuadratureWell* xquad);
+    
+    void clear_polar_quadratures(void);
     
     /** STATIC function. Goes through given XDataCells objects and initialize node values of enrichment before system assembly.
      * @param data_vector is given output vector (by wells) of maps which map enrichment values to the nodes
@@ -267,6 +285,8 @@ class XDataCell : public DataCellBase
      */
     std::vector<std::map<unsigned int, double> > *node_values;
     
+    /// Quadratures in polar coordinates in vicinity of wells affecting the current cell.
+    std::vector<XQuadratureWell*> well_xquadratures_;
     
     /** Global numbers of enriched DoFs. 
      * Index subset in \f$ \mathcal{M}_w \f$ (nodes on both reproducing and blending elements).
@@ -278,7 +298,8 @@ class XDataCell : public DataCellBase
     unsigned int n_enriched_dofs_,              ///< Number of all enriched dofs.
                  n_wells_inside_,               ///< Number of wells inside the cell.
                  n_standard_dofs_,              ///< Number of standard dofs.
-                 n_dofs_;                       ///< Total number of dofs.
+                 n_dofs_,                       ///< Total number of dofs.
+                 n_polar_quadratures_;          ///< Number of polar quadratures for wells.
     
     /** Weights of enriched nodes. 
      * Weight is equal \f$ g_u = 1 \$ at enriched node from subset \f$ \mathcal{N}_w \f$.
@@ -299,16 +320,16 @@ class XDataCell : public DataCellBase
 
 /****************************************            Implementation          ********************************/
 
-inline dealii::DoFHandler<2>::active_cell_iterator DataCellBase::get_cell()
-{ return cell_; }
+inline dealii::DoFHandler<2>::active_cell_iterator DataCellBase::get_cell() { return cell_; }
 
-inline unsigned int DataCellBase::n_wells()
-{ return wells_.size(); } 
+inline unsigned int DataCellBase::n_wells() { return wells_.size(); } 
 
 inline int DataCellBase::user_index() const {return user_index_;}
 
 inline void DataCellBase::set_user_index(int index) {user_index_ = index;}
 
 inline void DataCellBase::clear_user_index() {user_index_ = 0;}
+
+inline const std::vector< Well* >& DataCellBase::get_wells() { return wells_;}
 
 #endif // DataCell_h
