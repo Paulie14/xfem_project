@@ -1,4 +1,6 @@
 
+#include "xmodel.hh"
+
 #include <deal.II/grid/grid_in.h> 
 #include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/grid_tools.h>
@@ -13,7 +15,7 @@
 #include "system.hh"
 #include "exact_model.hh"
 #include "model.hh"
-#include "xmodel.hh"
+
 #include "simple_models.hh"
 #include "bem_model.hh"
 #include "comparing.hh"
@@ -1725,7 +1727,7 @@ void test_adaptive_integration(std::string output_dir)
   xquadrature->refine(10);
   xquadrature->gnuplot_refinement(output_dir,true, true);
   
-  Adaptive_integration adapt(cell, fe,xquadrature,0);
+  Adaptive_integration adapt(xdata, fe,xquadrature,0);
   
   TestIntegration* func = new TestIntegration(well);
   
@@ -2370,7 +2372,8 @@ void test_xquadrature_well(std::string output_dir)
 {
     output_dir += "test_xquadrature_well/";
     double well_radius = 0.02,
-           width = 4*well_radius,
+           scale_width = 4,
+           width = scale_width * well_radius,
            excenter = 0.5;
             
     unsigned int n_well_q_points = 500;
@@ -2396,7 +2399,20 @@ void test_xquadrature_well(std::string output_dir)
         sum += xquad.weight(i);
     
     std::cout << "Control sum of weights: " << sum
-     << "\t" << 4*well_radius * 2*M_PI << std::endl;
+     << "\t" << scale_width*well_radius * 2*M_PI << std::endl;
+    
+    std::cout << "Test integration [0,pi/2] x [r,5r]: " << std::endl;
+    double integral = 0;
+    for(unsigned int q = 0; q < xquad.size(); q++)
+    {
+        double phi = xquad.polar_point(q)[1];
+        if( (0 <= phi) && (phi <= M_PI/2))
+            integral += xquad.polar_point(q)[0] * xquad.weight(q);
+    }
+    double analytic_integral = M_PI/4 * ((scale_width+1)*(scale_width+1) - 1) * well_radius * well_radius;
+    std::cout << setprecision(16) << "numeric =  " << integral 
+                                  << "\t analytic = " << analytic_integral
+                                  << "\t error = " << integral - analytic_integral << std::endl;
     
     SmoothStep smooth_step(well, width);
     

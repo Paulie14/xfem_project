@@ -22,15 +22,15 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
    *              well_dof)]_w 
    * ]
    */
-  xdata->get_dof_indices(local_dof_indices, fe->dofs_per_cell); //dof initialization
+  xdata_->get_dof_indices(local_dof_indices, fe_->dofs_per_cell); //dof initialization
   
-  unsigned int n_wells_inside = xdata->n_wells_inside(),  // number of wells with q_points inside the cell
-               n_wells = xdata->n_wells(),                // number of wells affecting the cell
-               dofs_per_cell = fe->dofs_per_cell,
+  unsigned int n_wells_inside = xdata_->n_wells_inside(),  // number of wells with q_points inside the cell
+               n_wells = xdata_->n_wells(),                // number of wells affecting the cell
+               dofs_per_cell = fe_->dofs_per_cell,
                n_vertices = GeometryInfo<2>::vertices_per_cell,
                n_dofs = 0;  
                
-  n_dofs = dofs_per_cell + xdata->n_enriched_dofs();
+  n_dofs = dofs_per_cell + xdata_->n_enriched_dofs();
   
   cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
   cell_matrix = 0;
@@ -38,7 +38,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   cell_rhs = 0;
                
 
-  XFEValues<EnrType> xfevalues(*fe,*xquad_, 
+  XFEValues<EnrType> xfevalues(*fe_,*xquad_, 
                                          update_values 
                                        | update_gradients 
                                        | update_quadrature_points 
@@ -61,7 +61,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                                        //| update_jacobian_grads
                                        //| update_inverse_jacobians
                                                  );
-  xfevalues.reinit(xdata);
+  xfevalues.reinit(xdata_);
   
   //temporary vectors for both shape and xshape values and gradients
   std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
@@ -75,8 +75,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     {   
       shape_grad_vec[i] = xfevalues.shape_grad(i,q);
         
-      //if(n_wells_inside > 0 || rhs_function)  //with SOURCES
-      if(rhs_function)
+      //if(n_wells_inside > 0 || rhs_function_)  //with SOURCES
+      if(rhs_function_)
           shape_val_vec[i] = xfevalues.shape_value(i,q);
     }
 
@@ -86,10 +86,10 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
     {
       for(unsigned int k = 0; k < n_vertices; k++) //M_w
       { 
-        if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+        if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
 
-        //if(n_wells_inside > 0 || rhs_function)    //with SOURCES
-        if(rhs_function)
+        //if(n_wells_inside > 0 || rhs_function_)    //with SOURCES
+        if(rhs_function_)
           shape_val_vec[index] = xfevalues.enrichment_value(k,w,q);
           
         //shape_grad_vec[index] = xfevalues.enrichment_grad(k,w,mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
@@ -117,10 +117,10 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                               xfevalues.JxW(q); //weight of gauss * square_jacobian * cell_jacobian;
         }
         //assembling RHS
-        if(rhs_function)
+        if(rhs_function_)
         {
             //DBGMSG("sources\n");
-          cell_rhs(i) += rhs_function->value(xfevalues.quadrature_point(q)) * shape_val_vec[i] * xfevalues.JxW(q);
+          cell_rhs(i) += rhs_function_->value(xfevalues.quadrature_point(q)) * shape_val_vec[i] * xfevalues.JxW(q);
         }
       }
       //addition from SOURCES--------------------------------------------------------------- SOURCES
@@ -128,13 +128,13 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
       for(unsigned int w = 0; w < n_wells; w++) //W
       {
         //this condition tests if the quadrature point lies within the well (testing function omega)
-        if(xdata->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, q_points_all[q])))
+        if(xdata_->get_well(w)->points_inside(mapping->transform_unit_to_real_cell(cell, q_points_all[q])))
         { 
           for(unsigned int i = 0; i < n_dofs+n_wells_inside; i++)
           {
             for(unsigned int j = 0; j < n_dofs+n_wells_inside; j++)
             {  
-              cell_matrix(i,j) += xdata->get_well(w)->perm2aquifer() *
+              cell_matrix(i,j) += xdata_->get_well(w)->perm2aquifer() *
                                   shape_val_vec[i] *
                                   shape_val_vec[j] *
                                   xfevalues.JxW(q);
@@ -159,8 +159,8 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
 template<Enrichment_method::Type EnrType> 
 double Adaptive_integration::integrate_l2_diff(const Vector<double> &solution, const Function<2> &exact_solution)
 {  
-    unsigned int n_wells = xdata->n_wells(),              // number of wells affecting the cell
-                 dofs_per_cell = fe->dofs_per_cell,
+    unsigned int n_wells = xdata_->n_wells(),              // number of wells affecting the cell
+                 dofs_per_cell = fe_->dofs_per_cell,
                  n_vertices = GeometryInfo<2>::vertices_per_cell;  
 
     double  value = 0, 
@@ -168,9 +168,9 @@ double Adaptive_integration::integrate_l2_diff(const Vector<double> &solution, c
             cell_norm = 0;
     std::vector<unsigned int> local_dof_indices;
 
-    xdata->get_dof_indices(local_dof_indices, dofs_per_cell);
+    xdata_->get_dof_indices(local_dof_indices, dofs_per_cell);
 
-    XFEValues<EnrType> xfevalues(*fe,*xquad_, update_values 
+    XFEValues<EnrType> xfevalues(*fe_,*xquad_, update_values 
                                        //| update_gradients 
                                        | update_quadrature_points 
                                        //| update_covariant_transformation 
@@ -192,7 +192,7 @@ double Adaptive_integration::integrate_l2_diff(const Vector<double> &solution, c
                                        //| update_jacobian_grads
                                        //| update_inverse_jacobians
                                                  );
-    xfevalues.reinit(xdata);
+    xfevalues.reinit(xdata_);
   
   
     for(unsigned int q=0; q<xquad_->size(); q++)
@@ -207,9 +207,9 @@ double Adaptive_integration::integrate_l2_diff(const Vector<double> &solution, c
         for(unsigned int w = 0; w < n_wells; w++) //W
         for(unsigned int k = 0; k < n_vertices; k++) //M_w
         { 
-            if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+            if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
          
-            value += solution(xdata->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
+            value += solution(xdata_->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
         }
         
 //         if(std::abs(value-exact_value) > 1e-15)
@@ -252,15 +252,17 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     *              well_dof)]_w 
     * ]
     */
-    xdata->get_dof_indices(local_dof_indices, fe->dofs_per_cell); //dof initialization
+    xdata_->get_dof_indices(local_dof_indices, fe_->dofs_per_cell); //dof initialization
+
+    DoFHandler<2>::active_cell_iterator cell = xdata_->get_cell();
     
-    unsigned int n_wells_inside = xdata->n_wells_inside(),  // number of wells with q_points inside the cell
-                n_wells = xdata->n_wells(),                // number of wells affecting the cell
-                dofs_per_cell = fe->dofs_per_cell,
+    unsigned int n_wells_inside = xdata_->n_wells_inside(),  // number of wells with q_points inside the cell
+                n_wells = xdata_->n_wells(),                // number of wells affecting the cell
+                dofs_per_cell = fe_->dofs_per_cell,
                 n_vertices = GeometryInfo<2>::vertices_per_cell,
                 n_dofs = 0;  
                 
-    n_dofs = dofs_per_cell + xdata->n_enriched_dofs();
+    n_dofs = dofs_per_cell + xdata_->n_enriched_dofs();
     
     cell_matrix = FullMatrix<double>(n_dofs+n_wells_inside,n_dofs+n_wells_inside);
     cell_matrix = 0;
@@ -272,9 +274,9 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     std::vector<double > shape_val_vec(n_dofs+n_wells_inside,0);
                
     //TODO: more wells !!!!!!!!
-    SmoothStep smooth_step(xdata->get_well(0), 4*xdata->get_well(0)->radius());
+    SmoothStep smooth_step(xdata_->get_well(0), 4*xdata_->get_well(0)->radius());
   
-    XFEValues<EnrType> xfevalues(*fe,*xquad_, 
+    XFEValues<EnrType> xfevalues(*fe_,*xquad_, 
                                             update_values 
                                         | update_gradients 
                                         | update_quadrature_points 
@@ -297,7 +299,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
                                         //| update_jacobian_grads
                                         //| update_inverse_jacobians
                                                     );
-    xfevalues.reinit(xdata);
+    xfevalues.reinit(xdata_);
     
     for(unsigned int q=0; q<xquad_->size(); q++)
     { 
@@ -307,8 +309,8 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
         {   
         shape_grad_vec[i] = xfevalues.shape_grad(i,q);
             
-        //if(n_wells_inside > 0 || rhs_function)  //with SOURCES
-        if(rhs_function)
+        //if(n_wells_inside > 0 || rhs_function_)  //with SOURCES
+        if(rhs_function_)
             shape_val_vec[i] = xfevalues.shape_value(i,q);
         }
 
@@ -318,10 +320,10 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
         {
         for(unsigned int k = 0; k < n_vertices; k++) //M_w
         { 
-            if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+            if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
 
-            //if(n_wells_inside > 0 || rhs_function)    //with SOURCES
-            if(rhs_function)
+            //if(n_wells_inside > 0 || rhs_function_)    //with SOURCES
+            if(rhs_function_)
             shape_val_vec[index] = xfevalues.enrichment_value(k,w,q);
             
             //shape_grad_vec[index] = xfevalues.enrichment_grad(k,w,mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
@@ -344,10 +346,10 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
                                 xfevalues.JxW(q); //weight of gauss * square_jacobian * cell_jacobian;
             }
             //assembling RHS
-            if(rhs_function)
+            if(rhs_function_)
             {
                 //DBGMSG("sources\n");
-            cell_rhs(i) += rhs_function->value(xfevalues.quadrature_point(q)) * 
+            cell_rhs(i) += rhs_function_->value(xfevalues.quadrature_point(q)) * 
                            smooth_step_val *
                            shape_val_vec[i] * 
                            xfevalues.JxW(q);
@@ -364,7 +366,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     
     if(polar_xquad.size() > 0)
     {
-    XFEValues<EnrType> polar_xfevalues(*fe,polar_xquad, 
+    XFEValues<EnrType> polar_xfevalues(*fe_,polar_xquad, 
                                             update_values 
                                         | update_gradients 
                                         //| update_quadrature_points 
@@ -387,7 +389,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
                                         //| update_jacobian_grads
                                         //| update_inverse_jacobians
                                                     );
-    polar_xfevalues.reinit(xdata);
+    polar_xfevalues.reinit(xdata_);
     
     for(unsigned int q=0; q<polar_xquad.size(); q++)
     { 
@@ -397,8 +399,8 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
         {   
         shape_grad_vec[i] = polar_xfevalues.shape_grad(i,q);
             
-        //if(n_wells_inside > 0 || rhs_function)  //with SOURCES
-        if(rhs_function)
+        //if(n_wells_inside > 0 || rhs_function_)  //with SOURCES
+        if(rhs_function_)
             shape_val_vec[i] = polar_xfevalues.shape_value(i,q);
         }
 
@@ -408,10 +410,10 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
         {
         for(unsigned int k = 0; k < n_vertices; k++) //M_w
         { 
-            if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+            if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
 
-            //if(n_wells_inside > 0 || rhs_function)    //with SOURCES
-            if(rhs_function)
+            //if(n_wells_inside > 0 || rhs_function_)    //with SOURCES
+            if(rhs_function_)
             shape_val_vec[index] = polar_xfevalues.enrichment_value(k,w,q);
             
             //shape_grad_vec[index] = xfevalues.enrichment_grad(k,w,mapping->transform_unit_to_real_cell(cell, q_points_mapped[q]));
@@ -436,10 +438,10 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
                                 //polar_xfevalues.JxW(q); //weight of gauss * square_jacobian * cell_jacobian;
             }
             //assembling RHS
-            if(rhs_function)
+            if(rhs_function_)
             {
                 //DBGMSG("sources\n");
-            cell_rhs(i) += rhs_function->value(polar_xfevalues.quadrature_point(q)) * 
+            cell_rhs(i) += rhs_function_->value(polar_xfevalues.quadrature_point(q)) * 
                            smooth_step_val *
                            shape_val_vec[i] * 
                            polar_xquad.polar_point(q)[0] *
@@ -462,8 +464,8 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
 template<Enrichment_method::Type EnrType> 
 double AdaptiveIntegrationPolar::integrate_l2_diff(const Vector<double> &solution, const Function<2> &exact_solution)
 {  
-    unsigned int n_wells = xdata->n_wells(),              // number of wells affecting the cell
-                 dofs_per_cell = fe->dofs_per_cell,
+    unsigned int n_wells = xdata_->n_wells(),              // number of wells affecting the cell
+                 dofs_per_cell = fe_->dofs_per_cell,
                  n_vertices = GeometryInfo<2>::vertices_per_cell;  
 
     double  value = 0, 
@@ -471,9 +473,9 @@ double AdaptiveIntegrationPolar::integrate_l2_diff(const Vector<double> &solutio
             cell_norm = 0;
     std::vector<unsigned int> local_dof_indices;
 
-    xdata->get_dof_indices(local_dof_indices, dofs_per_cell);
+    xdata_->get_dof_indices(local_dof_indices, dofs_per_cell);
 
-    XFEValues<EnrType> xfevalues(*fe,*xquad_, update_values 
+    XFEValues<EnrType> xfevalues(*fe_,*xquad_, update_values 
                                        //| update_gradients 
                                        | update_quadrature_points 
                                        //| update_covariant_transformation 
@@ -495,7 +497,7 @@ double AdaptiveIntegrationPolar::integrate_l2_diff(const Vector<double> &solutio
                                        //| update_jacobian_grads
                                        //| update_inverse_jacobians
                                                  );
-    xfevalues.reinit(xdata);
+    xfevalues.reinit(xdata_);
   
   
     for(unsigned int q=0; q<xquad_->size(); q++)
@@ -510,9 +512,9 @@ double AdaptiveIntegrationPolar::integrate_l2_diff(const Vector<double> &solutio
         for(unsigned int w = 0; w < n_wells; w++) //W
         for(unsigned int k = 0; k < n_vertices; k++) //M_w
         { 
-            if(xdata->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+            if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
          
-            value += solution(xdata->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
+            value += solution(xdata_->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
         }
         
 //         if(std::abs(value-exact_value) > 1e-15)

@@ -2,15 +2,17 @@
 #ifndef XFEValues_h
 #define XFEValues_h
 
-#include "xquadrature_base.hh"
 #include <deal.II/fe/fe_values.h>
 
-namespace dealii{
-    template<int,int> class FiniteElement;
-}
+//due to implementation:
+#include "system.hh"
+#include "well.hh"
+#include "data_cell.hh"
+#include "xquadrature_base.hh"
 
-class XDataCell;
-class XQuadratureBase;
+// forward declarations
+// class XDataCell;
+// class XQuadratureBase;
 
 /** Enumerates methods of enrichment.
    */
@@ -87,10 +89,6 @@ private:
 
 
 /*******************************************     IMPLEMENTATION                   ***************************/
-
-#include "system.hh"
-#include "well.hh"
-#include "data_cell.hh"
 
 template<Enrichment_method::Type T>
 inline const dealii::Point< 2 >& XFEValues<T>::real_quadrature_point(unsigned int i)

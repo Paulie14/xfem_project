@@ -1,6 +1,10 @@
 #ifndef XModel_h
 #define XModel_h
 
+#include "model_base.hh"
+#include "xfevalues.hh"
+
+
 #include <deal.II/grid/tria.h>
 
 #include <deal.II/fe/fe_q.h>
@@ -17,20 +21,21 @@
 #include <deal.II/lac/block_vector.h>
 #include <lac/block_matrix_array.h>
 
-#include "model_base.hh"
-#include "xfevalues.hh"
+
+
 
 using namespace dealii;
 
 // forward declarations
 class Well;
 class XDataCell;
+class XQuadratureWell;
 namespace compare {
     class ExactBase;
 }
 namespace dealii{
     template<int,int> class PersistentTriangulation;
-    template<int,int> class DofHandler;
+    template<int dim, int spacedim> class DoFHandler;
 }
 
 /** \mainpage
@@ -314,6 +319,8 @@ class XModel : public ModelBase
                       bool xfem = true
                      );
     
+    void compute_well_quadratures();
+    
     template<Enrichment_method::Type EnrType> 
     void prepare_shape_well_averiges(std::vector<std::map<unsigned int, double> > &shape_well_averiges,
                                      std::vector<XDataCell*> xdata);
@@ -358,6 +365,9 @@ class XModel : public ModelBase
     
     ///vector of global enrichment function values at nodes of the triangulation
     std::vector<std::map<unsigned int, double> > shape_well_averiges;
+    
+    /// Vector of quadratures in polar coordinates in vicinity of wells.
+    std::vector<XQuadratureWell* > well_xquadratures_;
     
     unsigned int n_enriched_dofs_,   ///< Number of enriched degrees of freedom per aquifer.
                  n_standard_dofs_,   ///< Number of enriched degrees of freedom per aquifer.

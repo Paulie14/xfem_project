@@ -6,6 +6,7 @@
 #include "xfevalues.hh"
 #include "comparing.hh"
 #include "xquadrature_base.hh"
+#include "xquadrature_cell.hh"
 
 #include <deal.II/grid/persistent_tria.h>
 
@@ -222,7 +223,7 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
         xquadrature->gnuplot_refinement(output_dir_);
         
             
-        Adaptive_integration adaptive_integration(cell, fe, (XQuadratureBase*)xquadrature, 0);
+        Adaptive_integration adaptive_integration(xdata, fe, (XQuadratureBase*)xquadrature, 0);
         
         
         

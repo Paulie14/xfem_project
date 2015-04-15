@@ -58,6 +58,8 @@
 #include "system.hh"
 #include "xfevalues.hh"
 #include "comparing.hh"
+#include "xquadrature_base.hh"
+#include "xquadrature_well.hh"
 
 using namespace compare;
 
@@ -144,6 +146,9 @@ XModel::~XModel()
     for(unsigned int i=0; i < xdata_.size(); i++)   //n_aquifers
         for(unsigned int j=0; j < xdata_[i].size(); j++)    //n_enriched_cells
             delete xdata_[i][j];
+    
+    for(unsigned int w=0; w < well_xquadratures_.size(); w++)   //n_aquifers    
+        delete well_xquadratures_[w];
   
     if(dof_handler != nullptr)
         delete dof_handler;
@@ -337,6 +342,26 @@ void XModel::refine_grid()
   std::cout << "Total number of cells: "
             << triangulation->n_cells()
             << std::endl;
+}
+
+
+void XModel::compute_well_quadratures()
+{
+    MASSERT(well_xquadratures_.size() == 0, "Well polar quadrature vector is not empty!");
+    for(auto &well: wells)
+    {
+        double width = 4 * well->radius();
+        well_xquadratures_.push_back(new XQuadratureWell(well, width));
+        
+        well_xquadratures_.back()->refine(6);
+        DBGMSG("polar quad size %d %d\n",well_xquadratures_.back()->size(), well_xquadratures_.back()->real_points().size());
+        if(output_options_ & OutputOptions::output_adaptive_plot)
+        {   
+            string dir_name = "polar_quad";
+            well_xquadratures_.back()->gnuplot_refinement(create_subdirectory(output_dir_, dir_name),
+                                                          true, false);
+        }
+    }
 }
 
 
@@ -661,6 +686,13 @@ void XModel::enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell,
   //std::cout << std::endl;
  
  
+    /// Resolve polar quadrature:
+    bool add_polar_quadrature = false;
+    double temp_r = cell->diameter()/2,
+           width = 4*wells[well_index]->radius();
+    if( cell->center().distance(wells[well_index]->center()) < temp_r + width )
+        add_polar_quadrature = true;
+ 
   /////-----------------------------Well Boundary Integration part--------------start
   //if(well_computation_ == Well_computation::bc_newton)
   {
@@ -699,6 +731,11 @@ void XModel::enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell,
                                     local_enriched_dofs, 
                                     local_enriched_node_weights));
     
+      if(add_polar_quadrature)
+          xdata_[m].back()->set_polar_quadrature(well_xquadratures_[well_index]);
+      else
+          xdata_[m].back()->set_polar_quadrature(nullptr);
+          
       cell->set_user_pointer(xdata_[m].back());
     }
     else
@@ -710,6 +747,11 @@ void XModel::enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell,
       else
         xdata_pointer->add_data(wells[well_index], well_index, 
                                 local_enriched_dofs, local_enriched_node_weights );
+        
+      if(add_polar_quadrature)
+        xdata_pointer->set_polar_quadrature(well_xquadratures_[well_index]);
+      else
+        xdata_pointer->set_polar_quadrature(nullptr);
     }
   }
   /////-----------------------------Well Boundary Integration part--------------end
@@ -910,7 +952,15 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
   }
   //std::cout << std::endl;
  
- 
+    
+    /// Resolve polar quadrature:
+    bool add_polar_quadrature = false;
+    double temp_r = cell->diameter()/2,
+           width = 4*wells[well_index]->radius();
+    if( cell->center().distance(wells[well_index]->center()) < temp_r + width )
+        add_polar_quadrature = true;
+        
+    
   /////-----------------------------Well Boundary Integration part--------------start
   //if(well_computation_ == Well_computation::bc_newton)
   {
@@ -949,6 +999,11 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
                                     local_enriched_dofs, 
                                     local_enriched_node_weights));
     
+      if(add_polar_quadrature)
+          xdata_[m].back()->set_polar_quadrature(well_xquadratures_[well_index]);
+      else
+          xdata_[m].back()->set_polar_quadrature(nullptr);
+      
       cell->set_user_pointer(xdata_[m].back());
     }
     else
@@ -960,6 +1015,11 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
       else
         xdata_pointer->add_data(wells[well_index], well_index, 
                                 local_enriched_dofs, local_enriched_node_weights );
+        
+      if(add_polar_quadrature)
+          xdata_pointer->set_polar_quadrature(well_xquadratures_[well_index]);
+      else
+          xdata_pointer->set_polar_quadrature(nullptr);
     }
   }
   /////-----------------------------Well Boundary Integration part--------------end
@@ -1135,6 +1195,10 @@ void XModel::setup_subsystem(unsigned int m)
     //all data from previous run are cleared
     triangulation->clear_user_data();
  
+    // before searching for enrichment cells, create polar quadratures
+    if(well_xquadratures_.size() == 0)
+        compute_well_quadratures();
+    
     //find cells which lies within the enrichment radius of the wells
     n_enriched_dofs_ = 0;
     find_enriched_cells(m-1);
@@ -1371,81 +1435,119 @@ void XModel::assemble_subsystem (unsigned int m)
             std::vector<unsigned int> enrich_dof_indices; //dof indices of enriched and unrenriched dofs
             Vector<double>       enrich_cell_rhs; 
         
-            Adaptive_integration adaptive_integration(cell,fe,fe_values.get_mapping(),m);
+            //A *a=static_cast<A*>(cell->user_pointer()); //from DEALII (TriaAccessor)
+            XDataCell * xdata = static_cast<XDataCell*>( cell->user_pointer() );
             
-            //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
-            unsigned int t;
-            if(refine_by_error_)    // refinement controlled by tolerance
+            if(xdata->n_polar_quadratures() == 0)
             {
-                for(t=0; t < 17; t++)
+                XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
+                                                                    fe_values.get_mapping(), 
+                                                                    XQuadratureCell::Refinement::edge);
+                xquadrature->refine(adaptive_integration_refinement_level_);
+//                 DBGMSG("cell %d - adaptive refinement level %d\n",cell->index(), xquadrature->level());
+                
+//                 if (output_options_ & OutputOptions::output_adaptive_plot)
+//                 {
+//                     stringstream dir_name;
+//                     dir_name << "/adaptref_" << cycle_ << "/";
+//                     //output only cells which have well inside
+//                     //if(t == adaptive_integration_refinement_level_-1)
+//             //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
+//                     xquadrature->gnuplot_refinement(create_subdirectory(output_dir_,dir_name.str()));
+//                     }
+                
+                Adaptive_integration adaptive_integration(xdata,fe,(XQuadratureBase *)xquadrature,m);
+                
+                //sets the dirichlet and source function
+                if(dirichlet_function || rhs_function)
+                    adaptive_integration.set_functors(dirichlet_function, rhs_function);
+                
+                switch(enrichment_method_)
                 {
-//                     DBGMSG("refinement level: %d\n", t);
-                    if ( ! adaptive_integration.refine_error(alpha_tolerance_))
+                    case Enrichment_method::xfem: 
+                        adaptive_integration.integrate<Enrichment_method::xfem>(enrich_cell_matrix, 
+                                                                                enrich_cell_rhs, 
+                                                                                enrich_dof_indices, 
+                                                                                transmisivity_[m-1]);
+                        break;
+                    case Enrichment_method::xfem_ramp: 
+                        //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+                        adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, 
+                                                                                    enrich_cell_rhs, 
+                                                                                    enrich_dof_indices, 
+                                                                                    transmisivity_[m-1]);
                     break;
-                }
-            }
-            else                    // refinement controlled by edge geometry
-            {
-                for(t=0; t < adaptive_integration_refinement_level_; t++)
-                {
-//                     DBGMSG("refinement level: %d\n", t);
-                    if ( ! adaptive_integration.refine_edge())
+                    case Enrichment_method::xfem_shift:
+                    adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, 
+                                                                                enrich_cell_rhs, 
+                                                                                enrich_dof_indices, 
+                                                                                transmisivity_[m-1]);
                     break;
-                }
-            }
-            
-            if (output_options_ & OutputOptions::output_adaptive_plot)
-            {
-                stringstream dir_name;
-                dir_name << output_dir_ << "/adaptref_" << cycle_ << "/";
-                DIR *dir;
-                dir = opendir(dir_name.str().c_str());
-                if(dir == NULL) {
-                    int ret = mkdir(dir_name.str().c_str(), 0777);
-
-                    if(ret != 0) {
-                        xprintf(Err, "Couldn't create directory: %s\n", dir_name.str().c_str());
-                    }
-                } else {
-                    closedir(dir);
-                }
-                //output only cells which have well inside
-                //if(t == adaptive_integration_refinement_level_-1)
-        //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
-                adaptive_integration.gnuplot_refinement(dir_name.str());
-            }
-            
-            //sets the dirichlet and source function
-            if(dirichlet_function || rhs_function)
-                adaptive_integration.set_functors(dirichlet_function, rhs_function);
-            
-            switch(enrichment_method_)
-            {
-                case Enrichment_method::xfem: 
-                    adaptive_integration.integrate<Enrichment_method::xfem>(enrich_cell_matrix, 
+                    case Enrichment_method::sgfem:
+                    adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, 
                                                                             enrich_cell_rhs, 
                                                                             enrich_dof_indices, 
                                                                             transmisivity_[m-1]);
                     break;
-                case Enrichment_method::xfem_ramp: 
-                    //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
-                    adaptive_integration.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, 
-                                                                                 enrich_cell_rhs, 
-                                                                                 enrich_dof_indices, 
-                                                                                 transmisivity_[m-1]);
-                break;
-                case Enrichment_method::xfem_shift:
-                adaptive_integration.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, 
-                                                                              enrich_cell_rhs, 
-                                                                              enrich_dof_indices, 
-                                                                              transmisivity_[m-1]);
-                break;
-                case Enrichment_method::sgfem:
-                adaptive_integration.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, 
-                                                                         enrich_cell_rhs, 
-                                                                         enrich_dof_indices, 
-                                                                         transmisivity_[m-1]);
-                break;
+                }
+            
+            } // if
+            else
+            {
+                XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
+                                                                    fe_values.get_mapping(), 
+                                                                    XQuadratureCell::Refinement::polar);
+                xquadrature->refine(adaptive_integration_refinement_level_);
+                DBGMSG("cell %d - polar adaptive refinement level %d\n",cell->index(), xquadrature->level());
+                
+//                 if (output_options_ & OutputOptions::output_adaptive_plot)
+//                 {
+//                     stringstream dir_name;
+//                     dir_name << "/adaptref_" << cycle_ << "/";
+//                         
+//                     //output only cells which have well inside
+//                     //if(t == adaptive_integration_refinement_level_-1)
+//             //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
+//                     xquadrature->gnuplot_refinement(create_subdirectory(output_dir_, dir_name.str()));
+//                 }
+                    
+                AdaptiveIntegrationPolar adaptive_integration_polar(xdata,fe,
+                                                                    (XQuadratureBase *)xquadrature,
+                                                                    xdata->polar_quadratures(),
+                                                                    m);
+                
+                //sets the dirichlet and source function
+                if(dirichlet_function || rhs_function)
+                    adaptive_integration_polar.set_functors(dirichlet_function, rhs_function);
+                
+                switch(enrichment_method_)
+                {
+                    case Enrichment_method::xfem: 
+                        adaptive_integration_polar.integrate<Enrichment_method::xfem>(enrich_cell_matrix, 
+                                                                                enrich_cell_rhs, 
+                                                                                enrich_dof_indices, 
+                                                                                transmisivity_[m-1]);
+                        break;
+                    case Enrichment_method::xfem_ramp: 
+                        //adaptive_integration.integrate_xfem(enrich_cell_matrix, enrich_cell_rhs, enrich_dof_indices, transmisivity[0]);
+                        adaptive_integration_polar.integrate<Enrichment_method::xfem_ramp>(enrich_cell_matrix, 
+                                                                                    enrich_cell_rhs, 
+                                                                                    enrich_dof_indices, 
+                                                                                    transmisivity_[m-1]);
+                    break;
+                    case Enrichment_method::xfem_shift:
+                    adaptive_integration_polar.integrate<Enrichment_method::xfem_shift>(enrich_cell_matrix, 
+                                                                                enrich_cell_rhs, 
+                                                                                enrich_dof_indices, 
+                                                                                transmisivity_[m-1]);
+                    break;
+                    case Enrichment_method::sgfem:
+                    adaptive_integration_polar.integrate<Enrichment_method::sgfem>(enrich_cell_matrix, 
+                                                                            enrich_cell_rhs, 
+                                                                            enrich_dof_indices, 
+                                                                            transmisivity_[m-1]);
+                    break;
+                }
             }
             //printing enriched nodes and dofs
 //               DBGMSG("Printing dof_indices:  [");
@@ -1711,7 +1813,8 @@ void XModel::solve ()
   //USING CG, BICG, PreconditionJacobi
   //SolverBicgstab<BlockVector<double> > solver_bicg(solver_control,vector_memory);
   SolverCG<BlockVector<double> > solver_cg(solver_control, vector_memory, 
-                                           SolverCG<BlockVector<double> >::AdditionalData(false, true, false, false));
+                                           SolverCG<BlockVector<double> >::AdditionalData(false, false,//true, 
+                                                                                          false, false));
   
     // block Jacobi preconditioning
     BlockTrianglePrecondition<double> preconditioning(n_aquifers_+1);

@@ -13,6 +13,7 @@
 #include "xmodel.hh"
 #include "comparing.hh"
 #include "adaptive_integration.hh"
+#include "xquadrature_cell.hh"
 
 /************************************ TEMPLATE IMPLEMENTATION **********************************************/
 template<Enrichment_method::Type EnrType>
@@ -368,27 +369,39 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
         }
         else
         { 
-            Adaptive_integration adaptive_integration(cell, fe, temp_fe_values.get_mapping(),m);
+            XDataCell * xdata = static_cast<XDataCell*>( cell->user_pointer() );
+            XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
+                                                                fe_values.get_mapping(), 
+                                                                XQuadratureCell::Refinement::edge);
+            xquadrature->refine(adaptive_integration_refinement_level_);
             
-            unsigned int t;
-            if(refine_by_error_)    // refinement controlled by tolerance
-            {
-                for(t=0; t < 17; t++)
-                {
-//                     DBGMSG("refinement level: %d\n", t);
-                    if ( ! adaptive_integration.refine_error(alpha_tolerance_))
-                    break;
-                }
-            }
-            else                    // refinement controlled by edge geometry
-            {
-                for(t=0; t < adaptive_integration_refinement_level_; t++)
-                {
-//                     DBGMSG("refinement level: %d\n", t);
-                    if ( ! adaptive_integration.refine_edge())
-                    break;
-                }
-            }
+//             //DBGMSG("cell: %d .................callling adaptive_integration.........\n",cell->index());
+//             unsigned int t;
+//             if(refine_by_error_)    // refinement controlled by tolerance
+//             {
+//                 for(t=0; t < 17; t++)
+//                 {
+// //                     DBGMSG("refinement level: %d\n", t);
+// //                     if ( ! adaptive_integration.refine_error(alpha_tolerance_))
+//                     if ( ! xquadrature->refine_error(alpha_tolerance_))
+//                     break;
+//                 }
+//             }
+//             else                    // refinement controlled by edge geometry
+//             {
+//                 for(t=0; t < adaptive_integration_refinement_level_; t++)
+//                 {
+// //                     DBGMSG("refinement level: %d\n", t);
+// //                     if ( ! adaptive_integration.refine_edge())
+// //                     if ( ! adaptive_integration.refine_polar())
+//                     
+//                     if ( ! xquadrature->refine_edge())
+// //                     if ( ! xquadrature->refine_polar())
+//                     break;
+//                 }
+//             }
+            
+            Adaptive_integration adaptive_integration(xdata, fe, xquadrature, m);
             
             //adaptive_integration.gnuplot_refinement(output_dir_, true, true);
             cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),*exact_solution);

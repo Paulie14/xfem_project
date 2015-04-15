@@ -1,25 +1,21 @@
-
 #include <string>
 
-#include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/base/point.h>
-#include <deal.II/base/tensor.h>
-
 
 #include "adaptive_integration.hh"
 #include "system.hh"
 #include "data_cell.hh"
-#include "mapping.hh"
 #include "xfevalues.hh"
 #include "xquadrature_base.hh"
 
+using namespace dealii;
 
-Adaptive_integration::Adaptive_integration(const dealii::DoFHandler< 2  >::active_cell_iterator& cell, 
-                                           const FE_Q< 2, 2 >& fe, 
+Adaptive_integration::Adaptive_integration(XDataCell* xdata,
+                                           const FE_Q< 2 >& fe, 
                                            XQuadratureBase* quadrature, 
                                            unsigned int m
                                           )
-  : AdaptiveIntegrationBase(cell, fe, quadrature, m)
+  : AdaptiveIntegrationBase(xdata, fe, quadrature, m)
 {}
 
 
@@ -33,9 +29,9 @@ double Adaptive_integration::test_integration(Function< 2 >* func)
 //     if (q_points_all.size() == 0) return 0;
     
 //     Quadrature<2> quad(q_points_all, jxw_all);
-    XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe,*xquad_, 
+    XFEValues<Enrichment_method::xfem_shift> xfevalues(*fe_,*xquad_, 
                                         update_quadrature_points | update_JxW_values );
-    xfevalues.reinit(xdata);
+    xfevalues.reinit(xdata_);
   
     for(unsigned int q=0; q<xquad_->size(); q++)
     {
@@ -224,12 +220,12 @@ double SmoothStep::value(const double& r) const
 }
 
 
-AdaptiveIntegrationPolar::AdaptiveIntegrationPolar(const dealii::DoFHandler< 2  >::active_cell_iterator& cell, 
+AdaptiveIntegrationPolar::AdaptiveIntegrationPolar(XDataCell * xdata, 
                                                    const FE_Q< 2, 2 >& fe, 
                                                    XQuadratureBase* quadrature, 
                                                    std::vector< XQuadratureWell* > polar_xquads,
                                                    unsigned int m)
-: AdaptiveIntegrationBase(cell, fe, quadrature, m),
+: AdaptiveIntegrationBase(xdata, fe, quadrature, m),
     polar_xquads_(polar_xquads)
 {}
 

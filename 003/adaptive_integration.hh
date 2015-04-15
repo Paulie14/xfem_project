@@ -1,7 +1,6 @@
 #ifndef ADAPTIVE_INTEGRATION_H
 #define ADAPTIVE_INTEGRATION_H
 
-#include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/base/function.h>
 
 #ifdef DEBUG
@@ -20,6 +19,7 @@ namespace dealii{
 //     template<int> class Function;
     template<int,int> class FE_Q;
 }
+template<int dim,int spacedim=dim> using DealFE_Q = dealii::FE_Q<dim,spacedim>;
 
 // class Well;
 class XQuadratureBase;
@@ -38,8 +38,8 @@ class Adaptive_integration : public AdaptiveIntegrationBase
       * @param cell is cell iterator for the cell to be adaptively integrated.
       * @param fe is finite element used in FEM on this cell
       */ 
-    Adaptive_integration(const dealii::DoFHandler<2>::active_cell_iterator &cell, 
-                         const dealii::FE_Q<2,2> &fe,
+    Adaptive_integration(XDataCell * xdata, 
+                         const DealFE_Q<2> &fe,
                          XQuadratureBase * quadrature,
                          unsigned int m
                         );
@@ -85,13 +85,13 @@ class Adaptive_integration : public AdaptiveIntegrationBase
 
 
 
-class SmoothStep : Function<2>
+class SmoothStep : public dealii::Function<2>
 {
 public:
     
     SmoothStep(Well* well, double band_width);
 
-    double value (const Point<2>   &p,
+    double value (const dealii::Point<2>   &p,
                   const unsigned int  component = 0) const override;
     double value (const double & r) const;
                   
@@ -116,10 +116,10 @@ class AdaptiveIntegrationPolar : public AdaptiveIntegrationBase
       * @param fe is finite element used in FEM on this cell
       * @param mapping is mapping object that maps real cell to reference cell
       */ 
-    AdaptiveIntegrationPolar(const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
-                             const dealii::FE_Q<2,2> &fe,
-                             XQuadratureBase * quadrature,
-                             std::vector<XQuadratureWell*> polar_xquads,
+    AdaptiveIntegrationPolar(XDataCell* xdata, 
+                             const DealFE_Q< 2 >& fe, 
+                             XQuadratureBase* quadrature, 
+                             std::vector< XQuadratureWell* > polar_xquads, 
                              unsigned int m
                             );
 

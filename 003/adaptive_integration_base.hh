@@ -1,17 +1,12 @@
 #ifndef ADAPTIVE_INTEGRATION_BASE_H
 #define ADAPTIVE_INTEGRATION_BASE_H
 
-#include <deal.II/base/point.h>
-#include <deal.II/dofs/dof_accessor.h>
-
-#include "xfevalues.hh"
-#include "mapping.hh"
-
 //forward declarations
 namespace dealii{
     template<int> class Function;
     template<int,int> class FE_Q;
 }
+template<int dim,int spacedim=dim> using DealFE_Q = dealii::FE_Q<dim,spacedim>;
 
 class Well;
 class XDataCell;
@@ -31,8 +26,8 @@ class AdaptiveIntegrationBase
       * @param fe is finite element used in FEM on this cell
       * @param mapping is mapping object that maps real cell to reference cell
       */ 
-    AdaptiveIntegrationBase(const dealii::DoFHandler<2>::active_cell_iterator &cell, 
-                            const dealii::FE_Q<2,2> &fe,
+    AdaptiveIntegrationBase(XDataCell * xdata, 
+                            const DealFE_Q<2> &fe,
                             XQuadratureBase* quadrature,
                             unsigned int m
                             );
@@ -42,36 +37,33 @@ class AdaptiveIntegrationBase
                       dealii::Function<2>* rhs_function);
     
   protected: 
-    
-    ///Current cell to integrate
-    const dealii::DoFHandler<2>::active_cell_iterator cell;
+    ///pointer to XFEM data belonging to the cell
+    XDataCell* xdata_;
     
     ///Finite element of FEM
-    const dealii::FE_Q<2,2>* fe;
+    const DealFE_Q<2>* fe_;
     
+    /// Pointer to quadrature base object.
     XQuadratureBase* xquad_;
     
         /// Index of aquifer on which we integrate.
     unsigned int m_;
     
-    ///pointer to XFEM data belonging to the cell
-    XDataCell* xdata;
-    
     ///Pointer to function describing Dirichlet boundary condition.
-    dealii::Function<2>* dirichlet_function;         
+    dealii::Function<2>* dirichlet_function_;         
     ///Pointer to function describing RHS - sources.
-    dealii::Function<2>* rhs_function;
+    dealii::Function<2>* rhs_function_;
 };
 
 
 
 /************************************ INLINE IMPLEMENTATION **********************************************/
 
-inline void AdaptiveIntegrationBase::set_functors(Function< 2 >* dirichlet_function, 
-                                                  Function< 2 >* rhs_function)
+inline void AdaptiveIntegrationBase::set_functors(dealii::Function< 2 >* dirichlet_function, 
+                                                  dealii::Function< 2 >* rhs_function)
 {
-    this->dirichlet_function = dirichlet_function;
-    this->rhs_function = rhs_function;
+    dirichlet_function_ = dirichlet_function;
+    rhs_function_ = rhs_function;
 }
 
 
