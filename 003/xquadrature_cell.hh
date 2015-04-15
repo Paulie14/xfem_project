@@ -1,14 +1,14 @@
 #ifndef XQUADRATURE_CELL_H
 #define XQUADRATURE_CELL_H
 
-// #include <deal.II/base/point.h>
-// #include <deal.II/base/quadrature_lib.h>
-#include <deal.II/dofs/dof_accessor.h>
-
-// #include "mapping.hh"
 #include "xquadrature_base.hh"
 
 //forward declaration
+namespace dealii{
+        template<int,int> class Mapping;
+}
+template<int dim,int spacedim=dim> using DealMapping = dealii::Mapping<dim,spacedim>;
+
 class Well;
 class XDataCell;
 
@@ -26,7 +26,7 @@ public:
     };
     
     XQuadratureCell(XDataCell * xdata,
-                    const dealii::Mapping<2> &mapping,
+                    const DealMapping<2> &mapping,
                     Refinement::Type type
                    );
     
@@ -86,11 +86,8 @@ private:
     /// XdataCell connected to current cell.
     XDataCell * xdata_;
     
-    /// Current cell to integrate.
-    const dealii::DoFHandler<2>::active_cell_iterator cell_;
-    
     /// Mapping from real cell to unit cell.
-    const dealii::Mapping<2> *mapping_;
+    const DealMapping<2> *mapping_;
         
     /// Refinement method.
     Refinement::Type refinement_type_;

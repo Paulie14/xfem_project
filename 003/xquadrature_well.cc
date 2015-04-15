@@ -1,4 +1,5 @@
 #include "xquadrature_well.hh"
+#include "system.hh"
 #include "gnuplot_i.hpp"
 #include "well.hh"
 
@@ -32,14 +33,16 @@ Point< 2 > XQuadratureWell::map_from_polar(Point< 2 > point)
 {
     double x = point[0]*std::cos(point[1]),
            y = point[0]*std::sin(point[1]);
-    return Point<2>(x,y);
+    return Point<2>(x,y) + well_->center();
 }
 
 Point< 2 > XQuadratureWell::map_into_polar(Point< 2 > point)
 {
     Point<2> wc = well_->center();
-    double r = std::sqrt(point.square()) - well_->radius(); //TODO
+    double r = wc.distance(point);
+//     double r = std::sqrt(point.square());
     double phi = std::atan2(point[0]-wc[0], point[1]-wc[1]);
+//     double phi = std::atan2(point[0], point[1]);
     return Point<2>(r,phi);
 }
 
@@ -49,7 +52,7 @@ void XQuadratureWell::transform_square_to_real(Square& sq)
     {
         for(unsigned int i=0; i<4; i++)
         {
-            sq.real_vertices_[i] = map_from_polar(sq.vertices_[i])+well_->center(); // map to real coordinates //TODO
+            sq.real_vertices_[i] = map_from_polar(sq.vertices_[i]); // map to real coordinates
         }
         sq.real_diameter_ = std::max(sq.real_vertices_[0].distance(sq.real_vertices_[2]),
                                     sq.real_vertices_[1].distance(sq.real_vertices_[3]));
@@ -77,11 +80,14 @@ void XQuadratureWell::gather_weights_points()
             std::vector<Point<2> > temp(square.gauss->get_points());
             square.mapping.map_unit_to_real(temp);  
             
+//             // jacobian is area of circle sector (our 'square' with polar coordinates)
+//             double square_phi = std::abs(square.vertex(3)[1] - square.vertex(0)[1]);
+//             double jacobian = square_phi/2 *
+//                 (square.vertex(1)[0]*square.vertex(1)[0] - 
+//                  square.vertex(0)[0]*square.vertex(0)[0]);
             // jacobian is area of circle sector (our 'square' with polar coordinates)
-            double square_phi = square.vertex(3)[1] - square.vertex(0)[1];
-            double jacobian = square_phi/2 *
-                (square.vertex(1)[0]*square.vertex(1)[0] - 
-                 square.vertex(0)[0]*square.vertex(0)[0]);
+            double square_phi = std::abs(square.vertex(3)[1] - square.vertex(0)[1]);
+            double jacobian = square_phi * (square.vertex(1)[0] - square.vertex(0)[0]);
                 
             // gather vector of quadrature points and their weights
             for(unsigned int j = 0; j < temp.size(); j++)
@@ -102,7 +108,7 @@ void XQuadratureWell::map_polar_quadrature_points_to_real(void)
     real_points_.resize(polar_quadrature_points_.size());
     for(unsigned int q = 0; q < polar_quadrature_points_.size(); q++)
     {
-        real_points_[q] = map_from_polar(polar_quadrature_points_[q])+well_->center();              //TODO
+        real_points_[q] = map_from_polar(polar_quadrature_points_[q]);
         //weights[q] = weights[q]*polar_quadrature_points_[q][0];
     }
 //     real_points_.shrink_to_fit();

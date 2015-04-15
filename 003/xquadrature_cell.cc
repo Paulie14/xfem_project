@@ -33,7 +33,6 @@ XQuadratureCell::XQuadratureCell(XDataCell* xdata,
                                 )
   : XQuadratureBase(),
     xdata_(xdata),
-    cell_(xdata->get_cell()),
     mapping_(&mapping),
     refinement_type_(type)
 {
@@ -76,7 +75,7 @@ void XQuadratureCell::refine(unsigned int max_level)
     map_quadrature_points_to_real();
     
     for(auto &sq: squares_)
-        sq.transform_to_real_space(cell_, *mapping_);
+        sq.transform_to_real_space(xdata_->get_cell(), *mapping_);
 }
 
 
@@ -89,7 +88,7 @@ void XQuadratureCell::map_quadrature_points_to_real()
     {
         // get rid of the quadrature points inside a well
         bool include_point=true;
-        Point<2> real_quad = mapping_->transform_unit_to_real_cell(cell_, quadrature_points[q]);
+        Point<2> real_quad = mapping_->transform_unit_to_real_cell(xdata_->get_cell(), quadrature_points[q]);
         for(unsigned int w=0; w < xdata_->n_wells(); w++)
         {
             //include only points outside the well
@@ -113,7 +112,7 @@ void XQuadratureCell::map_quadrature_points_to_real()
 bool XQuadratureCell::refine_criterion_a(Square& square, Well& well)
 {
     //return false; // switch on and off the criterion
-    square.transform_to_real_space(cell_, *mapping_);
+    square.transform_to_real_space(xdata_->get_cell(), *mapping_);
     
     double min_distance = square.real_vertex(0).distance(well.center());// - well.radius();
     for(unsigned int j=1; j < 4; j++)
@@ -131,7 +130,7 @@ bool XQuadratureCell::refine_criterion_a(Square& square, Well& well)
 
 unsigned int XQuadratureCell::refine_criterion_nodes_in_well(Square& square, Well& well)
 {
-    square.transform_to_real_space(cell_, *mapping_);
+    square.transform_to_real_space(xdata_->get_cell(), *mapping_);
 
     unsigned int vertices_in_well = 0;
     for(unsigned int j=0; j < 4; j++)
@@ -643,14 +642,16 @@ void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bo
   if(level_ < 1) return;
   DBGMSG("level = %d,  number of quadrature points = %d\n",level_, quadrature_points.size());
   
+  DoFHandler<2>::active_cell_iterator cell =  xdata_->get_cell();   //shortcut
+  
   std::string fgnuplot_ref = "adaptive_integration_refinement_",
               fgnuplot_qpoints = "adaptive_integration_qpoints_",
               script_file = "g_script_adapt_",
               felements = "elements";
   
-              fgnuplot_ref += std::to_string(cell_->index()) + ".dat";
-              fgnuplot_qpoints += std::to_string(cell_->index()) + ".dat";
-              script_file += std::to_string(cell_->index()) + ".p";
+              fgnuplot_ref += std::to_string(cell->index()) + ".dat";
+              fgnuplot_qpoints += std::to_string(cell->index()) + ".dat";
+              script_file += std::to_string(cell->index()) + ".p";
   try
     {
         Gnuplot g1("adaptive_integration");
@@ -663,11 +664,11 @@ void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bo
         if (felements_file.is_open()) 
         {
             //reordering
-            felements_file << cell_->vertex(0) << "\n"
-                << cell_->vertex(1) << "\n"
-                << cell_->vertex(3) << "\n"
-                << cell_->vertex(2) << "\n"
-                << cell_->vertex(0) << "\n\n";
+            felements_file << cell->vertex(0) << "\n"
+                << cell->vertex(1) << "\n"
+                << cell->vertex(3) << "\n"
+                << cell->vertex(2) << "\n"
+                << cell->vertex(0) << "\n\n";
         }
         else 
         { 
@@ -818,7 +819,7 @@ void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bo
           //g1.showonscreen(); // window output
          
           #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-          std::cout << std::endl << "GNUPLOT output on cell " << cell_->index() << " ... Press ENTER to continue..." << std::endl;
+          std::cout << std::endl << "GNUPLOT output on cell " << cell->index() << " ... Press ENTER to continue..." << std::endl;
 
           std::cin.clear();
           std::cin.ignore(std::cin.rdbuf()->in_avail());

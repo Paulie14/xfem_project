@@ -2,12 +2,15 @@
 #define XQUADRATURE_WELL_H
 
 #include <deal.II/base/point.h>
-// #include <deal.II/base/quadrature_lib.h>
-// #include <deal.II/dofs/dof_accessor.h>
 
 #include "xquadrature_base.hh"
 
 //forward declaration
+namespace dealii{
+        template<int,int> class Mapping;
+}
+template<int dim,int spacedim=dim> using DealMapping = dealii::Mapping<dim,spacedim>;
+
 class Well;
 class XDataCell;
 
@@ -43,7 +46,7 @@ public:
     // Create subquadrature with only the quadrature points that lie in the given cell.
     void create_subquadrature(XQuadratureWell & new_xquad, 
                               const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
-                              const Mapping<2> & mapping
+                              const DealMapping<2> & mapping
                              );
     
 private:
@@ -78,6 +81,8 @@ private:
 
 
 
+/********************************           IMPLEMENTATION                  *********************************/
+#include "system.hh"
 
 inline const Point< 2 >& XQuadratureWell::polar_point(unsigned int i)
 {   MASSERT(i < real_points_.size(), "Index 'i' exceeded size of vector of quadrature points.");

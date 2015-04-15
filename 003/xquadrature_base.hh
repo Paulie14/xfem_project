@@ -4,11 +4,19 @@
 
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>
-#include <deal.II/dofs/dof_accessor.h>
+#include <deal.II/dofs/dof_handler.h>
 
 #include "mapping.hh"
 
+//forward declaration
+namespace dealii{
+        template<int,int> class Mapping;
+}
+template<int dim,int spacedim=dim> using DealMapping = dealii::Mapping<dim,spacedim>;
+
 class XQuadratureWell;
+
+
 
 /** @brief Class representing squares of adaptive refinement of the reference cell.
  * 
@@ -36,8 +44,8 @@ public:
     //@}
     
     /// Transforms the square into the real coordinates.
-    void transform_to_real_space(const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
-                                 const dealii::Mapping<2> &mapping);
+    void transform_to_real_space(const dealii::DoFHandler<2>::active_cell_iterator& cell,
+                                 const DealMapping<2> &mapping);
   
     ///Object mappping data between the adaptively created square and unit cell
     MyMapping mapping;
@@ -79,13 +87,13 @@ private:
 
 
 
-class XQuadratureBase : public Quadrature<2>
+class XQuadratureBase : public dealii::Quadrature<2>
 {
 public:
     XQuadratureBase();
     
     /// Getter for current level of refinement
-    unsigned int level();
+    unsigned int level() const;
     
     /// Creates refinement of a cell -- new quadrature.
     virtual void refine(unsigned int max_level) = 0;
@@ -102,16 +110,16 @@ public:
     /// @name Getters.
     //@{
     /// Getter for square vector.
-    const std::vector<Square> & squares();
+    const std::vector<Square> & squares() const;
     
     /// Getter for i-th square.
-    const Square & square(unsigned int i);
+    const Square & square(unsigned int i) const;
     
     /// Getter for vector of quadrature points in real coordinates.
-    const std::vector<Point<2> > & real_points();
+    const std::vector<dealii::Point<2> > & real_points() const;
     
     /// Getter for i-th quadrature point in real coordinates.
-    const Point<2> & real_point(unsigned int i);
+    const dealii::Point<2> & real_point(unsigned int i) const;
     //@}
     
 protected:
@@ -130,7 +138,7 @@ protected:
     std::vector<Square> squares_;
     
     /// Vector of quadrature points in real coordinates.
-    std::vector<Point<2> > real_points_;
+    std::vector<dealii::Point<2> > real_points_;
     
     /// Vector of Gauss quadrature of different order.
     static const std::vector<dealii::QGauss<2> > quadratures_;
@@ -171,22 +179,22 @@ inline Quadrature<2> const* Square::quadrature() const
 
 
 
-inline unsigned int XQuadratureBase::level()
+inline unsigned int XQuadratureBase::level() const
 { return level_; }
 
-inline const std::vector< Square >& XQuadratureBase::squares()
+inline const std::vector< Square >& XQuadratureBase::squares() const
 { return squares_; }
 
-inline const Square& XQuadratureBase::square(unsigned int i)
+inline const Square& XQuadratureBase::square(unsigned int i) const
 { MASSERT(i < squares_.size(), "Index 'i' exceeded size of vector of refinement squares.");
   return squares_[i]; }
     
-inline const Point< 2 >& XQuadratureBase::real_point(unsigned int i)
+inline const Point< 2 >& XQuadratureBase::real_point(unsigned int i) const
 { MASSERT(i < real_points_.size(), "Index 'i' exceeded size of vector of quadrature points.");
   return real_points_[i]; }
 
 
-inline const std::vector< Point< 2 > >& XQuadratureBase::real_points()
+inline const std::vector< Point< 2 > >& XQuadratureBase::real_points() const
 { return real_points_; }
 
 

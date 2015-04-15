@@ -2,7 +2,9 @@
 #include "system.hh"
 
 #include "mapping.hh"
-#include "well.hh"
+
+#include <deal.II/dofs/dof_accessor.h>
+#include <deal.II/fe/mapping.h>
 
 const double XQuadratureBase::square_refinement_criteria_factor_ = 0.5;
 
@@ -120,7 +122,7 @@ void XQuadratureBase::apply_refinement(unsigned int n_squares_to_refine)
 //   unsigned int n_nodes_in_well = 0;
   unsigned int n_original_squares = squares_.size();
   squares_.reserve(n_original_squares + 4*n_squares_to_refine);
-  
+
   for(unsigned int i = 0; i < n_original_squares; i++)
   {
     if(squares_[i].refine_flag)
