@@ -31,6 +31,8 @@ public:
     /// Getter for i-th quadrature point in real coordinates.
     const Point<2> & polar_point(unsigned int i);
     
+    double band_width();
+    
     /// Creates refinement of a cell -- new quadrature.
     void refine(unsigned int max_level) override;
     
@@ -93,6 +95,8 @@ inline const vector< Point< 2 > >& XQuadratureWell::polar_points()
 {   return polar_quadrature_points_;
 }
 
+inline double XQuadratureWell::band_width()
+{   return width_; }
 
 
 

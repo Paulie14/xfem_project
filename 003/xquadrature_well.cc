@@ -65,6 +65,8 @@ void XQuadratureWell::gather_weights_points()
 {
     if(quadrature_points.size() > 0) return; //do not do it again
     
+    polar_quadrature_points_.clear();
+    weights.clear();
     polar_quadrature_points_.reserve(squares_.size()*quadratures_[3].size());
     weights.reserve(squares_.size()*quadratures_[3].size());
 
@@ -196,6 +198,11 @@ void XQuadratureWell::create_subquadrature(XQuadratureWell& new_xquad,
     new_xquad.level_ = level_;
 //     new_xquad.quadratures_ = quadratures_;
 //     new_xquad.squares_ = squares_;
+    
+    new_xquad.weights.clear();
+    new_xquad.polar_quadrature_points_.clear();
+    new_xquad.quadrature_points.clear();
+    new_xquad.real_points_.clear();
     
     new_xquad.weights.reserve(weights.size());
     new_xquad.polar_quadrature_points_.reserve(polar_quadrature_points_.size());
