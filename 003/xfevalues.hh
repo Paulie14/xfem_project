@@ -107,28 +107,30 @@ inline const dealii::Point< 2 >& XFEValues<T>::unit_quadrature_point(unsigned in
 template<Enrichment_method::Type T> 
 void XFEValues<T>::reinit(XDataCell* xdata)
 {
-  xdata_ = xdata;
-  n_wells_ = xdata_->n_wells();
-  this->reinit(xdata_->get_cell());
-  
-  
-  
-  if((dealii::update_quadrature_points & update_flags) || xquadrature_)
-  {
-    if(dealii::update_values & update_flags)
+    xdata_ = xdata;
+    n_wells_ = xdata_->n_wells();
+    
+    if(xquadrature_ == nullptr)
+        update_flags = update_flags | dealii::update_quadrature_points;
+        
+    reinit(xdata_->get_cell());
+    
+    if((dealii::update_quadrature_points & update_flags) || xquadrature_)
     {
-      q_enrich_values_.resize(n_wells_);
-  
-      for(unsigned int w=0; w < n_wells_; w++)
-      {
-        q_enrich_values_[w].resize(n_quadrature_points);
+        if(dealii::update_values & update_flags)
+        {
+        q_enrich_values_.resize(n_wells_);
+    
+        for(unsigned int w=0; w < n_wells_; w++)
+        {
+            q_enrich_values_[w].resize(n_quadrature_points);
 
-        for(unsigned int q=0; q < n_quadrature_points; q++)
-          q_enrich_values_[w][q] = xdata_->get_well(w)->global_enrich_value(real_quadrature_point(q)); //returns quadrature_point in real coordinates
-      }
-      prepare();
+            for(unsigned int q=0; q < n_quadrature_points; q++)
+            q_enrich_values_[w][q] = xdata_->get_well(w)->global_enrich_value(real_quadrature_point(q)); //returns quadrature_point in real coordinates
+        }
+        prepare();
+        }
     }
-  }
 }
 
 

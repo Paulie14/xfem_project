@@ -81,7 +81,7 @@ double XFEValues<Enrichment_method::xfem>::enrichment_value(const unsigned int f
                                                             const unsigned int w, 
                                                             const unsigned int q)
 { 
-  MASSERT(update_quadrature_points & get_update_flags(), "'update_quadrature_points' flag was not set!");
+  MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, "'update_quadrature_points' flag was not set!");
   return  shape_value(function_no,q) *                                      //FE shape function
           q_enrich_values_[w][q];                                           //NOT shifted
 }
@@ -91,7 +91,7 @@ double XFEValues<Enrichment_method::xfem_ramp>::enrichment_value(const unsigned 
                                                                  const unsigned int w, 
                                                                  const unsigned int q)
 { 
-  MASSERT(update_quadrature_points & get_update_flags(), "'update_quadrature_points' flag was not set!");
+  MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, "'update_quadrature_points' flag was not set!");
   return  shape_value(function_no,q) *                                      //FE shape function
           q_ramp_values_[w][q] *                                            //ramp function
           q_enrich_values_[w][q];                                           //NOT shifted
@@ -102,7 +102,7 @@ double XFEValues<Enrichment_method::xfem_shift>::enrichment_value(const unsigned
                                                                   const unsigned int w, 
                                                                   const unsigned int q)
 { 
-  MASSERT(update_quadrature_points & get_update_flags(), "'update_quadrature_points' flag was not set!");
+  MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, "'update_quadrature_points' flag was not set!");
   return  shape_value(function_no,q) *                                    //FE shape function
           q_ramp_values_[w][q] *                                                //ramp function
           (q_enrich_values_[w][q] - xdata_->node_enrich_value(w,function_no));  //shifted
@@ -113,7 +113,7 @@ double XFEValues<Enrichment_method::sgfem>::enrichment_value(const unsigned int 
                                                              const unsigned int w, 
                                                              const unsigned int q)
 {
-  MASSERT(update_quadrature_points & get_update_flags(), "'update_quadrature_points' flag was not set!");
+  MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, "'update_quadrature_points' flag was not set!");
   MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape function for this node undefined.");
   return  shape_value(function_no,q) *    //FE shape function
           q_enrich_values_[w][q];               //already substracted interpolation in prepare()
@@ -189,7 +189,9 @@ template<>
 Tensor<1,2> XFEValues<Enrichment_method::xfem>::enrichment_grad(const unsigned int function_no, 
                                                                 const unsigned int w, 
                                                                 const unsigned int q)
-{ 
+{
+    MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, 
+            "'update_quadrature_points' flag was not set!");
   return  shape_grad(function_no,q) *
           q_enrich_values_[w][q]
           +
@@ -203,6 +205,8 @@ Tensor<1,2> XFEValues<Enrichment_method::xfem_ramp>::enrichment_grad(const unsig
                                                                      const unsigned int w, 
                                                                      const unsigned int q)
 {
+    MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, 
+            "'update_quadrature_points' flag was not set!");
   double xshape = q_enrich_values_[w][q];
   Tensor<1,2> ramp_grad;
   
@@ -228,7 +232,8 @@ Tensor<1,2> XFEValues<Enrichment_method::xfem_shift>::enrichment_grad(const unsi
                                                                       const unsigned int w, 
                                                                       const unsigned int q)
 {
-  
+    MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, 
+        "'update_quadrature_points' flag was not set!");
   double xshape_shifted = q_enrich_values_[w][q] - xdata_->node_enrich_value(w,function_no);
   Tensor<1,2> ramp_grad;
   
@@ -254,6 +259,8 @@ Tensor<1,2> XFEValues<Enrichment_method::sgfem>::enrichment_grad(const unsigned 
                                                                  const unsigned int w, 
                                                                  const unsigned int q)
 {
+    MASSERT((update_quadrature_points & get_update_flags()) || xquadrature_, 
+            "'update_quadrature_points' flag was not set!");
   MASSERT(xdata_->global_enriched_dofs(w)[function_no] != 0, "Shape grad function for this node undefined.");
   
   //interpolation of enrichment function
