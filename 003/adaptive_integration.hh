@@ -146,8 +146,11 @@ class AdaptiveIntegrationPolar : public AdaptiveIntegrationBase
     double integrate_l2_diff(const dealii::Vector<double> &solution, 
                              const dealii::Function<2> &exact_solution);
     
+    static unsigned int n_point_check;
+    
   private: 
     std::vector<XQuadratureWell*> polar_xquads_;
+    
 
 };
 

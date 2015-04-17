@@ -10,6 +10,8 @@
 
 using namespace dealii;
 
+unsigned int AdaptiveIntegrationPolar::n_point_check = 0;
+
 Adaptive_integration::Adaptive_integration(XDataCell* xdata,
                                            const FE_Q< 2 >& fe, 
                                            XQuadratureBase* quadrature, 

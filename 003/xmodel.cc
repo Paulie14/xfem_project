@@ -136,6 +136,8 @@ void XModel::constructor_init()
     if(name_ == "") name_ = "Default_XFEM_Model";
     r_enr_tolerance_ = 33.5;
     refine_by_error_ = false;
+    well_band_width_ratio_ = 1.5;
+    use_polar_quadrature_ = false;
 }
 
 
@@ -350,10 +352,10 @@ void XModel::compute_well_quadratures()
     MASSERT(well_xquadratures_.size() == 0, "Well polar quadrature vector is not empty!");
     for(auto &well: wells)
     {
-        double width = 4 * well->radius();
+        double width = well_band_width_ratio_ * well->radius();
         well_xquadratures_.push_back(new XQuadratureWell(well, width));
         
-        well_xquadratures_.back()->refine(6);
+        well_xquadratures_.back()->refine(7);
         DBGMSG("polar quad size %d %d\n",well_xquadratures_.back()->size(), well_xquadratures_.back()->real_points().size());
         if(output_options_ & OutputOptions::output_adaptive_plot)
         {   
@@ -688,8 +690,8 @@ void XModel::enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell,
  
     /// Resolve polar quadrature:
     bool add_polar_quadrature = false;
-    double temp_r = cell->diameter()/2,
-           width = 4*wells[well_index]->radius();
+    double temp_r = cell->diameter(),
+           width = (well_band_width_ratio_+1) * wells[well_index]->radius();
     if( cell->center().distance(wells[well_index]->center()) < temp_r + width )
         add_polar_quadrature = true;
  
@@ -955,8 +957,8 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
     
     /// Resolve polar quadrature:
     bool add_polar_quadrature = false;
-    double temp_r = cell->diameter()/2,
-           width = 4*wells[well_index]->radius();
+    double temp_r = cell->diameter(),
+           width = (well_band_width_ratio_+1) * wells[well_index]->radius();
     if( cell->center().distance(wells[well_index]->center()) < temp_r + width )
         add_polar_quadrature = true;
         
@@ -1196,7 +1198,8 @@ void XModel::setup_subsystem(unsigned int m)
     triangulation->clear_user_data();
  
     // before searching for enrichment cells, create polar quadratures
-    if(well_xquadratures_.size() == 0)
+    if( (well_xquadratures_.size() == 0)
+        && ( use_polar_quadrature_) )
         compute_well_quadratures();
     
     //find cells which lies within the enrichment radius of the wells
@@ -1438,7 +1441,9 @@ void XModel::assemble_subsystem (unsigned int m)
             //A *a=static_cast<A*>(cell->user_pointer()); //from DEALII (TriaAccessor)
             XDataCell * xdata = static_cast<XDataCell*>( cell->user_pointer() );
             
-            if(xdata->n_polar_quadratures() == 0)
+            if( /*(xdata->n_polar_quadratures() == 0) 
+                ||*/ 
+                ( ! use_polar_quadrature_) )
             {
                 XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
                                                                     fe_values.get_mapping(), 
@@ -1446,15 +1451,15 @@ void XModel::assemble_subsystem (unsigned int m)
                 xquadrature->refine(adaptive_integration_refinement_level_);
 //                 DBGMSG("cell %d - adaptive refinement level %d\n",cell->index(), xquadrature->level());
                 
-//                 if (output_options_ & OutputOptions::output_adaptive_plot)
-//                 {
-//                     stringstream dir_name;
-//                     dir_name << "/adaptref_" << cycle_ << "/";
-//                     //output only cells which have well inside
-//                     //if(t == adaptive_integration_refinement_level_-1)
-//             //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
-//                     xquadrature->gnuplot_refinement(create_subdirectory(output_dir_,dir_name.str()));
-//                     }
+                if (output_options_ & OutputOptions::output_adaptive_plot)
+                {
+                    stringstream dir_name;
+                    dir_name << "/adaptref_" << cycle_ << "/";
+                    //output only cells which have well inside
+                    //if(t == adaptive_integration_refinement_level_-1)
+            //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
+                    xquadrature->gnuplot_refinement(create_subdirectory(output_dir_,dir_name.str()));
+                }
                 
                 Adaptive_integration adaptive_integration(xdata,fe,(XQuadratureBase *)xquadrature,m);
                 
@@ -1500,16 +1505,16 @@ void XModel::assemble_subsystem (unsigned int m)
                 xquadrature->refine(adaptive_integration_refinement_level_);
                 DBGMSG("cell %d - polar adaptive refinement level %d\n",cell->index(), xquadrature->level());
                 
-//                 if (output_options_ & OutputOptions::output_adaptive_plot)
-//                 {
-//                     stringstream dir_name;
-//                     dir_name << "/adaptref_" << cycle_ << "/";
-//                         
-//                     //output only cells which have well inside
-//                     //if(t == adaptive_integration_refinement_level_-1)
-//             //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
-//                     xquadrature->gnuplot_refinement(create_subdirectory(output_dir_, dir_name.str()));
-//                 }
+                if (output_options_ & OutputOptions::output_adaptive_plot)
+                {
+                    stringstream dir_name;
+                    dir_name << "/adaptref_" << cycle_ << "/";
+                        
+                    //output only cells which have well inside
+                    //if(t == adaptive_integration_refinement_level_-1)
+            //         (output_dir, false, true) must be set to unit coordinates and to show on screen 
+                    xquadrature->gnuplot_refinement(create_subdirectory(output_dir_, dir_name.str()));
+                }
                     
                 AdaptiveIntegrationPolar adaptive_integration_polar(xdata,fe,
                                                                     (XQuadratureBase *)xquadrature,
@@ -1592,6 +1597,12 @@ void XModel::assemble_subsystem (unsigned int m)
     {
         hanging_node_constraints.condense(block_matrix[m]);
         hanging_node_constraints.condense(block_system_rhs.block(m));
+    }
+    
+    if( use_polar_quadrature_)
+    {
+        DBGMSG("N polar quadrature points check: %d %d\n", well_xquadratures_[0]->size(), AdaptiveIntegrationPolar::n_point_check);
+        AdaptiveIntegrationPolar::n_point_check = 0;
     }
 }
 

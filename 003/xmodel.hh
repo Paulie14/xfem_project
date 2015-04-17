@@ -366,6 +366,12 @@ class XModel : public ModelBase
     ///vector of global enrichment function values at nodes of the triangulation
     std::vector<std::map<unsigned int, double> > shape_well_averiges;
     
+    /// Polar quadrature / edge rules switch
+    bool use_polar_quadrature_;
+    
+    /// Width of the polar quadrature band around the well.
+    double well_band_width_ratio_;
+    
     /// Vector of quadratures in polar coordinates in vicinity of wells.
     std::vector<XQuadratureWell* > well_xquadratures_;
     

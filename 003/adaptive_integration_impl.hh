@@ -274,7 +274,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     std::vector<double > shape_val_vec(n_dofs+n_wells_inside,0);
                
     //TODO: more wells !!!!!!!!
-    SmoothStep smooth_step(xdata_->get_well(0), 4*xdata_->get_well(0)->radius());
+    SmoothStep smooth_step(xdata_->get_well(0), polar_xquads_[0]->band_width());
   
     XFEValues<EnrType> xfevalues(*fe_,*xquad_, 
                                             update_values 
@@ -349,7 +349,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
             if(rhs_function_)
             {
                 //DBGMSG("sources\n");
-            cell_rhs(i) += rhs_function_->value(xfevalues.quadrature_point(q)) * 
+            cell_rhs(i) += rhs_function_->value(xquad_->real_point(q)) * 
                            smooth_step_val *
                            shape_val_vec[i] * 
                            xfevalues.JxW(q);
@@ -362,6 +362,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     XQuadratureWell polar_xquad; 
     polar_xquads_[0]->create_subquadrature(polar_xquad, cell, xfevalues.get_mapping());
     
+    n_point_check += polar_xquad.size();
     DBGMSG(".................polar quad size %d %d\n",polar_xquad.size(), polar_xquad.real_points().size());
     
     if(polar_xquad.size() > 0)
@@ -441,7 +442,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
             if(rhs_function_)
             {
                 //DBGMSG("sources\n");
-            cell_rhs(i) += rhs_function_->value(polar_xfevalues.quadrature_point(q)) * 
+            cell_rhs(i) += rhs_function_->value(polar_xquad.real_point(q)) * 
                            smooth_step_val *
                            shape_val_vec[i] * 
                            polar_xquad.polar_point(q)[0] *
