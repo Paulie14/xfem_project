@@ -372,6 +372,9 @@ class XModel : public ModelBase
     /// Width of the polar quadrature band around the well.
     double well_band_width_ratio_;
     
+    /// Level of refinement for polar quadrature in the vicinity of a well
+    unsigned int polar_refinement_level_;
+    
     /// Vector of quadratures in polar coordinates in vicinity of wells.
     std::vector<XQuadratureWell* > well_xquadratures_;
     

@@ -38,6 +38,7 @@
 
 //output
 #include <deal.II/numerics/data_out.h>
+#include <boost/concept_check.hpp>
 #include <fstream>
 #include <iostream>
 #include <iomanip>      // std::setprecision
@@ -136,8 +137,10 @@ void XModel::constructor_init()
     if(name_ == "") name_ = "Default_XFEM_Model";
     r_enr_tolerance_ = 33.5;
     refine_by_error_ = false;
-    well_band_width_ratio_ = 1.5;
+    
     use_polar_quadrature_ = false;
+    well_band_width_ratio_ = 0.5*std::sqrt(2);
+    polar_refinement_level_ = 3;
 }
 
 
@@ -349,14 +352,21 @@ void XModel::refine_grid()
 
 void XModel::compute_well_quadratures()
 {
-    MASSERT(well_xquadratures_.size() == 0, "Well polar quadrature vector is not empty!");
+    //MASSERT(well_xquadratures_.size() == 0, "Well polar quadrature vector is not empty!");
+    for(unsigned int w=0; w < well_xquadratures_.size(); w++)   //n_aquifers    
+        delete well_xquadratures_[w];
+    well_xquadratures_.clear();
+    
+    double min_cell_diameter = GridTools::minimal_cell_diameter(*triangulation);
+    
     for(auto &well: wells)
     {
         double width = well_band_width_ratio_ * well->radius();
+        
         well_xquadratures_.push_back(new XQuadratureWell(well, width));
         
-        well_xquadratures_.back()->refine(7);
-        DBGMSG("polar quad size %d %d\n",well_xquadratures_.back()->size(), well_xquadratures_.back()->real_points().size());
+        well_xquadratures_.back()->refine(polar_refinement_level_);
+//         DBGMSG("polar quad size %d %d\n",well_xquadratures_.back()->size(), well_xquadratures_.back()->real_points().size());
         if(output_options_ & OutputOptions::output_adaptive_plot)
         {   
             string dir_name = "polar_quad";
@@ -693,7 +703,7 @@ void XModel::enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell,
     double temp_r = cell->diameter(),
            width = (well_band_width_ratio_+1) * wells[well_index]->radius();
     if( cell->center().distance(wells[well_index]->center()) < temp_r + width )
-        add_polar_quadrature = true;
+        add_polar_quadrature = use_polar_quadrature_;
  
   /////-----------------------------Well Boundary Integration part--------------start
   //if(well_computation_ == Well_computation::bc_newton)
@@ -750,7 +760,7 @@ void XModel::enrich_cell_blend (const DoFHandler<2>::active_cell_iterator cell,
         xdata_pointer->add_data(wells[well_index], well_index, 
                                 local_enriched_dofs, local_enriched_node_weights );
         
-      if(add_polar_quadrature)
+      if(add_polar_quadrature &&  use_polar_quadrature_)
         xdata_pointer->set_polar_quadrature(well_xquadratures_[well_index]);
       else
         xdata_pointer->set_polar_quadrature(nullptr);
@@ -960,7 +970,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
     double temp_r = cell->diameter(),
            width = (well_band_width_ratio_+1) * wells[well_index]->radius();
     if( cell->center().distance(wells[well_index]->center()) < temp_r + width )
-        add_polar_quadrature = true;
+        add_polar_quadrature = use_polar_quadrature_;
         
     
   /////-----------------------------Well Boundary Integration part--------------start
@@ -1018,7 +1028,7 @@ void XModel::enrich_cell ( const DoFHandler<2>::active_cell_iterator cell,
         xdata_pointer->add_data(wells[well_index], well_index, 
                                 local_enriched_dofs, local_enriched_node_weights );
         
-      if(add_polar_quadrature)
+      if(add_polar_quadrature && use_polar_quadrature_)
           xdata_pointer->set_polar_quadrature(well_xquadratures_[well_index]);
       else
           xdata_pointer->set_polar_quadrature(nullptr);
@@ -1198,9 +1208,9 @@ void XModel::setup_subsystem(unsigned int m)
     triangulation->clear_user_data();
  
     // before searching for enrichment cells, create polar quadratures
-    if( (well_xquadratures_.size() == 0)
-        && ( use_polar_quadrature_) )
-        compute_well_quadratures();
+//     if( (well_xquadratures_.size() == 0)
+//         && ( use_polar_quadrature_) )
+    if(use_polar_quadrature_) compute_well_quadratures();
     
     //find cells which lies within the enrichment radius of the wells
     n_enriched_dofs_ = 0;
@@ -1441,8 +1451,8 @@ void XModel::assemble_subsystem (unsigned int m)
             //A *a=static_cast<A*>(cell->user_pointer()); //from DEALII (TriaAccessor)
             XDataCell * xdata = static_cast<XDataCell*>( cell->user_pointer() );
             
-            if( /*(xdata->n_polar_quadratures() == 0) 
-                ||*/ 
+            if( (xdata->n_polar_quadratures() == 0) 
+                || 
                 ( ! use_polar_quadrature_) )
             {
                 XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
@@ -1503,7 +1513,7 @@ void XModel::assemble_subsystem (unsigned int m)
                                                                     fe_values.get_mapping(), 
                                                                     XQuadratureCell::Refinement::polar);
                 xquadrature->refine(adaptive_integration_refinement_level_);
-                DBGMSG("cell %d - polar adaptive refinement level %d\n",cell->index(), xquadrature->level());
+//                 DBGMSG("cell %d - polar adaptive refinement level %d\n",cell->index(), xquadrature->level());
                 
                 if (output_options_ & OutputOptions::output_adaptive_plot)
                 {
@@ -1603,7 +1613,22 @@ void XModel::assemble_subsystem (unsigned int m)
     {
         DBGMSG("N polar quadrature points check: %d %d\n", well_xquadratures_[0]->size(), AdaptiveIntegrationPolar::n_point_check);
         AdaptiveIntegrationPolar::n_point_check = 0;
+        
+        std::cout << "Total number of quadrature points used on enriched cells (cell + polar): " 
+                  << Adaptive_integration::n_enrich_quad_points << " + "
+                  << AdaptiveIntegrationPolar::n_enrich_quad_points << " = "
+                  << AdaptiveIntegrationPolar::n_enrich_quad_points + Adaptive_integration::n_enrich_quad_points 
+                  <<std::endl;
+        AdaptiveIntegrationPolar::n_enrich_quad_points = 0;
+        Adaptive_integration::n_enrich_quad_points = 0;
     }
+    else{
+        std::cout << "Total number of quadrature points used on enriched cells: " 
+                  << Adaptive_integration::n_enrich_quad_points <<std::endl;
+        Adaptive_integration::n_enrich_quad_points = 0;
+    }
+    
+    
 }
 
 void XModel::assemble_well_permeability_term(unsigned int m)
