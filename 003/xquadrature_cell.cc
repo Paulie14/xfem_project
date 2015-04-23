@@ -640,7 +640,9 @@ bool XQuadratureCell::refine_polar()
 void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bool show)
 { 
   if(level_ < 1) return;
+#if VERBOSE_QUAD  
   DBGMSG("level = %d,  number of quadrature points = %d\n",level_, quadrature_points.size());
+#endif  
   
   DoFHandler<2>::active_cell_iterator cell =  xdata_->get_cell();   //shortcut
   
@@ -699,7 +701,9 @@ void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bo
 
           myfile1 << "\n\n";
         }
+#if VERBOSE_QUAD        
         std::cout << left << setw(53) <<  "Adaptive XFEM element refinement written in: " << fgnuplot_ref << endl;
+#endif        
         }
         else 
         { 
@@ -720,8 +724,9 @@ void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bo
                     myfile2 << quadrature_points[q];
             myfile2 << "\n";
             }
-        
+#if VERBOSE_QUAD        
             std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
+#endif            
         }
         else 
         { 
@@ -796,8 +801,9 @@ void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bo
                      "#\n#" << std::endl;
           // script
           myfile3 << strs.str() << std::endl;
-          
+#if VERBOSE_QUAD          
           std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
+#endif          
         }
         else 
         { 

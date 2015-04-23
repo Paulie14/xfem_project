@@ -233,10 +233,9 @@ void XQuadratureWell::gnuplot_refinement(const string& output_dir, bool real, bo
 {
 //     MASSERT(real, "Point in unit cell does not make sence in this case.");
     
-    
-//       if(level_ < 1) return;
+#if VERBOSE_QUAD
     DBGMSG("level = %d,  number of quadrature points = %d\n",level_, polar_quadrature_points_.size());
-  
+#endif  
     std::string fgnuplot_ref = "adaptive_integration_refinement_",
                 fgnuplot_qpoints = "adaptive_integration_qpoints_",
                 script_file = "g_script_adapt_";
@@ -274,7 +273,9 @@ void XQuadratureWell::gnuplot_refinement(const string& output_dir, bool real, bo
 
           myfile1 << "\n\n";
         }
+#if VERBOSE_QUAD        
         std::cout << left << setw(53) <<  "Adaptive XFEM well refinement written in: " << fgnuplot_ref << endl;
+#endif        
         }
         else 
         { 
@@ -295,8 +296,9 @@ void XQuadratureWell::gnuplot_refinement(const string& output_dir, bool real, bo
                     myfile2 << polar_quadrature_points_[q];
             myfile2 << "\n";
             }
-        
+#if VERBOSE_QUAD        
             std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
+#endif            
         }
         else 
         { 
@@ -361,8 +363,9 @@ void XQuadratureWell::gnuplot_refinement(const string& output_dir, bool real, bo
                      "#\n#" << std::endl;
           // script
           myfile3 << strs.str() << std::endl;
-          
+#if VERBOSE_QUAD          
           std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
+#endif          
         }
         else 
         { 

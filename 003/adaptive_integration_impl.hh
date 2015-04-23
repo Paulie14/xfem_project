@@ -36,7 +36,13 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   cell_matrix = 0;
   cell_rhs = Vector<double>(n_dofs+n_wells_inside);
   cell_rhs = 0;
-               
+   
+    if(n_wells_inside > 0) 
+        std::cout << "Number of quadrature points on cell " 
+                  << xdata_->get_cell()->index()
+                  << " is "
+                  << xquad_->size()
+                  << std::endl;
 
   XFEValues<EnrType> xfevalues(*fe_,*xquad_, 
                                          update_values 
@@ -62,6 +68,7 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
                                        //| update_inverse_jacobians
                                                  );
   xfevalues.reinit(xdata_);
+  n_enrich_quad_points += xquad_->size();
   
   //temporary vectors for both shape and xshape values and gradients
   std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
@@ -244,6 +251,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
                                       std::vector<unsigned int> &local_dof_indices,
                                       const double &transmisivity)
 {  
+    MASSERT(polar_xquads_[0] != nullptr, "Undefined polar quadrature.");
     //DBGMSG("Adaptive integration on cell %d. Center: [%f,%f].\n", cell->index(), cell->center()[0], cell->center()[1]);
 
     /*getting dof's indices : 
@@ -268,7 +276,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     cell_matrix = 0;
     cell_rhs = Vector<double>(n_dofs+n_wells_inside);
     cell_rhs = 0;
-    
+                  
     //temporary vectors for both shape and xshape values and gradients
     std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
     std::vector<double > shape_val_vec(n_dofs+n_wells_inside,0);
@@ -279,7 +287,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     XFEValues<EnrType> xfevalues(*fe_,*xquad_, 
                                             update_values 
                                         | update_gradients 
-                                        | update_quadrature_points 
+                                        //| update_quadrature_points 
                                         //| update_covariant_transformation 
                                         //| update_transformation_values 
                                         //| update_transformation_gradients
@@ -300,6 +308,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
                                         //| update_inverse_jacobians
                                                     );
     xfevalues.reinit(xdata_);
+    n_enrich_quad_points += xquad_->size();
     
     for(unsigned int q=0; q<xquad_->size(); q++)
     { 
@@ -356,17 +365,26 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
             }
         }
     }
-    
-    MASSERT(polar_xquads_[0] != nullptr, "Undefined polar quadrature.");
-    DBGMSG(".................polar quad size %d %d\n",polar_xquads_[0]->size(), polar_xquads_[0]->real_points().size());
+
+//     DBGMSG(".................polar quad size %d %d\n",polar_xquads_[0]->size(), polar_xquads_[0]->real_points().size());
     XQuadratureWell polar_xquad; 
     polar_xquads_[0]->create_subquadrature(polar_xquad, cell, xfevalues.get_mapping());
     
     n_point_check += polar_xquad.size();
-    DBGMSG(".................polar quad size %d %d\n",polar_xquad.size(), polar_xquad.real_points().size());
-    
+    n_enrich_quad_points += polar_xquad.size();
+//     DBGMSG(".................polar quad size %d %d\n",polar_xquad.size(), polar_xquad.real_points().size());
+
+    std::cout << "Number of quadrature points on cell " 
+                  << xdata_->get_cell()->index()
+                  << " is "
+                  << xquad_->size() << " + "
+                  << polar_xquad.size() << " = "
+                  << xquad_->size() + polar_xquad.size()
+                  << std::endl;
+                  
     if(polar_xquad.size() > 0)
     {
+                  
     XFEValues<EnrType> polar_xfevalues(*fe_,polar_xquad, 
                                             update_values 
                                         | update_gradients 

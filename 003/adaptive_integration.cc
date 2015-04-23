@@ -10,6 +10,8 @@
 
 using namespace dealii;
 
+unsigned int Adaptive_integration::n_enrich_quad_points = 0;
+unsigned int AdaptiveIntegrationPolar::n_enrich_quad_points = 0;
 unsigned int AdaptiveIntegrationPolar::n_point_check = 0;
 
 Adaptive_integration::Adaptive_integration(XDataCell* xdata,

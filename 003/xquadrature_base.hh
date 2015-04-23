@@ -1,6 +1,7 @@
 #ifndef XQUADRATURE_BASE_H
 #define XQUADRATURE_BASE_H
 
+#define VERBOSE_QUAD 0
 
 #include <deal.II/base/point.h>
 #include <deal.II/base/quadrature_lib.h>

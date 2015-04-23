@@ -76,6 +76,9 @@ class Adaptive_integration : public AdaptiveIntegrationBase
 //         /// Test - integrates the @p func using adaptive integration on different levels (used for \f$ 1/r^2) \f$.
 //         std::pair<double,double> test_integration_2(dealii::Function<2>* func, unsigned int diff_levels);
     //@}
+        
+    /// number of quadrature points used on enriched cells
+    static unsigned int n_enrich_quad_points;
     
   private: 
 
@@ -147,6 +150,9 @@ class AdaptiveIntegrationPolar : public AdaptiveIntegrationBase
                              const dealii::Function<2> &exact_solution);
     
     static unsigned int n_point_check;
+    
+    /// number of quadrature points used on enriched cells
+    static unsigned int n_enrich_quad_points;
     
   private: 
     std::vector<XQuadratureWell*> polar_xquads_;
