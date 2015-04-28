@@ -139,8 +139,8 @@ void XModel::constructor_init()
     refine_by_error_ = false;
     
     use_polar_quadrature_ = false;
-    well_band_width_ratio_ = 0.5*std::sqrt(2);
-    polar_refinement_level_ = 3;
+    well_band_width_ratio_ = 2;//0.5*std::sqrt(2);
+    polar_refinement_level_ = 6;
 }
 
 
@@ -356,8 +356,6 @@ void XModel::compute_well_quadratures()
     for(unsigned int w=0; w < well_xquadratures_.size(); w++)   //n_aquifers    
         delete well_xquadratures_[w];
     well_xquadratures_.clear();
-    
-    double min_cell_diameter = GridTools::minimal_cell_diameter(*triangulation);
     
     for(auto &well: wells)
     {

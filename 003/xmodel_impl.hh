@@ -368,8 +368,37 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
             }
         }
         else
-        { 
+        {            
             XDataCell * xdata = static_cast<XDataCell*>( cell->user_pointer() );
+            if( (xdata->n_polar_quadratures() == 0) 
+                || 
+                ( ! use_polar_quadrature_) )
+            {
+                XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
+                                                                    fe_values.get_mapping(), 
+                                                                    XQuadratureCell::Refinement::edge);
+                xquadrature->refine(adaptive_integration_refinement_level_);
+                
+                Adaptive_integration adaptive_integration(xdata,fe,(XQuadratureBase *)xquadrature,m);
+                
+                cell_norm += adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),*exact_solution);
+            
+            } // if
+            else
+            {
+                XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
+                                                                    fe_values.get_mapping(), 
+                                                                    XQuadratureCell::Refinement::polar);
+                xquadrature->refine(adaptive_integration_refinement_level_);
+                    
+                AdaptiveIntegrationPolar adaptive_integration_polar(xdata,fe,
+                                                                    (XQuadratureBase *)xquadrature,
+                                                                    xdata->polar_quadratures(),
+                                                                    m);
+                
+                cell_norm += adaptive_integration_polar.integrate_l2_diff<EnrType>(block_solution.block(m),*exact_solution);
+            }
+            
             XQuadratureCell * xquadrature = new XQuadratureCell(xdata, 
                                                                 fe_values.get_mapping(), 
                                                                 XQuadratureCell::Refinement::edge);
@@ -400,11 +429,6 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
 //                     break;
 //                 }
 //             }
-            
-            Adaptive_integration adaptive_integration(xdata, fe, xquadrature, m);
-            
-            //adaptive_integration.gnuplot_refinement(output_dir_, true, true);
-            cell_norm = adaptive_integration.integrate_l2_diff<EnrType>(block_solution.block(m),*exact_solution);
         }
         
         cell_norm = std::sqrt(cell_norm);   // square root

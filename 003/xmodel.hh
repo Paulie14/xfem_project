@@ -30,6 +30,7 @@ using namespace dealii;
 class Well;
 class XDataCell;
 class XQuadratureWell;
+class GlobalSettingWriter;
 namespace compare {
     class ExactBase;
 }
@@ -421,6 +422,8 @@ class XModel : public ModelBase
     Vector<double> dist_solution;       ///< Output vector - complete solution.
     
     PersistentTriangulation<2,2>* output_triangulation;   ///< Output triangulation (adaptively refined).
+    
+    class GlobalSettingWriter;
 };
 
 #include "xmodel_impl.hh"
