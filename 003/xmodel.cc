@@ -64,6 +64,10 @@
 
 using namespace compare;
 
+const bool XModel::use_polar_quadrature_ = true;
+const double XModel::well_band_width_ratio_ = 2; //0.5*std::sqrt(2);
+const unsigned int XModel::polar_refinement_level_ = 6;
+
 XModel::XModel () 
   : ModelBase(),
     enrichment_method_(Enrichment_method::xfem_shift),
@@ -137,10 +141,6 @@ void XModel::constructor_init()
     if(name_ == "") name_ = "Default_XFEM_Model";
     r_enr_tolerance_ = 33.5;
     refine_by_error_ = false;
-    
-    use_polar_quadrature_ = false;
-    well_band_width_ratio_ = 2;//0.5*std::sqrt(2);
-    polar_refinement_level_ = 6;
 }
 
 

@@ -367,15 +367,6 @@ class XModel : public ModelBase
     ///vector of global enrichment function values at nodes of the triangulation
     std::vector<std::map<unsigned int, double> > shape_well_averiges;
     
-    /// Polar quadrature / edge rules switch
-    bool use_polar_quadrature_;
-    
-    /// Width of the polar quadrature band around the well.
-    double well_band_width_ratio_;
-    
-    /// Level of refinement for polar quadrature in the vicinity of a well
-    unsigned int polar_refinement_level_;
-    
     /// Vector of quadratures in polar coordinates in vicinity of wells.
     std::vector<XQuadratureWell* > well_xquadratures_;
     
@@ -423,7 +414,15 @@ class XModel : public ModelBase
     
     PersistentTriangulation<2,2>* output_triangulation;   ///< Output triangulation (adaptively refined).
     
-    class GlobalSettingWriter;
+    
+    /// Polar quadrature / edge rules switch
+    static const bool use_polar_quadrature_;
+    /// Width of the polar quadrature band around the well.
+    static const double well_band_width_ratio_;
+    /// Level of refinement for polar quadrature in the vicinity of a well
+    static const unsigned int polar_refinement_level_;
+    
+    friend class GlobalSettingWriter;
 };
 
 #include "xmodel_impl.hh"

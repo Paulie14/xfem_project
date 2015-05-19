@@ -16,8 +16,7 @@ namespace dealii{
 template<int dim,int spacedim=dim> using DealMapping = dealii::Mapping<dim,spacedim>;
 
 class XQuadratureWell;
-
-
+class GlobalSettingWriter;
 
 /** @brief Class representing squares of adaptive refinement of the reference cell.
  * 
@@ -146,6 +145,8 @@ protected:
     
     // Square refinement criteria constant on the cells without well inside.
     static const double square_refinement_criteria_factor_;
+    
+    friend class GlobalSettingWriter;
 };
 
 

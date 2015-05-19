@@ -13,6 +13,7 @@ namespace dealii {
     template<int> class Function;
     template<typename> class BlockSparseMatrix;
 }
+class GlobalSettingWriter;
 
 /** @brief Base class for the model of multi-aquifer system with wells.
  * 
@@ -297,6 +298,8 @@ protected:
     static const double solver_tolerance_;
     static const double output_element_tolerance_;
   //@}
+    
+  friend class GlobalSettingWriter;
 };
 
 

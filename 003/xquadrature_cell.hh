@@ -11,6 +11,7 @@ template<int dim,int spacedim=dim> using DealMapping = dealii::Mapping<dim,space
 
 class Well;
 class XDataCell;
+class GlobalSettingWriter;
 
 class XQuadratureCell : public XQuadratureBase
 {
@@ -100,6 +101,8 @@ private:
     
     /// Empiric constants for refine_error method.
     static const double c_empiric_, p_empiric_;
+    
+    friend class GlobalSettingWriter;
 };
 
 #endif  //XQUADRATURE_CELL_H

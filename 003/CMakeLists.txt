@@ -37,6 +37,8 @@ SET(TARGET_SRC
   xmodel_tests.cc
   simple_models.cc        
   comparing.cc
+  
+  global_setting_writer.cc
   # You can specify additional files here!
   )
 
