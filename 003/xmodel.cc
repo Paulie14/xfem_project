@@ -65,7 +65,7 @@
 using namespace compare;
 
 const bool XModel::use_polar_quadrature_ = true;
-const double XModel::well_band_width_ratio_ = 2; //0.5*std::sqrt(2);
+const double XModel::well_band_width_ratio_ = 1;//0.5*std::sqrt(2);
 const unsigned int XModel::polar_refinement_level_ = 6;
 
 XModel::XModel () 
@@ -361,7 +361,7 @@ void XModel::compute_well_quadratures()
     {
         double width = well_band_width_ratio_ * well->radius();
         
-        well_xquadratures_.push_back(new XQuadratureWell(well, width));
+        well_xquadratures_.push_back(new XQuadratureWellLog(well, width));
         
         well_xquadratures_.back()->refine(polar_refinement_level_);
 //         DBGMSG("polar quad size %d %d\n",well_xquadratures_.back()->size(), well_xquadratures_.back()->real_points().size());

@@ -375,7 +375,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
 
 //     DBGMSG(".................polar quad size %d %d\n",polar_xquads_[0]->size(), polar_xquads_[0]->real_points().size());
     XQuadratureWell polar_xquad; 
-    polar_xquads_[0]->create_subquadrature(polar_xquad, cell, mapping);
+    polar_xquads_[0]->create_subquadrature(&polar_xquad, cell, mapping);
     
     n_point_check += polar_xquad.size();
     n_enrich_quad_points += polar_xquad.size();
@@ -536,7 +536,7 @@ double AdaptiveIntegrationPolar::integrate_l2_diff(const Vector<double> &solutio
     
     
     XQuadratureWell polar_xquad; 
-    polar_xquads_[0]->create_subquadrature(polar_xquad, xdata_->get_cell(), xfevalues.get_mapping());
+    polar_xquads_[0]->create_subquadrature(&polar_xquad, xdata_->get_cell(), xfevalues.get_mapping());
        
     if(polar_xquad.size() > 0)
     {

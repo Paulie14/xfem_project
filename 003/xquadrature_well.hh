@@ -46,12 +46,12 @@ public:
     void gnuplot_refinement(const std::string &output_dir, bool real=true, bool show=false) override;
     
     // Create subquadrature with only the quadrature points that lie in the given cell.
-    void create_subquadrature(XQuadratureWell & new_xquad, 
+    void create_subquadrature(XQuadratureWell * new_xquad, 
                               const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
                               const DealMapping<2> & mapping
                              );
     
-private:
+protected:
     
     /// Returns true if criterion is satisfied.
     /** Criterion: square diameter > C * (minimal distance of a node from well edge)
@@ -82,6 +82,40 @@ private:
 };
 
 
+class XQuadratureWellLog : public XQuadratureWell
+{
+public:
+    XQuadratureWellLog();
+    
+    XQuadratureWellLog(Well * well, double width);
+    
+    /// Creates refinement of a cell -- new quadrature.
+    /** @param max_level is ignored.
+     */
+    void refine(unsigned int max_level) override;
+    
+    /** @brief Calls gnuplot to create image of refined element.
+     * 
+      * Also can save the gnuplot script to file.
+      * @param output_dir is the directory for output_dir
+      * @param real is true then the element is printed in real coordinates
+      * @param show is true then the gnuplot utility is started and plots the refinement on the screen
+      */ 
+    void gnuplot_refinement(const std::string &output_dir, bool real=true, bool show=false) override;
+    
+private:
+        
+    bool refine_error();
+    
+    /// Gathers the quadrature points and their weigths from squares into a single vector.
+    void gather_weights_points() override;
+    
+    void transform_square_to_real(Square & square);
+    
+    unsigned int n_phi_;
+    unsigned int gauss_degree_;
+    
+};
 
 /********************************           IMPLEMENTATION                  *********************************/
 #include "system.hh"

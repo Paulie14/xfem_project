@@ -5,6 +5,7 @@
 
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/fe/mapping.h>
+#include <deal.II/base/quadrature_lib.h>
 
 XQuadratureWell::XQuadratureWell()
 : XQuadratureBase(),
@@ -187,27 +188,27 @@ bool XQuadratureWell::refine_error()
 }
 
 
-void XQuadratureWell::create_subquadrature(XQuadratureWell& new_xquad, 
+void XQuadratureWell::create_subquadrature(XQuadratureWell* new_xquad, 
                                            const dealii::DoFHandler< 2  >::active_cell_iterator& cell,
                                            const Mapping<2> & mapping
                                           )
 {
 //     DBGMSG("quad size %d\n",quadrature_points.size());
-    new_xquad.well_ = well_;
-    new_xquad.width_ = width_;
-    new_xquad.level_ = level_;
-//     new_xquad.quadratures_ = quadratures_;
-//     new_xquad.squares_ = squares_;
+    new_xquad->well_ = well_;
+    new_xquad->width_ = width_;
+    new_xquad->level_ = level_;
+//     new_xquad->quadratures_ = quadratures_;
+//     new_xquad->squares_ = squares_;
     
-    new_xquad.weights.clear();
-    new_xquad.polar_quadrature_points_.clear();
-    new_xquad.quadrature_points.clear();
-    new_xquad.real_points_.clear();
+    new_xquad->weights.clear();
+    new_xquad->polar_quadrature_points_.clear();
+    new_xquad->quadrature_points.clear();
+    new_xquad->real_points_.clear();
     
-    new_xquad.weights.reserve(weights.size());
-    new_xquad.polar_quadrature_points_.reserve(polar_quadrature_points_.size());
-    new_xquad.quadrature_points.reserve(quadrature_points.size());
-    new_xquad.real_points_.reserve(real_points_.size());
+    new_xquad->weights.reserve(weights.size());
+    new_xquad->polar_quadrature_points_.reserve(polar_quadrature_points_.size());
+    new_xquad->quadrature_points.reserve(quadrature_points.size());
+    new_xquad->real_points_.reserve(real_points_.size());
     
     for(unsigned int q=0; q < polar_quadrature_points_.size(); q++)
     {
@@ -215,17 +216,17 @@ void XQuadratureWell::create_subquadrature(XQuadratureWell& new_xquad,
         if(cell->point_inside(real_points_[q]))
         {
 //             DBGMSG("add point %d\n",q);
-            new_xquad.polar_quadrature_points_.push_back(polar_quadrature_points_[q]);
-            new_xquad.quadrature_points.push_back(mapping.transform_real_to_unit_cell(cell,real_points_[q]));
-            new_xquad.real_points_.push_back(real_points_[q]);
-            new_xquad.weights.push_back(weights[q]);
+            new_xquad->polar_quadrature_points_.push_back(polar_quadrature_points_[q]);
+            new_xquad->quadrature_points.push_back(mapping.transform_real_to_unit_cell(cell,real_points_[q]));
+            new_xquad->real_points_.push_back(real_points_[q]);
+            new_xquad->weights.push_back(weights[q]);
         }
     }
     
-    new_xquad.weights.shrink_to_fit();
-    new_xquad.polar_quadrature_points_.shrink_to_fit();
-    new_xquad.quadrature_points.shrink_to_fit();
-    new_xquad.real_points_.shrink_to_fit();
+    new_xquad->weights.shrink_to_fit();
+    new_xquad->polar_quadrature_points_.shrink_to_fit();
+    new_xquad->quadrature_points.shrink_to_fit();
+    new_xquad->real_points_.shrink_to_fit();
 }
 
 
@@ -403,3 +404,221 @@ void XQuadratureWell::gnuplot_refinement(const string& output_dir, bool real, bo
       std::cout << ge.what() << std::endl;
     }
 }
+
+
+
+
+
+XQuadratureWellLog::XQuadratureWellLog()
+: XQuadratureWell(nullptr, 0),
+    n_phi_(500),
+    gauss_degree_(25)
+{}
+
+XQuadratureWellLog::XQuadratureWellLog(Well* well, double width)
+    : XQuadratureWell(well, width),
+    n_phi_(500),
+    gauss_degree_(25)
+{}
+
+void XQuadratureWellLog::transform_square_to_real(Square& square)
+{
+    MASSERT(0, "This cannot be called for XQuadratureWellLog.");
+}
+
+bool XQuadratureWellLog::refine_error()
+{
+    double phi_step = 2*M_PI/n_phi_;
+    unsigned int quad_order = gauss_degree_;
+    
+    // create quadrature on [0,1]
+    QGauss<1> gauss_one_over(quad_order);
+    
+    // map points from [0,1] to [rho, rho + bandwidth]
+    std::vector<double> q_points_mapped(quad_order);
+    for(unsigned int j=0; j < quad_order; j++)
+        {
+            q_points_mapped[j] = gauss_one_over.point(j)[0] * width_ + well_->radius();
+        }
+    
+    for(unsigned int i=0; i < n_phi_; i++)
+    {
+        // offset due to create subquadrature on cells - on perpendicular cells it avoids many quad points to
+        // be on the edge and therefore included in more cells
+        double phi = numeric_limits< double >::epsilon() + i * phi_step;    
+        for(unsigned int j=0; j < quad_order; j++)
+        {
+            polar_quadrature_points_.push_back(Point<2>(q_points_mapped[j],phi));
+            weights.push_back(gauss_one_over.weight(j)*phi_step*width_);
+        }
+    }
+    
+    return true;
+}
+
+void XQuadratureWellLog::gather_weights_points()
+{
+    // do nothing
+}
+
+void XQuadratureWellLog::refine(unsigned int max_level)
+{
+    refine_error();
+    map_polar_quadrature_points_to_real();
+}
+
+
+void XQuadratureWellLog::gnuplot_refinement(const string& output_dir, bool real, bool show)
+{
+//     MASSERT(real, "Point in unit cell does not make sence in this case.");
+    
+#if VERBOSE_QUAD
+    DBGMSG("level = %d,  number of quadrature points = %d\n",level_, polar_quadrature_points_.size());
+#endif  
+    std::string fgnuplot_qpoints = "polar_integration_qpoints_",
+                script_file = "g_script_polar_";
+    
+                fgnuplot_qpoints += ".dat";
+                script_file += ".p";
+    try
+    {
+        Gnuplot g1("polar_integration");
+        //g1.savetops("test_output");
+        //g1.set_title("adaptive_integration\nrefinement");
+        //g1.set_grid();        
+        
+        std::ofstream myfile2;
+        myfile2.open (output_dir + fgnuplot_qpoints);
+        if (myfile2.is_open()) 
+        {
+            if(real)
+            {
+                for (unsigned int q = 0; q < real_points_.size(); q++)
+                    myfile2 << real_points_[q] << "\n";
+            }
+            else
+            {
+                for (unsigned int q = 0; q < polar_quadrature_points_.size(); q++)
+                    myfile2 << polar_quadrature_points_[q]  << "\n";
+            } 
+            
+            
+#if VERBOSE_QUAD        
+            std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
+#endif            
+        }
+        else 
+        { 
+          std::cout << "Coud not write qpoints for gnuplot." << std::endl;
+        }
+        myfile2.close();
+        
+        //g1.set_style("lines").plotfile_xy("adaptive_integration_refinement.dat",1,2,"Adaptive integration refinement");
+        
+        //g1.set_multiplot();
+        
+        
+        //creating command
+        std::ostringstream strs;
+        
+        /* # parametricly plotted circle
+         * set parametric
+         * set trange [0:2*pi]
+         * # Parametric functions for a circle
+         * fx(t) = r*cos(t)
+         * fy(t) = r*sin(t)
+         * plot fx(t),fy(t)
+         */
+        strs << "set terminal x11\n";
+        strs << "set size ratio -1\n";
+        strs << "set parametric\n";
+        strs << "set trange [0:2*pi]\n";
+        if(real)
+        {
+          strs << "fxw(t) = " << well_->center()[0] 
+              << " + "<< well_->radius() << "*cos(t)\n";
+          strs << "fyw(t) = " << well_->center()[1] 
+              << " + "<< well_->radius() << "*sin(t)\n";
+            strs << "gxw(t) = " << well_->center()[0] 
+                 << " + "<< well_->radius()+width_ << "*cos(t)\n";
+            strs << "gyw(t) = " << well_->center()[1] 
+                 << " + "<< well_->radius()+width_ << "*sin(t)\n";
+        }
+        else
+        {
+            // do not print wells in polar coordinates
+        }
+        
+        strs << "plot \"" << fgnuplot_qpoints << "\" using 1:2 with points lc rgb \"light-blue\"";
+        if(real) 
+        {
+            strs << ",\\\nfxw(t),fyw(t),\\\n";
+            strs << "gxw(t),gyw(t)\n";
+        }
+        
+        //saving gnuplot script
+        std::ofstream myfile3;
+        myfile3.open (output_dir + script_file);
+        if (myfile3.is_open()) 
+        {
+          // header
+          myfile3 << "# Gnuplot script for printing polar quadrature around a well.\n" <<
+                     "# Made by Pavel Exner.\n#\n" <<
+                     "# Run the script in gnuplot:\n" <<
+                     "# > load \"" << script_file << "\"\n#\n" <<
+                     "# Data files used:\n" << 
+                     "# " << fgnuplot_qpoints << "\n" 
+                     "#\n#" << std::endl;
+          // script
+          myfile3 << strs.str() << std::endl;
+#if VERBOSE_QUAD          
+          std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
+#endif          
+        }
+        else 
+        { 
+          std::cout << "Coud not write gnuplot script.\n";
+        }
+        myfile3.close();
+        
+        
+        //show the plot by gnuplot if show == true
+        if(show)
+        {
+          //finally plot
+          g1.cmd(strs.str());
+        
+          //g1.unset_multiplot();
+          
+          //g1.set_style("points").plot_xy(x,y,"user-defined points 2d");
+        
+          //g1.showonscreen(); // window output
+         
+          #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
+          std::cout << std::endl << "GNUPLOT output on well " << well_->center() << " ... Press ENTER to continue..." << std::endl;
+
+          std::cin.clear();
+          std::cin.ignore(std::cin.rdbuf()->in_avail());
+          std::cin.get();
+          #endif
+        }
+        
+    return;
+    
+    }
+    catch (GnuplotException ge)
+    {
+      std::cout << ge.what() << std::endl;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
