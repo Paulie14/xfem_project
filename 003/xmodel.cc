@@ -65,8 +65,10 @@
 using namespace compare;
 
 const bool XModel::use_polar_quadrature_ = true;
-const double XModel::well_band_width_ratio_ = 1;//0.5*std::sqrt(2);
-const unsigned int XModel::polar_refinement_level_ = 6;
+const double XModel::well_band_width_ratio_ = 1.5167;//2.5507//std::sqrt(2);
+const unsigned int XModel::polar_refinement_level_ = 4;
+const unsigned int XModel::well_log_gauss_degree_ = 7;
+const unsigned int XModel::well_log_n_phi_ = 500;
 
 XModel::XModel () 
   : ModelBase(),
@@ -361,7 +363,11 @@ void XModel::compute_well_quadratures()
     {
         double width = well_band_width_ratio_ * well->radius();
         
-        well_xquadratures_.push_back(new XQuadratureWellLog(well, width));
+//         well_xquadratures_.push_back(new XQuadratureWellLog(well, width,
+//                                                             XModel::well_log_n_phi_, 
+//                                                             XModel::well_log_gauss_degree_
+//                                                            ));
+        well_xquadratures_.push_back(new XQuadratureWell(well, width));
         
         well_xquadratures_.back()->refine(polar_refinement_level_);
 //         DBGMSG("polar quad size %d %d\n",well_xquadratures_.back()->size(), well_xquadratures_.back()->real_points().size());
@@ -1569,7 +1575,7 @@ void XModel::assemble_subsystem (unsigned int m)
 //                   std::cout << std::setw(3) << enrich_dof_indices[a] << "  ";
 //               }
 //               std::cout << "]" << std::endl;
-            
+                
                 //FILLING MATRIX BLOCKs
             block_matrix[m].add(enrich_dof_indices,enrich_cell_matrix);
             block_system_rhs.block(m).add(enrich_dof_indices,enrich_cell_rhs);
@@ -1577,6 +1583,31 @@ void XModel::assemble_subsystem (unsigned int m)
     } //end for(cells)
   
     assemble_well_permeability_term(m);
+    
+    // hack for correction of dofs the belong to vertecies inside the wells (these are not assembled..)
+    // note that not only this vertex must be inside the well but all his neighbors
+    // it is a hack for one well problems - if more, we would need to determine the pressure
+    // posible way - create integer array map: dof -> well
+    /*     _______
+     *    /  _ _  \
+     *    | |_|_| |
+     *    | |_|_| |
+     *    \_______/
+     * now, the center point does not obtain any additions from integrals outside the well
+     */
+    
+    if(wells.size() == 1)
+    for(unsigned int i =0; i < block_matrix[m].m(); i++)
+    {
+        // correct zero diagonal
+        if(block_matrix[m](i,i) == 0) 
+        {
+            block_matrix[m].diag_element(i) = 1.0;
+            block_system_rhs.block(m)(i) = wells[0]->pressure();
+            DBGMSG("ZERO DIAG HACK: A(%d,%d)=%f, rhs(%d)=%f\n",i,i,block_matrix[m].diag_element(i),i,block_system_rhs.block(m)(i));
+        }
+    }
+    
     
     unsigned int w_idx = block_matrix[m].n() - wells.size();
     for (unsigned int w = 0; w < wells.size(); w++)
@@ -1645,7 +1676,7 @@ void XModel::assemble_well_permeability_term(unsigned int m)
                 {
                 double value = well->perm2aquifer(m-1) / well->circumference()
                                * val_i->second 
-                               * val_j->second;
+                               * val_j->second;            
                 block_matrix[m].add(val_i->first,
                                     val_j->first,
                                     value);
@@ -1856,7 +1887,10 @@ void XModel::solve ()
     
     precond_mat[0].reinit(comm_sp_pattern[2]);
     for (unsigned int j=0; j<wells.size(); ++j)
+    {
+//         if(block_matrix[0](j,j) < 1e-14) DBGMSG("small diagonal entry (%d, %d)=%e\n",j,j,block_matrix[0](j,j));
         precond_mat[0].add(j,j, 1.0/block_matrix[0](j,j));
+    }
     preconditioning.enter(precond_mat[0], 0, 0);
     
     unsigned int size = block_matrix[1].n();
@@ -1873,6 +1907,7 @@ void XModel::solve ()
         for (unsigned int j=0; j<size; ++j)
         {
             //DBGMSG("m=%d, j=%d\n",m,j);
+            if(block_matrix[m](j,j) < 1e-14) DBGMSG("small diagonal entry (%d, %d)=%e\n",j,j,block_matrix[m](j,j));
             precond_mat[m].add(j,j, 1.0/block_matrix[m](j,j));
         }
         preconditioning.enter(precond_mat[m], m, m);
