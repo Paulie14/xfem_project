@@ -87,7 +87,7 @@ class XQuadratureWellLog : public XQuadratureWell
 public:
     XQuadratureWellLog();
     
-    XQuadratureWellLog(Well * well, double width);
+    XQuadratureWellLog(Well * well, double width, unsigned int n_phi, unsigned int gauss_degree);
     
     /// Creates refinement of a cell -- new quadrature.
     /** @param max_level is ignored.
@@ -114,7 +114,6 @@ private:
     
     unsigned int n_phi_;
     unsigned int gauss_degree_;
-    
 };
 
 /********************************           IMPLEMENTATION                  *********************************/

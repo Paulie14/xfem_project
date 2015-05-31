@@ -411,14 +411,14 @@ void XQuadratureWell::gnuplot_refinement(const string& output_dir, bool real, bo
 
 XQuadratureWellLog::XQuadratureWellLog()
 : XQuadratureWell(nullptr, 0),
-    n_phi_(500),
-    gauss_degree_(25)
+    n_phi_(100),
+    gauss_degree_(5)
 {}
 
-XQuadratureWellLog::XQuadratureWellLog(Well* well, double width)
+XQuadratureWellLog::XQuadratureWellLog(Well* well, double width, unsigned int n_phi, unsigned int gauss_degree)
     : XQuadratureWell(well, width),
-    n_phi_(500),
-    gauss_degree_(25)
+    n_phi_(n_phi),
+    gauss_degree_(gauss_degree)
 {}
 
 void XQuadratureWellLog::transform_square_to_real(Square& square)
@@ -432,13 +432,15 @@ bool XQuadratureWellLog::refine_error()
     unsigned int quad_order = gauss_degree_;
     
     // create quadrature on [0,1]
-    QGauss<1> gauss_one_over(quad_order);
+    QGauss<1> gauss(quad_order);
+//     QGaussLogR<1> gauss(quad_order, Point<1>(0.0), width_, true);
     
     // map points from [0,1] to [rho, rho + bandwidth]
     std::vector<double> q_points_mapped(quad_order);
     for(unsigned int j=0; j < quad_order; j++)
         {
-            q_points_mapped[j] = gauss_one_over.point(j)[0] * width_ + well_->radius();
+//             DBGMSG("gauss point weight: %e \t%e\n",gauss_o.point(j)[0], gauss_o.weight(j));
+            q_points_mapped[j] = gauss.point(j)[0] * width_ + well_->radius();
         }
     
     for(unsigned int i=0; i < n_phi_; i++)
@@ -449,7 +451,7 @@ bool XQuadratureWellLog::refine_error()
         for(unsigned int j=0; j < quad_order; j++)
         {
             polar_quadrature_points_.push_back(Point<2>(q_points_mapped[j],phi));
-            weights.push_back(gauss_one_over.weight(j)*phi_step*width_);
+            weights.push_back(gauss.weight(j)*phi_step*width_);
         }
     }
     

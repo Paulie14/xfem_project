@@ -421,6 +421,8 @@ class XModel : public ModelBase
     static const double well_band_width_ratio_;
     /// Level of refinement for polar quadrature in the vicinity of a well
     static const unsigned int polar_refinement_level_;
+    static const unsigned int well_log_gauss_degree_;
+    static const unsigned int well_log_n_phi_;
     
     friend class GlobalSettingWriter;
 };
