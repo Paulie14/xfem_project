@@ -455,7 +455,7 @@ bool XQuadratureWellLog::refine_error()
         }
     }
     
-    return true;
+    return false;
 }
 
 void XQuadratureWellLog::gather_weights_points()
@@ -623,4 +623,194 @@ void XQuadratureWellLog::gnuplot_refinement(const string& output_dir, bool real,
 
 
 
+XQuadratureWellBand::XQuadratureWellBand()
+: XQuadratureWell(nullptr, 0)
+{}
 
+XQuadratureWellBand::XQuadratureWellBand(Well* well, double width, unsigned int gauss_degree)
+    : XQuadratureWell(well, width),
+    gauss_(new QGauss<2>(gauss_degree))
+{}
+
+bool XQuadratureWellBand::refine_error()
+{
+    //compute number of squares: circumference of band / width of band
+    unsigned int n_squares = std::floor(2*M_PI*(well_->radius() + width_) / width_);
+    
+    double phi_step = 2*M_PI/n_squares;
+    
+    std::cout << "n_squares to create: " << n_squares << std::endl;
+    squares_.clear();
+    for(unsigned int s=0; s < n_squares; s++)
+    {
+        double phi = numeric_limits< double >::epsilon() + s * phi_step;
+        
+        //first square
+        squares_.push_back(Square(Point<2>(well_->radius(),
+                                        phi), 
+                                Point<2>(well_->radius() + width_,
+                                        phi + phi_step)
+                                )
+                        );
+    
+        squares_.back().gauss = gauss_;
+        squares_.back().processed = true;
+    }
+    return false;
+}
+
+void XQuadratureWellBand::gnuplot_refinement(const string& output_dir, bool real, bool show)
+{   
+#if VERBOSE_QUAD
+    DBGMSG("level = %d,  number of quadrature points = %d\n",level_, polar_quadrature_points_.size());
+#endif  
+    std::string fgnuplot_ref = "adaptive_integration_refinement_",
+                fgnuplot_qpoints = "adaptive_integration_qpoints_",
+                script_file = "g_script_adapt_";
+    
+                fgnuplot_ref += ".dat";
+                fgnuplot_qpoints += ".dat";
+                script_file += ".p";
+    try {
+        Gnuplot g1("adaptive_integration");
+        
+        std::ofstream myfile1;
+        myfile1.open (output_dir + fgnuplot_ref);
+        if (myfile1.is_open()) 
+        {
+       
+        for (unsigned int i = 0; i < squares_.size(); i++)
+        {
+            
+            if(real)
+            {
+                myfile1 << squares_[i].real_vertex(0) << "\n"
+                        << squares_[i].real_vertex(1) << "\n\n";
+            }
+            else
+            {
+                myfile1 << squares_[i].vertex(0) << "\n"
+                        << squares_[i].vertex(1) << "\n\n";
+            }
+        }
+#if VERBOSE_QUAD        
+        std::cout << left << setw(53) <<  "Adaptive XFEM well refinement written in: " << fgnuplot_ref << endl;
+#endif        
+        }
+        else 
+        { 
+          std::cout << "Coud not write well refinement for gnuplot.\n";
+        }
+        myfile1.close();
+        
+        std::ofstream myfile2;
+        myfile2.open (output_dir + fgnuplot_qpoints);
+        if (myfile2.is_open()) 
+        {
+       
+            for (unsigned int q = 0; q < polar_quadrature_points_.size(); q++)
+            {
+                if(real)
+                    myfile2 << real_points_[q];
+                else
+                    myfile2 << polar_quadrature_points_[q];
+            myfile2 << "\n";
+            }
+#if VERBOSE_QUAD        
+            std::cout << left << setw(53) <<  "Quadrature points written in: " << fgnuplot_qpoints << std::endl;
+#endif            
+        }
+        else 
+        { 
+          std::cout << "Coud not write qpoints for gnuplot." << std::endl;
+        }
+        myfile2.close();
+        
+        //g1.set_style("lines").plotfile_xy("adaptive_integration_refinement.dat",1,2,"Adaptive integration refinement");
+        
+        //g1.set_multiplot();
+        
+        
+        //creating command
+        std::ostringstream strs;
+        
+        strs << "set terminal x11\n";
+        strs << "#set terminal postscript eps enhanced color font 'Helvetica,15' linewidth 2\n";
+        strs << "#set output 'polar_band_refinement.eps'\n";
+        strs << "set size ratio -1\n";
+        strs << "set parametric\n";
+        strs << "set trange [0:2*pi]\n";
+        if(real)
+        {
+          strs << "sx = " << well_->center()[0]  << "\n";
+          strs << "sy = " << well_->center()[1]  << "\n";
+        }
+        else
+        {
+          strs << "sx = " << 0  << "\n";
+          strs << "sy = " << 0  << "\n";
+        }
+        strs << "r = " << well_->radius() << "\n";
+        strs << "w = " << width_ << "\n";
+        strs << "fxw(t) = sx + r*cos(t)\n";
+        strs << "fyw(t) = sy + r*sin(t)\n";
+        strs << "gxw(t) = sx + (r+w)*cos(t)\n";
+        strs << "gyw(t) = sy + (r+w)*sin(t)\n";
+        
+        strs << "set style line 1 lt 2 lw 2 lc rgb 'blue'\n"
+             << "set style line 2 lt 1 lw 2 lc rgb '#66A61E'\n";
+        strs << "plot '" << fgnuplot_qpoints << "' using 1:2 with points lc rgb 'light-blue' title 'quadrature points' ,\\\n"
+             << "'" << fgnuplot_ref << "' using 1:2 with lines lc rgb 'red' title 'refinement' ,\\\n"
+             << "fxw(t),fyw(t) ls 1 title 'well edge',\\\n"
+             << "gxw(t),gyw(t) ls 2 title 'well band'\n";
+        
+        //saving gnuplot script
+        std::ofstream myfile3;
+        myfile3.open (output_dir + script_file);
+        if (myfile3.is_open()) 
+        {
+          // header
+          myfile3 << "# Gnuplot script for printing adaptively refined element.\n" <<
+                     "# Made by Pavel Exner.\n#\n" <<
+                     "# Run the script in gnuplot:\n" <<
+                     "# > load \"" << script_file << "\"\n#\n" <<
+                     "# Data files used:\n" << 
+                     "# " << fgnuplot_ref << "\n"
+                     "# " << fgnuplot_qpoints << "\n" 
+                     "#\n#" << std::endl;
+          // script
+          myfile3 << strs.str() << std::endl;
+#if VERBOSE_QUAD          
+          std::cout << left << setw(53) << "Gnuplot script for adaptive refinement written in: " << script_file << endl;
+#endif          
+        }
+        else 
+        { 
+          std::cout << "Coud not write gnuplot script.\n";
+        }
+        myfile3.close();
+        
+        
+        //show the plot by gnuplot if show == true
+        if(show)
+        {
+          //finally plot
+          g1.cmd(strs.str());
+         
+          #if defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
+          std::cout << std::endl << "GNUPLOT output on well " << well_->center() << " ... Press ENTER to continue..." << std::endl;
+
+          std::cin.clear();
+          std::cin.ignore(std::cin.rdbuf()->in_avail());
+          std::cin.get();
+          #endif
+        }
+        
+    return;
+    
+    }
+    catch (GnuplotException ge)
+    {
+      std::cout << ge.what() << std::endl;
+    }
+}

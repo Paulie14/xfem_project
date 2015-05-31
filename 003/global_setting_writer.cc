@@ -35,9 +35,9 @@ void GlobalSettingWriter::write_global_setting(ostream& stream)
            << std::endl
            << "Well band width for polar quadrature = " << XModel::well_band_width_ratio_
            << std::endl
-           << "N steps in angle phi in well quadrature = " << XModel::well_log_n_phi_
+           << "N steps in angle phi in well quadrature = " << XModel::well_band_n_phi_
            << std::endl
-           << "Gauss degree in well quadrature = " << XModel::well_log_gauss_degree_
+           << "Gauss degree in well quadrature = " << XModel::well_band_gauss_degree_
            << std::endl
            << "===================================================" << std::endl;
 }

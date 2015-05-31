@@ -58,7 +58,7 @@ protected:
      */
     bool refine_criterion_a(Square &square);
         
-    bool refine_error();
+    virtual bool refine_error();
     
     /// Gathers the quadrature points and their weigths from squares into a single vector.
     void gather_weights_points() override;
@@ -105,7 +105,7 @@ public:
     
 private:
         
-    bool refine_error();
+    bool refine_error() override;
     
     /// Gathers the quadrature points and their weigths from squares into a single vector.
     void gather_weights_points() override;
@@ -114,6 +114,30 @@ private:
     
     unsigned int n_phi_;
     unsigned int gauss_degree_;
+};
+
+
+class XQuadratureWellBand : public XQuadratureWell
+{
+public:
+    XQuadratureWellBand();
+    
+    XQuadratureWellBand(Well * well, double width, unsigned int gauss_degree);
+    
+    /** @brief Calls gnuplot to create image of refined element.
+     * 
+      * Also can save the gnuplot script to file.
+      * @param output_dir is the directory for output_dir
+      * @param real is true then the element is printed in real coordinates
+      * @param show is true then the gnuplot utility is started and plots the refinement on the screen
+      */ 
+    void gnuplot_refinement(const std::string &output_dir, bool real=true, bool show=false) override;
+    
+private:
+        
+    bool refine_error() override;
+    
+    QGauss<2> * gauss_;
 };
 
 /********************************           IMPLEMENTATION                  *********************************/

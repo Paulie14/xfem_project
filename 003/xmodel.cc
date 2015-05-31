@@ -65,10 +65,10 @@
 using namespace compare;
 
 const bool XModel::use_polar_quadrature_ = true;
-const double XModel::well_band_width_ratio_ = 1.5167;//2.5507//std::sqrt(2);
+const double XModel::well_band_width_ratio_ = 0.47;//0.5*std::sqrt(2); //1;//1.5167;//2.5507//
 const unsigned int XModel::polar_refinement_level_ = 4;
-const unsigned int XModel::well_log_gauss_degree_ = 7;
-const unsigned int XModel::well_log_n_phi_ = 500;
+const unsigned int XModel::well_band_gauss_degree_ = 5;
+const unsigned int XModel::well_band_n_phi_ = 500;
 
 XModel::XModel () 
   : ModelBase(),
@@ -367,16 +367,17 @@ void XModel::compute_well_quadratures()
 //                                                             XModel::well_log_n_phi_, 
 //                                                             XModel::well_log_gauss_degree_
 //                                                            ));
-        well_xquadratures_.push_back(new XQuadratureWell(well, width));
+//         well_xquadratures_.push_back(new XQuadratureWell(well, width));
+        well_xquadratures_.push_back(new XQuadratureWellBand(well, width, XModel::well_band_gauss_degree_));
         
         well_xquadratures_.back()->refine(polar_refinement_level_);
 //         DBGMSG("polar quad size %d %d\n",well_xquadratures_.back()->size(), well_xquadratures_.back()->real_points().size());
-        if(output_options_ & OutputOptions::output_adaptive_plot)
-        {   
+/*        if(output_options_ & OutputOptions::output_adaptive_plot)
+        {  */ 
             string dir_name = "polar_quad";
             well_xquadratures_.back()->gnuplot_refinement(create_subdirectory(output_dir_, dir_name),
                                                           true, false);
-        }
+//         }
     }
 }
 
