@@ -329,25 +329,28 @@ void XQuadratureWell::gnuplot_refinement(const string& output_dir, bool real, bo
         strs << "set trange [0:2*pi]\n";
         if(real)
         {
-          strs << "fxw(t) = " << well_->center()[0] 
-              << " + "<< well_->radius() << "*cos(t)\n";
-          strs << "fyw(t) = " << well_->center()[1] 
-              << " + "<< well_->radius() << "*sin(t)\n";
+          strs << "sx = " << well_->center()[0]  << "\n";
+          strs << "sy = " << well_->center()[1]  << "\n";
         }
         else
         {
-                  
-          strs << "fxw(t) = " << 0 // real_well_center[0] 
-              << " + "<< well_->radius() << "*cos(t)\n";
-          strs << "fyw(t) = " << 0 // real_well_center[1] 
-              << " + "<< well_->radius() << "*sin(t)\n";
+          strs << "sx = " << 0  << "\n";
+          strs << "sy = " << 0  << "\n";
         }
+        strs << "r = " << well_->radius() << "\n";
+        strs << "w = " << width_ << "\n";
+        strs << "fxw(t) = sx + r*cos(t)\n";
+        strs << "fyw(t) = sy + r*sin(t)\n";
+        strs << "gxw(t) = sx + (r+w)*cos(t)\n";
+        strs << "gyw(t) = sy + (r+w)*sin(t)\n";
         
-        strs << "plot \"" << fgnuplot_ref << "\" using 1:2 with lines,\\\n"
-             << "\"" << fgnuplot_qpoints << "\" using 1:2 with points lc rgb \"light-blue\",\\\n";
+        strs << "set style line 1 lt 2 lw 2 lc rgb 'blue'\n"
+             << "set style line 2 lt 1 lw 2 lc rgb '#66A61E'\n";
+        strs << "plot '" << fgnuplot_qpoints << "' using 1:2 with points lc rgb 'light-blue' title 'quadrature points' ,\\\n"
+             << "'" << fgnuplot_ref << "' using 1:2 with lines lc rgb 'red' title 'refinement' ,\\\n"
+             << "fxw(t),fyw(t) ls 1 title 'well edge',\\\n"
+             << "gxw(t),gyw(t) ls 2 title 'well band'\n";
 
-        strs << "fxw(t),fyw(t),\\\n";
-        
         //saving gnuplot script
         std::ofstream myfile3;
         myfile3.open (output_dir + script_file);
@@ -537,27 +540,25 @@ void XQuadratureWellLog::gnuplot_refinement(const string& output_dir, bool real,
         strs << "set trange [0:2*pi]\n";
         if(real)
         {
-          strs << "fxw(t) = " << well_->center()[0] 
-              << " + "<< well_->radius() << "*cos(t)\n";
-          strs << "fyw(t) = " << well_->center()[1] 
-              << " + "<< well_->radius() << "*sin(t)\n";
-            strs << "gxw(t) = " << well_->center()[0] 
-                 << " + "<< well_->radius()+width_ << "*cos(t)\n";
-            strs << "gyw(t) = " << well_->center()[1] 
-                 << " + "<< well_->radius()+width_ << "*sin(t)\n";
+            strs << "sx = " << well_->center()[0]  << "\n";
+            strs << "sy = " << well_->center()[1]  << "\n";
+            strs << "r = " << well_->radius() << "\n";
+            strs << "w = " << width_ << "\n";
+            strs << "fxw(t) = sx + r*cos(t)\n";
+            strs << "fyw(t) = sy + r*sin(t)\n";
+            strs << "gxw(t) = sx + (r+w)*cos(t)\n";
+            strs << "gyw(t) = sy + (r+w)*sin(t)\n";
+            strs << "set style line 1 lt 2 lw 2 lc rgb 'blue'\n"
+             << "set style line 2 lt 1 lw 2 lc rgb '#66A61E'\n";
+            
+            strs << "plot '" << fgnuplot_qpoints << "' using 1:2 with points lc rgb 'light-blue' title 'quadrature points' ,\\\n"
+             << "fxw(t),fyw(t) ls 1 title 'well edge',\\\n"
+             << "gxw(t),gyw(t) ls 2 title 'well band'\n";
         }
         else
         {
             // do not print wells in polar coordinates
         }
-        
-        strs << "plot \"" << fgnuplot_qpoints << "\" using 1:2 with points lc rgb \"light-blue\"";
-        if(real) 
-        {
-            strs << ",\\\nfxw(t),fyw(t),\\\n";
-            strs << "gxw(t),gyw(t)\n";
-        }
-        
         //saving gnuplot script
         std::ofstream myfile3;
         myfile3.open (output_dir + script_file);

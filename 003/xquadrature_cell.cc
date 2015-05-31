@@ -776,14 +776,17 @@ void XQuadratureCell::gnuplot_refinement(const string& output_dir, bool real, bo
           }
         }
         
-        strs << "plot \"" << fgnuplot_ref << "\" using 1:2 with lines,\\\n"
-             << "\"" << fgnuplot_qpoints << "\" using 1:2 with points lc rgb \"light-blue\",\\\n";
+        strs << "set style line 1 lt 2 lw 2 lc rgb 'blue'\n"
+             << "set style line 2 lt 1 lw 2 lc rgb '#66A61E'\n";
+        strs << "plot '" << fgnuplot_qpoints << "' using 1:2 with points lc rgb 'light-blue' title 'quadrature points' ,\\\n";
+             
         for(unsigned int w = 0; w < xdata_->n_wells(); w++)
         {
           strs << "fx" << w << "(t),fy" << w << "(t)";
           if(w != xdata_->n_wells()-1) 
             strs << ",\\\n";
-        } 
+        }
+        strs << "'" << fgnuplot_ref << "' using 1:2 with lines lc rgb 'red' title 'refinement'\n";
         
         //saving gnuplot script
         std::ofstream myfile3;
