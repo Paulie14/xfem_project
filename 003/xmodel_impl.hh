@@ -184,6 +184,13 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2,2  >& 
       dist_enriched[temp_local_dof_indices[i]] = 0;
       for(unsigned int w=0; w < cell_xdata->n_wells(); w++)
       {
+        // hack for cells inside the well
+        if(cell_xdata->get_well(w)->points_inside(cell->vertex(i)))
+        {
+            dist_unenriched[temp_local_dof_indices[i]] = cell_xdata->get_well(w)->pressure();
+            dist_solution[temp_local_dof_indices[i]] = cell_xdata->get_well(w)->pressure();
+            break;
+        }
         for(unsigned int j=0; j < dofs_per_cell; j++)
         {
           if(cell_xdata->global_enriched_dofs(w)[j] == 0) continue;  //skip unenriched node_enrich_value
@@ -210,6 +217,15 @@ int XModel::recursive_output(double tolerance, PersistentTriangulation< 2,2  >& 
     //Integrate difference between interpolation and xfem solution
     for(unsigned int q=0; q < temp_fe_values.n_quadrature_points; q++)
     {
+      // hack for cells inside the well
+      bool hack = false;
+      for(unsigned int w=0; w < cell_xdata->n_wells(); w++)
+      {
+        if(cell_xdata->get_well(w)->points_inside(temp_fe_values.get_quadrature_points()[q]))
+          hack = true;
+      }
+      if(hack) continue;
+      
       Point<2> unit_point = xfevalues.get_mapping().transform_real_to_unit_cell(cell_xdata->get_cell(),
                                                                                 temp_fe_values.get_quadrature_points()[q]);
       double inter = 0,
