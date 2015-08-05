@@ -156,7 +156,13 @@ bool XQuadratureWell::refine_criterion_a(Square& square)
     //return false; // switch on and off the criterion
     transform_square_to_real(square);
     
-    double min_distance = square.vertex(0)[0]*std::log(square.vertex(0)[0]);
+//     double min_distance = square.vertex(0)[0]*std::log(square.vertex(0)[0]);
+    double min_distance = square.real_vertex(0).distance(well_->center());
+    for(unsigned int j=1; j < 4; j++)
+    {
+        double dist = well_->center().distance(square.real_vertex(j));
+        min_distance = std::min(min_distance,dist);
+    }
 
     if( square.real_diameter() > square_refinement_criteria_factor_ * min_distance)
         return true;
