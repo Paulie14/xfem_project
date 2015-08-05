@@ -37,6 +37,9 @@ class AdaptiveIntegrationBase
                       dealii::Function<2>* rhs_function);
     
   protected: 
+    /// Not used at currently. Why??
+//     bool is_cell_in_well(unsigned int &w);
+      
     ///pointer to XFEM data belonging to the cell
     XDataCell* xdata_;
     
