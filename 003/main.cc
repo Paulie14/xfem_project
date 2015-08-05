@@ -24,8 +24,8 @@
 #include "xquadrature_cell.hh"
 #include "xquadrature_well.hh"
 
-
 #include "adaptive_integration.hh"
+#include "global_setting_writer.hh"
 
 #include <stdlib.h>
 #include <time.h>
@@ -340,8 +340,8 @@ void test_convergence_square(std::string output_dir)
            enrichment_radius = 25.6,
            well_pressure = 50*Parameters::pressure_at_top;
     
-    unsigned int n_well_q_points = 200,
-                 initial_refinement = 2;
+    unsigned int n_well_q_points = 1000,
+                 initial_refinement = 3;
             
     Point<2> well_center(0+excenter,0+excenter);
     
@@ -407,9 +407,9 @@ void test_convergence_square(std::string output_dir)
     //xmodel.set_adaptive_refinement_by_error(1e-2);
     //xmodel.set_well_computation_type(Well_computation::sources);
     xmodel.set_output_options(ModelBase::output_gmsh_mesh
-                              | ModelBase::output_solution
-                              | ModelBase::output_decomposed
-                              | ModelBase::output_adaptive_plot
+//                               | ModelBase::output_solution
+//                               | ModelBase::output_decomposed
+//                               | ModelBase::output_adaptive_plot
                             | ModelBase::output_error);
 
     //   // Exact model
@@ -539,9 +539,9 @@ void test_convergence_square(std::string output_dir)
         {
             xmodel.compute_interpolated_exact(exact_solution);
             xmodel.output_results(cycle);
-            ExactModel* exact = new ExactModel(exact_solution);
-            exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
-            delete exact;
+//             ExactModel* exact = new ExactModel(exact_solution);
+//             exact->output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+//             delete exact;
         } 
     }   // for cycle
       
@@ -704,25 +704,28 @@ void test_radius_convergence_square(std::string output_dir)
 
 void test_radius_convergence_sin(std::string output_dir)
 {
-    std::cout << "\n\n:::::::::::::::: RADIUS CONVERGENCE TEST ON SQUARE WITH SIN(X)::::::::::::::::\n\n" << std::endl;
+    std::cout << "\n\n:::::::::::::::: RADIUS CONVERGENCE TEST ON SQUARE WITH SIN(X) ::::::::::::::::\n\n" << std::endl;
     
     //------------------------------SETTING----------------------------------
     std::string test_name = "sin_radius_convergence_";
-    bool fem = 1;   //compute h1 norm of the error of the regular part ur
+    bool fem = true;   //compute h1 norm of the error of the regular part ur
     
     double p_a = 2.0,    //area of the model
-            excenter = 0,
+            excenter = 0.004,
             radius = p_a*std::sqrt(2),
             well_radius = 0.003,
             perm2fer = Parameters::perm2fer, 
             perm2tard = Parameters::perm2tard,
             transmisivity = Parameters::transmisivity,
-            k_wave_num = 6,
-            amplitude = 0.02,
-            well_pressure = 9;
+//             k_wave_num = 6,
+//             amplitude = 0.02,
+//             well_pressure = 9;
+           k_wave_num = 1.5,
+           amplitude = 0.5,
+           well_pressure = 9;
 
     unsigned int n_well_q_points = 200,
-                initial_refinement = 3;
+                initial_refinement = 4;
             
     Point<2> well_center(0+excenter,0+excenter);
     //--------------------------END SETTING----------------------------------
@@ -758,7 +761,7 @@ void test_radius_convergence_sin(std::string output_dir)
         model.set_output_dir(output_dir);
         model.set_area(down_left,up_right);
         model.set_transmisivity(transmisivity,0);
-        model.set_initial_refinement(initial_refinement);  
+        model.set_initial_refinement(initial_refinement-1);  
         model.set_ref_coarse_percentage(1.0,0.0);
         model.set_grid_create_type(ModelBase::rect);
         model.set_dirichlet_function(exact_solution_fem);
@@ -832,7 +835,7 @@ void test_radius_convergence_sin(std::string output_dir)
         //                           | ModelBase::output_adaptive_plot
                                 | ModelBase::output_error);
         
-        unsigned int n_cycles = 7;
+        unsigned int n_cycles = 6;
         std::cout << "Cycles: " << n_cycles << std::endl;
         std::pair<double,double> l2_norm_dif_fem, l2_norm_dif_xfem;
     
@@ -971,9 +974,9 @@ void test_convergence_sin(std::string output_dir)
     xmodel.set_rhs_function(rhs_function);
     xmodel.set_adaptivity(true);
     xmodel.set_output_options(ModelBase::output_gmsh_mesh
-    //                           | ModelBase::output_solution
-                              | ModelBase::output_decomposed
-//                             | ModelBase::output_adaptive_plot
+                            | ModelBase::output_solution
+                            | ModelBase::output_decomposed
+                            | ModelBase::output_adaptive_plot
                             | ModelBase::output_error);
     
     ExactModel exact(exact_solution);
@@ -1113,7 +1116,7 @@ void test_convergence_sin_2(std::string output_dir)
     double p_a = 2.0,    //area of the model
            excenter = 0.004,
            radius = p_a*std::sqrt(2),
-           well_radius = 0.003,
+           well_radius = 0.0003,
            perm2fer = Parameters::perm2fer, 
            perm2tard = Parameters::perm2tard,
            transmisivity = Parameters::transmisivity,
@@ -1122,8 +1125,8 @@ void test_convergence_sin_2(std::string output_dir)
            well_pressure = 9,
            enrichment_radius = 0.3;
          
-    unsigned int n_well_q_points = 200,
-                 initial_refinement = 3;
+    unsigned int n_well_q_points = 1000,
+                 initial_refinement = 4;
             
     Point<2> well_center(0+excenter,0+excenter);
     //--------------------------END SETTING----------------------------------
@@ -1145,8 +1148,8 @@ void test_convergence_sin_2(std::string output_dir)
     
     //FEM model creation
     Well *well_fem = new Well(well);
-//     well_fem->set_pressure(0);
-//     well_fem->set_inactive();
+    well_fem->set_pressure(0);
+    well_fem->set_inactive();
     well_fem->evaluate_q_points(n_well_q_points);
     compare::ExactSolution3 *exact_solution_fem = new compare::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
     Function<2> *rhs_function_fem = new compare::Source3(*exact_solution_fem);
@@ -1187,14 +1190,14 @@ void test_convergence_sin_2(std::string output_dir)
     xmodel.set_rhs_function(rhs_function);
     xmodel.set_adaptivity(true);
     xmodel.set_output_options(ModelBase::output_gmsh_mesh
-    //                           | ModelBase::output_solution
-                              | ModelBase::output_decomposed
-//                             | ModelBase::output_adaptive_plot
+//                               | ModelBase::output_solution
+//                               | ModelBase::output_decomposed
+                            | ModelBase::output_adaptive_plot
                             | ModelBase::output_error);
     
     ExactModel exact(exact_solution);
 
-    unsigned int n_cycles = 13;
+    unsigned int n_cycles = 7;
     std::pair<double,double> l2_norm_dif_fem, l2_norm_dif_xfem;
     
     ConvergenceTable table_convergence;
@@ -1217,8 +1220,8 @@ void test_convergence_sin_2(std::string output_dir)
             l2_norm_dif_fem = model.integrate_difference(diff_vector, exact_solution_fem);
             
             compare::ExactSolutionZero zero_exact;
-            std::pair<double,double> l2_norm_solution = model.integrate_difference(diff_vector, &zero_exact);
-            std::cout << "L2 norm of solution:  " << l2_norm_solution.second << std::endl;
+            std::pair<double,double> l2_norm_solution = model.integrate_difference(diff_vector, &zero_exact, true);
+            std::cout << "H1 norm of solution:  " << l2_norm_solution.second << std::endl;
             table_convergence.add_value("L2",l2_norm_dif_fem.second);
             table_convergence.set_tex_caption("L2","$\\|x_{FEM}-x_{exact}\\|_{L^2(\\Omega)}$");
             table_convergence.set_precision("L2", 2);
@@ -1288,7 +1291,7 @@ void test_convergence_sin_2(std::string output_dir)
         
         if(xfem)
         {
-        xmodel.compute_interpolated_exact(exact_solution);
+//         xmodel.compute_interpolated_exact(exact_solution);
         xmodel.output_results(cycle);
 //         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
         }
@@ -1306,13 +1309,194 @@ void test_convergence_sin_2(std::string output_dir)
 }
 
 
+void test_convergence_sin_3(std::string output_dir)
+{
+    std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE WITH SIN(x) 3 ::::::::::::::::\n\n" << std::endl;
+    bool fem = false;
+    //------------------------------SETTING----------------------------------
+    std::string test_name = "sin_square_convergence_3_";
+  
+    double p_a = 2.0,    //area of the model
+           excenter = 0.004,
+           radius = p_a*std::sqrt(2),
+           well_radius = 0.003,
+           perm2fer = Parameters::perm2fer, 
+           perm2tard = Parameters::perm2tard,
+           transmisivity = Parameters::transmisivity,
+           k_wave_num = 1.5,
+           amplitude = 0.5,
+           well_pressure = 9,
+           enrichment_radius = 0.3;
+         
+    unsigned int n_well_q_points = 100,
+                 initial_refinement = 3;
+            
+    Point<2> well_center(0+excenter,0+excenter);
+    //--------------------------END SETTING----------------------------------
+  
+    Point<2> down_left(-p_a,-p_a);
+    Point<2> up_right(p_a, p_a);
+    std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+    
+    Well *well = new Well( well_radius,
+                            well_center);
+    well->set_pressure(well_pressure);
+    well->set_perm2aquifer(0,perm2fer);
+    well->set_perm2aquitard({perm2tard, 0.0});
+    well->evaluate_q_points(n_well_q_points);
+    
+
+    
+    if(fem) //computing H1 norm of regular part of solution
+    {
+        //FEM model creation
+        Well *well_fem = new Well(well);
+        well_fem->set_pressure(0);
+        well_fem->set_inactive();
+        well_fem->evaluate_q_points(n_well_q_points);
+        compare::ExactSolution3 *exact_solution_fem = new compare::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
+        Function<2> *rhs_function_fem = new compare::Source3(*exact_solution_fem);
+        Model_simple model(well_fem);    
+        model.set_name(test_name + "fem");
+        model.set_output_dir(output_dir);
+        model.set_area(down_left,up_right);
+        model.set_transmisivity(transmisivity,0);
+        model.set_initial_refinement(8);  
+        model.set_ref_coarse_percentage(1.0,0.0);
+        model.set_grid_create_type(ModelBase::rect);
+        model.set_dirichlet_function(exact_solution_fem);
+        model.set_rhs_function(rhs_function_fem);
+        model.set_adaptivity(true);
+        model.set_output_options(ModelBase::output_gmsh_mesh
+                                | ModelBase::output_solution
+                                | ModelBase::output_error);
+    
+        model.run (0);
+        model.output_results (0);
+    
+        Vector<double> diff_vector;
+        std::pair<double,double> l2_norm_dif_fem;
+        l2_norm_dif_fem = model.integrate_difference(diff_vector, exact_solution_fem);
+        
+        compare::ExactSolutionZero zero_exact;
+        std::pair<double,double> l2_norm_solution = model.integrate_difference(diff_vector, &zero_exact, true);
+        std::cout << "H1 norm of solution:  " << l2_norm_solution.second << std::endl;
+        
+        delete exact_solution_fem;
+        delete rhs_function_fem;
+        delete well_fem;
+        
+        delete well;
+        return;
+    }
+        
+    compare::ExactSolution3 *exact_solution = new compare::ExactSolution3(well, radius, k_wave_num, amplitude);
+    Function<2> *dirichlet_square = exact_solution;
+    Function<2> *rhs_function = new compare::Source3(*exact_solution);
+    
+    XModel_simple xmodel(well);  
+    xmodel.set_name(test_name + "sgfem");
+    xmodel.set_enrichment_method(Enrichment_method::sgfem);
+//     xmodel.set_name(test_name + "xfem_shift");
+//     xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//       xmodel.set_name(test_name + "xfem_ramp");
+//       xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
+//       xmodel.set_name(test_name + "xfem");
+//       xmodel.set_enrichment_method(Enrichment_method::xfem);
+    
+    xmodel.set_output_dir(output_dir);
+    xmodel.set_area(down_left,up_right);
+    xmodel.set_transmisivity(transmisivity,0);
+    xmodel.set_initial_refinement(initial_refinement);                                     
+    xmodel.set_enrichment_radius(enrichment_radius);
+    xmodel.set_grid_create_type(ModelBase::rect);
+    xmodel.set_dirichlet_function(dirichlet_square);
+    xmodel.set_rhs_function(rhs_function);
+    xmodel.set_adaptivity(true);
+    xmodel.set_output_options(ModelBase::output_gmsh_mesh
+//                               | ModelBase::output_solution
+//                               | ModelBase::output_decomposed
+                            | ModelBase::output_adaptive_plot
+                            | ModelBase::output_error);
+    
+    ExactModel exact(exact_solution);
+
+    unsigned int n_cycles = 7;
+    std::pair<double,double> l2_norm_dif_xfem;
+    
+    ConvergenceTable table_convergence;
+  
+    for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
+    { 
+        table_convergence.add_value("Cycle",cycle);
+        table_convergence.set_tex_format("Cycle", "r");
+        double h = 2*p_a / pow(2.0,initial_refinement+cycle);
+        table_convergence.add_value("h",h);
+        table_convergence.set_tex_format("h", "r");
+        
+        std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
+      
+        xmodel.run (cycle);  
+        xmodel.output_results(cycle);
+        
+        std::cout << "===== XModel_simple finished =====" << std::endl;
+      
+        Vector<double> diff_vector;
+        l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
+        
+        table_convergence.add_value("X_L2",l2_norm_dif_xfem.second);
+        table_convergence.set_tex_caption("X_L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
+        table_convergence.set_precision("X_L2", 2);
+        table_convergence.set_scientific("X_L2",true);
+        
+        table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate);
+        table_convergence.evaluate_convergence_rates("X_L2", ConvergenceTable::reduction_rate_log2);
+      
+        table_convergence.add_value("XFEM-dofs",
+                                    xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
+        table_convergence.add_value("XFEM-enriched dofs",xmodel.get_number_of_dofs().second);
+        table_convergence.add_value("It_{XFEM}",xmodel.solver_iterations());
+        
+        table_convergence.add_value("XFEM-time",xmodel.last_run_time());
+        table_convergence.set_precision("XFEM-time", 3);
+        
+        table_convergence.set_tex_format("XFEM-dofs", "r");
+        table_convergence.set_tex_format("XFEM-enriched dofs", "r");
+        table_convergence.set_tex_format("It_{XFEM}", "r");
+        table_convergence.set_tex_format("XFEM-time", "r");
+      
+        //write the table every cycle (to have at least some results if program fails)
+        table_convergence.write_text(std::cout);
+        std::ofstream out_file;
+        out_file.open(output_dir + xmodel.name() + ".tex");
+        table_convergence.write_tex(out_file);
+        out_file.close();
+        
+        out_file.open(output_dir + xmodel.name() + ".txt");
+        table_convergence.write_text(out_file, 
+                                    TableHandler::TextOutputFormat::table_with_separate_column_description);
+        out_file.close();
+        
+//         xmodel.compute_interpolated_exact(exact_solution);
+//         xmodel.output_results(cycle);
+//         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+    } 
+    
+        
+    delete well;
+    delete exact_solution;
+    delete rhs_function;
+  
+    std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE WITH SIN(x) 3 - DONE ::::::::::::::::\n\n" << std::endl;
+}
+
 void test_multiple_wells(std::string output_dir)
 {
   std::cout << "\n\n:::::::::::::::: MULTIPLE WELLS TEST ::::::::::::::::\n\n" << std::endl;
   
   //------------------------------SETTING----------------------------------
   std::string test_name = "multiple_";
-  bool fem = false, 
+  bool //fem = false, 
        fem_create = true;
   
   double p_a = 15.0,    //area of the model
@@ -2371,8 +2555,8 @@ void test_wells_in_element(std::string output_dir)
 void test_xquadrature_well(std::string output_dir)
 {
     output_dir += "test_xquadrature_well/";
-    double well_radius = 0.02,
-           scale_width = 4,
+    double well_radius = 0.011,
+           scale_width = 2,
            width = scale_width * well_radius,
            excenter = 0.5;
             
@@ -2431,13 +2615,251 @@ void test_xquadrature_well(std::string output_dir)
         x += dd;
     }
     
+    
+    std::cout << ".....................test of quadratures.............." << std::endl;
+    QGaussLogR<1> gauss_log_r0(12, Point<1>(0.0), 0.5, true);
+    integral = 0;
+    for(unsigned int q = 0; q < gauss_log_r0.size(); q++)
+    {
+        double r = gauss_log_r0.point(q)[0] * 2;
+        integral += std::log(r) * 2 * gauss_log_r0.weight(q);//xquad_log.polar_point(q)[0] *
+    }
+    analytic_integral = 2*(log(2)-1);
+    std::cout << setprecision(16) << "numeric =  " << integral 
+                                  << "\t analytic = " << analytic_integral
+                                  << "\t error = " << integral - analytic_integral << std::endl;
+                                  
+    
+    QGaussLogR<1> gauss_log_r(12, Point<1>(0.0), 1/((scale_width+1)*well_radius), true);
+    integral = 0;
+    for(unsigned int q = 0; q < gauss_log_r.size(); q++)
+    {
+        double r = gauss_log_r.point(q)[0] * (width + well->radius());
+        if( r > well_radius)
+            integral += std::log(r) * width * gauss_log_r.weight(q);
+//             integral += std::log(r) * width * gauss_log_r.weight(q);
+    }
+    std::cout << "gauss_log integral = " << integral << std::endl;
+    
+    
+    //log
+    QGauss<1> gauss(12);
+    double integral_log = 0,
+           integral_r = 0,
+           integral_rr = 0;
+    for(unsigned int q = 0; q < gauss.size(); q++)
+    {
+        double r = gauss.point(q)[0]* width + well->radius() ;
+        integral_log += std::log(r) *  width * gauss.weight(q);
+        integral_r += 1/r *  width * gauss.weight(q);
+        integral_rr += 1/(r*r) *  width * gauss.weight(q);
+        
+    }
+    double analytic_integral_log = (
+                                 (scale_width+1)*well_radius*(log((scale_width+1)*well_radius)-1) 
+                                 - well_radius*(log(well_radius)-1)
+                                 ),
+           analytic_integral_r = std::log(scale_width+1),
+           analytic_integral_rr = -1/((scale_width+1)*well_radius) + 1/well_radius;
+    std::cout << setprecision(16) << "numeric =  " << integral_log
+                                  << "\t analytic = " << analytic_integral_log
+                                  << "\t error = " << integral_log - analytic_integral_log << std::endl;
+    std::cout << setprecision(16) << "numeric =  " << integral_r
+                                  << "\t analytic = " << analytic_integral_r
+                                  << "\t error = " << integral_r - analytic_integral_r << std::endl;
+    std::cout << setprecision(16) << "numeric =  " << integral_rr
+                                  << "\t analytic = " << analytic_integral_rr
+                                  << "\t error = " << integral_rr - analytic_integral_rr << std::endl;
+                                  
+    
+    XQuadratureWellLog xquad_log(well, width, 500,10);
+    xquad_log.refine(0);
+    xquad_log.gnuplot_refinement(output_dir, true, false);
+    
+    sum = 0;
+    for(unsigned int i=0; i < xquad_log.size(); i++)
+        sum += xquad_log.weight(i);
+    
+    std::cout << "Control sum of weights: " << sum
+     << "\t" << scale_width*well_radius * 2*M_PI << std::endl;
+    
+//     for(unsigned int q = 0; q < xquad_log.size(); q++)
+//     {
+//         std::cout << xquad_log.weight(q) << std::endl;
+//     }
+    
+    std::cout << "Test integration [0,pi/2] x [r,5r]: " << std::endl;
+    integral_log = integral_r = integral_rr = 0;
+    for(unsigned int q = 0; q < xquad_log.size(); q++)
+    {
+        double phi = xquad_log.polar_point(q)[1];
+        double r = xquad_log.polar_point(q)[0];
+        if( (0 <= phi) && (phi <= M_PI/2))
+        {
+            integral_log += std::log(r) * xquad_log.weight(q);
+            integral_r += 1/r * xquad_log.weight(q);
+            integral_rr += 1/(r*r) * xquad_log.weight(q);
+        }
+    }
+    analytic_integral_log *= M_PI/2;
+    analytic_integral_r *= M_PI/2;
+    analytic_integral_rr *= M_PI/2;
+    std::cout << setprecision(16) << "numeric =  " << integral_log
+                                  << "\t analytic = " << analytic_integral_log
+                                  << "\t error = " << integral_log - analytic_integral_log << std::endl;
+    std::cout << setprecision(16) << "numeric =  " << integral_r
+                                  << "\t analytic = " << analytic_integral_r
+                                  << "\t error = " << integral_r - analytic_integral_r << std::endl;
+    std::cout << setprecision(16) << "numeric =  " << integral_rr
+                                  << "\t analytic = " << analytic_integral_rr
+                                  << "\t error = " << integral_rr - analytic_integral_rr << std::endl;
+                                  
     delete well;
 }
+
+void test_xquadrature_well_2(std::string output_dir)
+{
+    output_dir += "test_xquadrature_well_2/";
+    double well_radius = 0.011,
+           excenter = 0.5;
+            
+    unsigned int n_well_q_points = 500;
+            
+    Point<2> well_center(0+excenter,0+excenter);
+    
+    //--------------------------END SETTING----------------------------------
+
+    
+    Well *well = new Well( well_radius,
+                           well_center,
+                           0, 
+                           0);
+    well->set_pressure(well_radius);
+    well->evaluate_q_points(n_well_q_points);
+    
+    
+    std::vector<double> ex(20);
+    for(unsigned int i = 0; i < 20; i++)
+    {
+        double scale_width = 0.5 + 0.1*i,
+               width = scale_width * well_radius;
+               
+        double analytic_integral_rr = -1/((scale_width+1)*well_radius) + 1/well_radius;
+           
+     
+        XQuadratureWellLog xquad_log(well, width,500, 10);
+        xquad_log.refine(0);
+//         xquad_log.gnuplot_refinement(output_dir, true, false);
+    
+        
+//         std::cout << "Test integration [0,pi/2] x [r,a*r]: " << std::endl;
+        double integral_rr = 0;
+        for(unsigned int q = 0; q < xquad_log.size(); q++)
+        {
+            double phi = xquad_log.polar_point(q)[1];
+            double r = xquad_log.polar_point(q)[0];
+            if( (0 <= phi) && (phi <= M_PI/2))
+            {
+                integral_rr += 1/(r*r) * xquad_log.weight(q);
+            }
+        }
+        analytic_integral_rr *= M_PI/2;
+
+//         std::cout << setprecision(16) << "numeric =  " << integral_rr
+//                                     << "\t analytic = " << analytic_integral_rr
+//                                     << "\t error = " << integral_rr - analytic_integral_rr << std::endl;
+                                    
+        ex[i] = (integral_rr - analytic_integral_rr) / M_PI * 2;
+        std::cout << setprecision(16) << "ex =  " << ex[i] << std::endl;
+    }
+                                  
+    delete well;
+}
+
+void test_xquadrature_well_band(std::string output_dir)
+{
+    output_dir += "test_xquadrature_well_band/";
+    double well_radius = 0.011,
+           scale_width = 1,
+           width = scale_width * well_radius,
+           excenter = 0.5;
+            
+    unsigned int n_well_q_points = 500;
+            
+    Point<2> well_center(0+excenter,0+excenter);
+    
+    //--------------------------END SETTING----------------------------------
+
+    
+    Well *well = new Well( well_radius,
+                           well_center,
+                           0, 
+                           0);
+    well->set_pressure(well_radius);
+    well->evaluate_q_points(n_well_q_points);
+    
+    
+    
+    XQuadratureWellBand xquad(well, width, 7);
+    xquad.refine(1);
+    xquad.gnuplot_refinement(output_dir, true, false);
+    
+    double sum = 0;
+    for(unsigned int i=0; i < xquad.size(); i++)
+        sum += xquad.weight(i);
+    
+    std::cout << "Control sum of weights: " << sum
+     << "\t" << scale_width*well_radius * 2*M_PI << std::endl;
+    
+
+    
+    std::cout << "Test integration [0,pi/2] x [r,5r]: " << std::endl;
+    double analytic_integral_log = (
+                                 (scale_width+1)*well_radius*(log((scale_width+1)*well_radius)-1) 
+                                 - well_radius*(log(well_radius)-1)
+                                 ),
+           analytic_integral_r = std::log(scale_width+1),
+           analytic_integral_rr = -1/((scale_width+1)*well_radius) + 1/well_radius;
+           
+    double integral_log = 0,
+           integral_r = 0,
+           integral_rr = 0;
+    for(unsigned int q = 0; q < xquad.size(); q++)
+    {
+        double phi = xquad.polar_point(q)[1];
+        double r = xquad.polar_point(q)[0];
+        if( (0 <= phi) && (phi <= M_PI/2))
+        {
+            integral_log += std::log(r) * xquad.weight(q);
+            integral_r += 1/r * xquad.weight(q);
+            integral_rr += 1/(r*r) * xquad.weight(q);
+        }
+    }
+    analytic_integral_log *= M_PI/2;
+    analytic_integral_r *= M_PI/2;
+    analytic_integral_rr *= M_PI/2;
+    std::cout << setprecision(16) << "numeric =  " << integral_log
+                                  << "\t analytic = " << analytic_integral_log
+                                  << "\t error = " << integral_log - analytic_integral_log << std::endl;
+    std::cout << setprecision(16) << "numeric =  " << integral_r
+                                  << "\t analytic = " << analytic_integral_r
+                                  << "\t error = " << integral_r - analytic_integral_r << std::endl;
+    std::cout << setprecision(16) << "numeric =  " << integral_rr
+                                  << "\t analytic = " << analytic_integral_rr
+                                  << "\t error = " << integral_rr - analytic_integral_rr << std::endl;
+                                  
+    delete well;
+}
+
 
 int main ()
 {
   std::string input_dir = "../input/";
   std::string output_dir = "../output/";
+  
+  GlobalSettingWriter glob;
+  glob.write_global_setting(std::cout);
+  
   //bedrichov_tunnel(); 
   //return 0;
   
@@ -2448,17 +2870,20 @@ int main ()
   //test_squares();
   //test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
-   test_convergence_square(output_dir);
-//     test_radius_convergence_square(output_dir);
+//    test_convergence_square(output/*_dir);
+//     test_radius_convergence_square(o*/utput_dir);
 //     test_radius_convergence_sin(output_dir);
 //   test_convergence_sin(output_dir);
-//   test_convergence_sin_2(output_dir);
+  test_convergence_sin_2(output_dir);
+//   test_convergence_sin_3(output_dir);
 //   test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);
 //    test_enr_error(output_dir);
 //   test_wells_in_element(output_dir);
 //   test_xquadrature_well(output_dir);
+//   test_xquadrature_well_2(output_dir);
+//     test_xquadrature_well_band(output_dir);
   return 0;
 }
 
