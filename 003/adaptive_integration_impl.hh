@@ -38,6 +38,18 @@ void Adaptive_integration::integrate( FullMatrix<double> &cell_matrix,
   cell_rhs = Vector<double>(n_dofs+n_wells_inside);
   cell_rhs = 0;
    
+//     unsigned int ww;
+//     if( is_cell_in_well(ww) )
+//     {
+//         for(unsigned int i = 0; i < n_dofs; i++)
+//             cell_matrix(i,i) = 1.0;
+//         
+//         for(unsigned int i = 0; i < dofs_per_cell; i++)
+//             cell_rhs(i) = xdata_->get_well(ww)->pressure();
+//         
+//         return;
+//     }
+    
     if(n_wells_inside > 0) 
         std::cout << "Number of quadrature points on cell " 
                   << xdata_->get_cell()->index()
@@ -178,54 +190,56 @@ double Adaptive_integration::integrate_l2_diff(const Vector<double> &solution, c
 
     xdata_->get_dof_indices(local_dof_indices, dofs_per_cell);
 
-    XFEValues<EnrType> xfevalues(*fe_,*xquad_, update_values 
-                                       //| update_gradients 
-                                       | update_quadrature_points 
-                                       //| update_covariant_transformation 
-                                       //| update_transformation_values 
-                                       //| update_transformation_gradients
-                                       //| update_boundary_forms 
-                                       //| update_cell_normal_vectors 
-                                       | update_JxW_values 
-                                       //| update_normal_vectors
-                                       //| update_contravariant_transformation
-                                       //| update_q_points
-                                       //| update_support_points
-                                       //| update_support_jacobians 
-                                       //| update_support_inverse_jacobians
-                                       //| update_second_derivatives
-                                       //| update_hessians
-                                       //| update_volume_elements
-                                       //| update_jacobians
-                                       //| update_jacobian_grads
-                                       //| update_inverse_jacobians
-                                                 );
-    xfevalues.reinit(xdata_);
-  
-  
-    for(unsigned int q=0; q<xquad_->size(); q++)
-    { 
-        exact_value = exact_solution.value(xfevalues.quadrature_point(q));
-        value = 0;  
-        // unenriched solution
-        for(unsigned int i=0; i < dofs_per_cell; i++)
-            value += solution(local_dof_indices[i]) * xfevalues.shape_value(i,q);
-                
-        // enriched solution
-        for(unsigned int w = 0; w < n_wells; w++) //W
-        for(unsigned int k = 0; k < n_vertices; k++) //M_w
-        { 
-            if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
-         
-            value += solution(xdata_->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
-        }
-        
-//         if(std::abs(value-exact_value) > 1e-15)
-//             DBGMSG("cell: %d \tvalue: %e \t exact: %e \t diff: %e\n",cell->index(),value, exact_value, value-exact_value);
-        value = value - exact_value;                   // u_h - u
-        cell_norm += value * value * xfevalues.JxW(q);  // (u_h-u)^2 * JxW
-    }
+    if(xquad_->size() > 0)
+    {
+        XFEValues<EnrType> xfevalues(*fe_,*xquad_, update_values 
+                                        //| update_gradients 
+                                        | update_quadrature_points 
+                                        //| update_covariant_transformation 
+                                        //| update_transformation_values 
+                                        //| update_transformation_gradients
+                                        //| update_boundary_forms 
+                                        //| update_cell_normal_vectors 
+                                        | update_JxW_values 
+                                        //| update_normal_vectors
+                                        //| update_contravariant_transformation
+                                        //| update_q_points
+                                        //| update_support_points
+                                        //| update_support_jacobians 
+                                        //| update_support_inverse_jacobians
+                                        //| update_second_derivatives
+                                        //| update_hessians
+                                        //| update_volume_elements
+                                        //| update_jacobians
+                                        //| update_jacobian_grads
+                                        //| update_inverse_jacobians
+                                                    );
+        xfevalues.reinit(xdata_);
     
+    
+        for(unsigned int q=0; q<xquad_->size(); q++)
+        { 
+            exact_value = exact_solution.value(xfevalues.quadrature_point(q));
+            value = 0;  
+            // unenriched solution
+            for(unsigned int i=0; i < dofs_per_cell; i++)
+                value += solution(local_dof_indices[i]) * xfevalues.shape_value(i,q);
+                    
+            // enriched solution
+            for(unsigned int w = 0; w < n_wells; w++) //W
+            for(unsigned int k = 0; k < n_vertices; k++) //M_w
+            { 
+                if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+            
+                value += solution(xdata_->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
+            }
+            
+    //         if(std::abs(value-exact_value) > 1e-15)
+    //             DBGMSG("cell: %d \tvalue: %e \t exact: %e \t diff: %e\n",cell->index(),value, exact_value, value-exact_value);
+            value = value - exact_value;                   // u_h - u
+            cell_norm += value * value * xfevalues.JxW(q);  // (u_h-u)^2 * JxW
+        }
+    }
     return cell_norm;
 }
 
@@ -277,7 +291,21 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     cell_matrix = 0;
     cell_rhs = Vector<double>(n_dofs+n_wells_inside);
     cell_rhs = 0;
-                  
+              
+//     // test if the whole cell is inside the well
+//     unsigned int ww;
+//     if( is_cell_in_well(ww) )
+//     {
+//         DBGMSG("adaptive integration:    cell %d in well %d\n", cell->index(), ww);
+//         for(unsigned int i = 0; i < n_dofs; i++)
+//             cell_matrix(i,i) = 1.0;
+//         
+//         for(unsigned int i = 0; i < dofs_per_cell; i++)
+//             cell_rhs(i) = xdata_->get_well(ww)->pressure();
+//         
+//         return;
+//     }
+    
     //temporary vectors for both shape and xshape values and gradients
     std::vector<Tensor<1,2> > shape_grad_vec(n_dofs);
     std::vector<double > shape_val_vec(n_dofs+n_wells_inside,0);
@@ -504,39 +532,42 @@ double AdaptiveIntegrationPolar::integrate_l2_diff(const Vector<double> &solutio
     //TODO: more wells !!!!!!!!
     SmoothStep smooth_step(xdata_->get_well(0), polar_xquads_[0]->band_width());
     
-    XFEValues<EnrType> xfevalues(*fe_,*xquad_, update_values 
-                                       | update_quadrature_points 
-                                       | update_JxW_values);
-    xfevalues.reinit(xdata_);
-  
-  
-    for(unsigned int q=0; q<xquad_->size(); q++)
-    { 
-        exact_value = exact_solution.value(xfevalues.quadrature_point(q));
-        value = 0;  
-        // unenriched solution
-        for(unsigned int i=0; i < dofs_per_cell; i++)
-            value += solution(local_dof_indices[i]) * xfevalues.shape_value(i,q);
-                
-        // enriched solution
-        for(unsigned int w = 0; w < n_wells; w++) //W
-        for(unsigned int k = 0; k < n_vertices; k++) //M_w
+    if(xquad_->size() > 0)
+    {
+        XFEValues<EnrType> xfevalues(*fe_,*xquad_, update_values 
+                                        | update_quadrature_points 
+                                        | update_JxW_values);
+        xfevalues.reinit(xdata_);
+    
+    
+        for(unsigned int q=0; q<xquad_->size(); q++)
         { 
-            if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
-         
-            value += solution(xdata_->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
+            exact_value = exact_solution.value(xfevalues.quadrature_point(q));
+            value = 0;  
+            // unenriched solution
+            for(unsigned int i=0; i < dofs_per_cell; i++)
+                value += solution(local_dof_indices[i]) * xfevalues.shape_value(i,q);
+                    
+            // enriched solution
+            for(unsigned int w = 0; w < n_wells; w++) //W
+            for(unsigned int k = 0; k < n_vertices; k++) //M_w
+            { 
+                if(xdata_->global_enriched_dofs(w)[k] == 0) continue;  //skip unenriched node  
+            
+                value += solution(xdata_->global_enriched_dofs(w)[k]) * xfevalues.enrichment_value(k,w,q);
+            }
+            
+    //         if(std::abs(value-exact_value) > 1e-15)
+    //             DBGMSG("cell: %d \tvalue: %e \t exact: %e \t diff: %e\n",cell->index(),value, exact_value, value-exact_value);
+            double smooth_step_val = smooth_step.value(xquad_->real_point(q));
+            value = smooth_step_val * (value - exact_value);      // mi*(u_h - u)
+            cell_norm += value * value * xfevalues.JxW(q);  // mi^2 * (u_h-u)^2 * JxW
         }
-        
-//         if(std::abs(value-exact_value) > 1e-15)
-//             DBGMSG("cell: %d \tvalue: %e \t exact: %e \t diff: %e\n",cell->index(),value, exact_value, value-exact_value);
-        double smooth_step_val = smooth_step.value(xquad_->real_point(q));
-        value = smooth_step_val * (value - exact_value);      // mi*(u_h - u)
-        cell_norm += value * value * xfevalues.JxW(q);  // mi^2 * (u_h-u)^2 * JxW
     }
     
-    
+    MappingQ1<2> mapping;
     XQuadratureWell polar_xquad; 
-    polar_xquads_[0]->create_subquadrature(&polar_xquad, xdata_->get_cell(), xfevalues.get_mapping());
+    polar_xquads_[0]->create_subquadrature(&polar_xquad, xdata_->get_cell(), mapping);
        
     if(polar_xquad.size() > 0)
     {
