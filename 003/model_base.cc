@@ -289,6 +289,33 @@ void ModelBase::write_block_sparse_matrix(const dealii::BlockSparseMatrix< doubl
   output.close();
 }
 
+void ModelBase::write_sparse_matrix(const dealii::SparseMatrix< double >& matrix, const string& matrix_name)
+{
+        // WHOLE SYSTEM MATRIX  ----------------------------------------------------------------
+        std::string path = output_dir_ + matrix_name + ".m";
+        std::ofstream output (path);
+        
+        if(! output.is_open()) 
+            xprintf(Warn, "Could not open file to write matrix: %s", path.c_str());
+
+        
+        output << "# name: s\n" <<
+                   "# type: sparse matrix\n" <<
+                   "# nnz: " << matrix.n_nonzero_elements() << "\n" <<
+                   "# rows: " << matrix.m() << "\n" <<
+                   "# columns: " << matrix.n() << "\n";
+        
+                    
+        for(unsigned int j=0; j < matrix.n(); j++)
+        {
+            for(unsigned int i=0; i < matrix.m(); i++)
+            {
+                if( matrix.get_sparsity_pattern().exists(i,j) )
+                    output << i+1 << " " << j+1 << " " << matrix.el(i,j) << "\n";
+            }
+        }
+        output.close();
+}
 
 
 

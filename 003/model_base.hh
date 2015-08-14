@@ -12,6 +12,7 @@ namespace compare {
 namespace dealii {
     template<int> class Function;
     template<typename> class BlockSparseMatrix;
+    template<typename> class SparseMatrix;
 }
 class GlobalSettingWriter;
 
@@ -233,9 +234,17 @@ protected:
 
   //@}
   
-  //Writes matrix in matlab .m file.
+  /** Writes block sparse matrix in matlab .m files, block by block.
+   * It is very, very, very slow for large matrices!!!
+   */
   void write_block_sparse_matrix(const dealii::BlockSparseMatrix<double> &matrix, 
                                  const std::string &filename);
+  
+  /** Writes sparse matrix in matlab .m file.
+   * It is very, very, very slow for large matrices!!!
+   */
+  void write_sparse_matrix(const dealii::SparseMatrix<double> &matrix, 
+                           const std::string &matrix_name);
   
   ///Vector of wells.
   std::vector<Well*> wells;
