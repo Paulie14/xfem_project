@@ -1,0 +1,149 @@
+
+\include{snippet_preamble}
+
+\begin{document}2
+
+\section{Analytic solution for an aquifer-well problem with a source term}
+
+Let us have the following model:
+\begin{thmproblem} \label{thm:problem} Aquifer-well model with a source term.
+\begin{eqnarray}
+-T \Lapl h &=& f \qquad \textrm{ in } \Omega \label{eqn:poisson}\\
+h &=& h_D \qquad \textrm{ on } \Gamma_D, \label{eqn:dirichlet} \\
+-T\grad h \cdot \vc{n}&=& \langle -T\grad h \cdot \vc{n}\rangle, \qquad \textrm{ on } \partial B_w, \label{eqn:well_edge_bc1}\\
+  \langle -T\grad h \cdot \vc{n}\rangle &=& \sigma_w\left( \langle h \rangle - H_w \right) 
+          \qquad \textrm{ on } \partial B_w, \label{eqn:well_edge_bc2} \\
+-\int \limits_{\partial B_w} \sigma_w\left(\langle h\rangle - H_w\right) &=& c_w(H^1_w - H_w) \label{eqn:well_flow}\\
+H^1_w &=& const. \label{eqn:well_top_bc}    
+\end{eqnarray}
+Domain $\Omega$ is a ring with an exterior boundary $\Gamma_D$ of radius $R$ and an interior boundary $\partial B_w$ 
+made by a circular well $B_w=B(\rho_w,\vc{x}_w)$ of radius $\rho_w$ in its center, $\Omega = B(R,\vc{x}_w) - B_w$.
+
+The Poisson equation \eqref{eqn:poisson} and the boundary conditions \eqref{eqn:dirichlet}-\eqref{eqn:well_edge_bc2}
+govern the pressure inside the aquifer. The flow balance equation \eqref{eqn:well_flow} and the boundary condition
+\eqref{eqn:well_top_bc} govern the pressure inside the well ($H^1_w$ is given).
+\end{thmproblem}
+
+We will now look for the analytic solution $[h, H_w]$.
+Since we introduced the boundary condition \eqref{eqn:well_edge_bc1} on the well boundary,
+we require the solution gradient to be a constant there. 
+The constant is then is given by the difference of the average pressure along the well boundary 
+and the pressure inside the well in \eqref{eqn:well_edge_bc2}.
+
+Define a function
+\begin{equation} \label{eqn:solution}
+  h(\vc{x}) = a\log(r) + b + (r-\rho_w)^2 \sin(x),
+\end{equation}
+where $r = |\vc{x}-\vc{x}_w|$ and $\vc{x}=(x,y)$,
+%(resp. $\vc{x_w}=(x_w,y_w)$) 
+and let us require, that it satisfies equations \eqref{eqn:poisson}-\eqref{eqn:well_edge_bc1}.
+To find the corresponding right hand side $f$, we need to apply the Laplace operator on \eqref{eqn:solution}.
+
+Laplace of the first logarithmic part can be easily proved to be equal zero. 
+Now, look at the second part. Since for the Laplace operator, it holds $\forall f,g\in C^2(\Omega)$ that
+\footnote{
+\begin{multline} \label{eqn:laplace_of_product_derivation}
+  \Lapl(fg) = \div\cdot\grad(fg) = \div\cdot\begin{pmatrix} \frac{\partial f}{\partial x} g + f\frac{\partial g}{\partial x} \\ 
+      \frac{\partial f}{\partial y} g + f\frac{\partial g}{\partial y}  \end{pmatrix} 
+      = \frac{\partial^2 f}{\partial x^2} g + 2\frac{\partial f}{\partial x} \frac{\partial g}{\partial x}
+        + f\frac{\partial^2 g}{\partial x^2} + \\
+        + \frac{\partial^2 f}{\partial y^2}g + 2\frac{\partial f}{\partial y} \frac{\partial g}{\partial y}
+        + \frac{\partial^2 g}{\partial y^2}
+        = g\Lapl{f} + 2\grad f\grad g + f\Lapl{g}, \nonumber
+\end{multline}
+}
+\begin{equation} \label{eqn:laplace_of_product}
+  \Lapl(fg) = g\Lapl{f} + 2\grad f\grad g + f\Lapl{g},
+\end{equation}
+we need to compute the following:
+%
+\begin{eqnarray*}
+  \grad (r-\rho_w)^2 &=& 2(r-\rho_w)\frac{\vc{r}}{r}, \\
+  \grad (\sin(\omega x)) &=& \omega\cos(\omega x) \vc{e}_1, \\
+  \div \cdot\left(\omega\cos(\omega x) \vc{e}_1\right) &=& -\omega^2\sin(\omega x),\\
+  \div\cdot\left( 2(r-\rho_w)\frac{\vc{r}}{r} \right) &=& \frac{2}{r}(r-\rho_w) + 2,
+\end{eqnarray*}
+where $\vc{e}_1$ is the standard euclidean basis vector.
+%
+Another way to get the last term is using the Laplace operator in radial coordinates:
+\begin{equation} \label{eqn:laplace_radial}
+  \Lapl f(r) = \frac{1}{r}\frac{\partial}{\partial r}\left( r \frac{\partial f}{\partial r}\right)
+    + \frac{1}{r^2}\frac{\partial^2 f}{\partial \theta^2} \nonumber
+\end{equation}
+which gives us for $f=(r-\rho_w)^2$, independent of $\theta$,
+\begin{equation} \label{eqn:laplace_aa}
+  \Lapl\big((r-\rho_w)^2\big) = \frac{2}{r}(r-\rho_w) + 2. \nonumber
+\end{equation}
+%
+Using all derivatives derived above and substituing them in \eqref{eqn:laplace_of_product}, we obtain
+\begin{equation} 
+  \Lapl h(\vc{x}) = \left(4 - 2 \frac{\rho_w}{r} \right) \sin(\omega x)      
+                    + 4(r-\rho_w)\frac{\vc{r}\cdot\vc{e}_1}{r} \omega\cos(\omega x)
+                    - (r-\rho_w)^2\omega^2\sin(\omega x)
+\end{equation}
+%
+
+Our next goal is to find constants $a,b\in\R$ ($a<0$ for an injection well and $a>0$ for a pumping well) 
+using the following conditions, coming from \eqref{eqn:solution} and \eqref{eqn:well_flow},
+\begin{eqnarray}
+  a\log \rho_w + b &=& h  \qquad \textrm{ on the well edge,} \label{eqn:p_solution}\\
+  a\log R + b &=& h_D  \qquad \textrm{ on } \Gamma_D, \label{eqn:p_dirichlet}\\
+  \int \limits_{\partial B_w} \sigma_w\left(\langle h\rangle - H_w\right) &=& c_w(H_w - H^1_w) \qquad \textrm{ the flow into the aquifer.} \label{eqn:p_well_bc}
+\end{eqnarray}
+Further, we have on the well edge ($r=\rho_w$):
+\begin{multline}
+-\grad h \cdot \vc{n} = -\grad (a\log(r) + b) \cdot \vc{n} = - \frac{a}{r}\frac{\vc{r}\cdot\vc{n}}{r} = \frac{a}{\rho_w},
+\end{multline}
+where $\vc{r}\cdot\vc{n}=-r$, because these vectors are just opposite. Putting this in the equation
+\eqref{eqn:well_edge_bc2} and using $\langle h \rangle=\langle a\log \rho_w + b \rangle = a\log \rho_w + b$,
+and substituing for $b$ from \eqref{eqn:p_dirichlet}, we obtain
+\begin{eqnarray}
+  \frac{a}{\rho_w} &=& \sigma_w\left( a\log \rho_w + h_D -a\log R - H_w \right), \nonumber\\
+  a &=& \frac{\rho_w\sigma_w(h_D-H_w)}{1-t},  \label{eqn:a_const}
+\end{eqnarray}
+where we denote an auxiliary constant $t=\rho_w\sigma_w\log\left(\frac{\rho_w}{R}\right)$.
+
+Next, we combine \eqref{eqn:p_solution}-\eqref{eqn:p_well_bc} to derive $H_w$:
+\begin{equation}
+  \bar{\sigma}_w\left( a\log \rho_w + h_D -a\log R - H_w \right) = c_w(H_w-H^1_w), \nonumber
+\end{equation}
+where $\bar{\sigma}_w=|\partial B_w|\sigma_w$. Substituing \eqref{eqn:a_const} for $a$, we obtain
+\begin{eqnarray}
+  \left(\bar{\sigma}_w + c_w + \bar{\sigma}_w\frac{t}{1-t}\right)H_w &=& c_w H^1_w + \bar{\sigma}_w h_D + \bar{\sigma}_w h_D\frac{t}{1-t}, \nonumber\\
+  H_w &=& \frac{\frac{c_w}{\bar{\sigma}_w}H^1_w + \frac{1}{1-t}h_D}{\frac{c_w}{\bar{\sigma}_w} + \frac{1}{1-t}}. \label{eqn:well_pressure}
+\end{eqnarray}
+
+Finally, putting \eqref{eqn:a_const} and \eqref{eqn:well_pressure} together, we get the constant $a$:
+\begin{eqnarray}
+  a &=& \frac{\rho_w\sigma_w}{1-t}\left[ \frac{\frac{c_w}{\bar{\sigma}_w}(h_D-H^1_w)}{\frac{c_w}{\bar{\sigma}_w}+\frac{1}{1-t}} \right], \nonumber\\
+  a &=& \frac{\rho_w\sigma_w c_w (h_D-H^1_w)}{c_w(1-t) + |\partial B_w|\sigma_w}. \label{eqn:a_final}
+\end{eqnarray}
+
+
+\begin{thmdef}
+The solution $[h,H_w]$ of the problem \ref{thm:problem}
+with the source term
+\begin{equation} 
+  f = \left(4 - 2 \frac{\rho_w}{r} \right) \sin(\omega x)      
+                    + 4(r-\rho_w)\frac{\vc{r}\cdot\vc{e}_1}{r} \omega\cos(\omega x)
+                    - (r-\rho_w)^2\omega^2\sin(\omega x)
+\end{equation}
+on an aquifer of radius $R$ with a single well of radius $\rho_w$ placed in the center, 
+satisfying equations \eqref{eqn:poisson}-\eqref{eqn:well_top_bc}, is
+\begin{eqnarray}
+  h(\vc{x}) &=& a\log(r) + b + (r-\rho_w)^2 \sin(x), \\
+  H_w &=& \frac{c_w(1-t) H^1_w + \bar{\sigma}_w h_D}{c_w(1-t) + \bar{\sigma}_w},
+\end{eqnarray}
+with
+\begin{eqnarray}
+  a &=& \frac{\rho_w\sigma_w c_w (h_D-H^1_w)}{c_w(1-t) + |\partial B_w|\sigma_w}, \nonumber \\
+  b &=& h_D - a\log R, \nonumber \\
+  t &=& \rho_w\sigma_w\log\left(\frac{\rho_w}{R}\right). \nonumber
+\end{eqnarray}
+\end{thmdef}
+
+
+
+ \bibliographystyle{abbrv} 
+ \bibliography{../citace.bib}
+\end{document}

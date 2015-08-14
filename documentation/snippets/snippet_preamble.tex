@@ -1,0 +1,86 @@
+
+\documentclass{article}
+
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks   = true, %Colours links instead of ugly boxes
+  urlcolor     = blue, %Colour for external hyperlinks
+  linkcolor    = blue, %Colour of internal links
+  citecolor   = red %Colour of citations
+}
+
+%% For including figures, graphicx.sty has been loaded in
+%% elsarticle.cls. If you prefer to use the old commands
+%% please give \usepackage{epsfig}
+\usepackage{subfig}
+
+\usepackage{graphicx}
+
+%tables
+%\usepackage{booktabs}
+
+%% The amssymb package provides various useful mathematical symbols
+\usepackage{amssymb}
+\usepackage{amsmath}
+%  \usepackage{amsfonts}
+\usepackage{esint}
+
+
+%% The amsthm package provides extended theorem environments
+\usepackage{amsthm}
+\newtheorem{thmproblem}{Problem}
+\newtheorem{thmdef}{Definition}
+
+%% The lineno packages adds line numbers. Start line numbering with
+%% \begin{linenumbers}, end it with \end{linenumbers}. Or switch it on
+%% for the whole article with \linenumbers.
+%% \usepackage{lineno}
+
+
+\newcommand{\fig}[1]{\hyperref[#1]{Figure \ref{#1}}}
+\newcommand{\figpath}{../graphics/}
+
+
+%\numberwithin{equation}{document}
+%
+\def\div{{\rm div}}
+\def\Lapl{\Delta}
+\def\grad{\nabla}
+\def\supp{{\rm supp}}
+\def\dist{{\rm dist}}
+%\def\chset{\mathbbm{1}}
+\def\chset{1}
+%
+\def\Tr{{\rm Tr}}
+\def\to{\rightarrow}
+\def\weakto{\rightharpoonup}
+\def\imbed{\hookrightarrow}
+\def\cimbed{\subset\subset}
+\def\range{{\mathcal R}}
+\def\leprox{\lesssim}
+\def\argdot{{\hspace{0.18em}\cdot\hspace{0.18em}}}
+\def\Distr{{\mathcal D}}
+\def\calK{{\mathcal K}}
+\def\FromTo{|\rightarrow}
+\def\convol{\star}
+\def\impl{\Rightarrow}
+\DeclareMathOperator*{\esslim}{esslim}
+\DeclareMathOperator*{\esssup}{ess\,supp}
+\DeclareMathOperator{\ess}{ess}
+\DeclareMathOperator{\osc}{osc}
+\DeclareMathOperator{\curl}{curl}
+\DeclareMathOperator{\cotg}{cotg}
+
+%math:
+\def\vc#1{\mathbf{\boldsymbol{#1}}}     % vector
+\def\abs#1{\left|#1\right|}
+\def\avg#1{\langle#1\rangle}
+\def\d{\mathrm{d}}
+\def\norm#1{\| #1 \|}
+\def\abs#1{| #1 |}
+\def\prtl{\partial}
+
+\newcommand{\dd}{\; \mathrm{d}}
+\newcommand{\R}{\mathbf{R}}
+\newcommand{\bx}{\vc{x}}
+\newcommand*\rfrac[2]{{}^{#1}\!/_{#2}}
