@@ -353,3 +353,72 @@ double Source3::value(const Point< 2 >& p, const unsigned int /*component*/) con
     
     return - amplitude_ * (b_nabla_a + 2*grad_a_grad_b + a_nabla_b);
 }
+
+
+
+
+
+
+
+ExactSolution4::ExactSolution4(Well* well, double radius, double k, double amplitude)
+    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+{
+    double p = well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_);
+    double cs = well_->perm2aquitard(m_) / well_->perm2aquifer(m_) / well_->circumference();
+    double exact_well_pressure = (cs*well_->pressure() + p_dirichlet_/(1-p))
+                                /(cs + 1/(1-p)); 
+    std::cout << "Exact pressure inside the well = " << exact_well_pressure << std::endl;
+    
+    if(well->is_active())
+    {
+        a_ = ( well_->perm2aquitard(m_) * well_->perm2aquifer(m_) * well_->radius() * (p_dirichlet_ - well_->pressure())) 
+            / (well_->perm2aquitard(m_) + well_->perm2aquifer(m_)*well_->circumference() - p * well_->perm2aquitard(m_));
+        b_ = p_dirichlet_ - a_ * std::log(radius_);
+        std::cout << "Pressure on the well edge = " << this->value(well->center()) << std::endl;
+    }
+    else
+    {
+        a_ = 0;
+        b_ = 0;
+    }
+}
+
+Tensor< 1, 2 > ExactSolution4::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    double distance = well_->center().distance(p);
+    Tensor<1,2> grad;
+    if(distance > well_->radius())
+    {
+        grad[0]= (p[0] - well_->center()[0]);
+        grad[1]= (p[1] - well_->center()[1]);
+        grad = grad * 2*(distance - well_->radius())/distance * std::sin(k_*p[0]);
+        grad[0] += (distance-well_->radius())*(distance-well_->radius())*k_*std::cos(k_*p[0]);
+        return amplitude_ * grad;
+    }
+    else
+        return grad;
+}
+
+
+double ExactSolution4::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  double distance = well_->center().distance(p);
+  double distance_from_well = distance - well_->radius();
+  if(distance > well_->radius())
+    return a_ * std::log(distance) + b_ + distance_from_well*distance_from_well * amplitude_*std::sin(k_*p[0]);
+  else
+    return a_ * std::log(well_->radius()) + b_;
+}
+
+double Source4::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+    double distance = well_->center().distance(p);
+    double distance_from_well = distance - well_->radius();
+    double sin = std::sin(k_ * p[0]);
+    double r_x_normed = (p[0] - well_->center()[0]) / distance;
+    double b_nabla_a = (2/distance * distance_from_well + 2.0) * sin,
+           grad_a_grad_b = 2 * distance_from_well * k_ * std::cos(k_*p[0]) * r_x_normed,
+           a_nabla_b = - distance_from_well * distance_from_well * k_ * k_ * sin;
+    
+    return - amplitude_ * (b_nabla_a + 2*grad_a_grad_b + a_nabla_b);
+}

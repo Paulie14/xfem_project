@@ -155,7 +155,35 @@ namespace compare
                     const unsigned int  component = 0) const override; 
     };
 
-
+    
+    /** Exact solution taking into account both sigma permeability (well-aquifer) 
+     * and c permeability (aquifer-aquifer).
+     * Currenlty the best and working analytical solution for one aquifer-well model.
+     */
+    class ExactSolution4 : public ExactBase
+    {
+    public:
+      ExactSolution4(Well *well, double radius, double k, double amplitude);
+        
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
+    protected:
+        double k_, amplitude_;
+        
+    friend class Source4;
+    };
+    
+    class Source4 : public ExactSolution4
+    {
+    public:
+      //Source1(Well *well, double radius, double k) : ExactSolution1(well, radius, k) {}
+      Source4(ExactSolution4 &ex_sol) 
+        : ExactSolution4(ex_sol.well_, ex_sol.radius_, ex_sol.k_, ex_sol.amplitude_) {}
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
     
 /** @brief Class contains helpful methods for comparing models.
  * 
