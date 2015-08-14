@@ -185,7 +185,8 @@ std::pair< unsigned int, unsigned int > XModel::get_number_of_dofs()
 
 const Triangulation< 2 >& XModel::get_output_triangulation()
 {
-    return *output_triangulation;
+//     if(output_triangulation != nullptr)
+        return *output_triangulation;
 }
 
 const dealii::Vector< double >& XModel::get_distributed_solution()
@@ -1190,6 +1191,7 @@ void XModel::assemble_system ()
     }
     
     assemble_communication();
+    
 //     DBGMSG("System matrix:\n");
 //     system_matrix_.print_latex(cout);
     //DBGMSG("System RHS:\n");
@@ -1200,10 +1202,32 @@ void XModel::assemble_system ()
         //prints whole BlockSparsityPattern
         std::ofstream out1 (output_dir_+"block_sp_pattern.1");
         block_sp_pattern.print_gnuplot (out1);
-
-//         //prints SparsityPattern of the block (0,0)
-//         std::ofstream out2 (output_dir_+"00_sp_pattern.1");
-//         block_sp_pattern.block(0,0).print_gnuplot (out2);
+    }
+    
+    // MATRIX OUTPUT
+    if(output_options_ & OutputOptions::output_matrix)
+    {
+        write_sparse_matrix(block_matrix[0], "block_matrix_0");
+        write_sparse_matrix(block_matrix[1], "block_matrix_1");
+        write_sparse_matrix(block_comm_matrix[0], "block_comm_matrix_0");
+        
+        std::string path = output_dir_ + "rhs.m";
+        std::ofstream output (path);
+        
+        if(! output.is_open()) 
+            xprintf(Warn, "Could not open file to write matrix: %s", path.c_str());
+        
+        block_system_rhs.print(output);
+        output.close();
+        
+//         path = output_dir_ + "solution.m";
+//         output.open(path);
+//         
+//         if(! output.is_open()) 
+//             xprintf(Warn, "Could not open file to write matrix: %s", path.c_str());
+//         
+//         block_solution.print(output);
+//         output.close();
     }
 }
 
@@ -1629,6 +1653,7 @@ void XModel::assemble_subsystem (unsigned int m)
 //   block_matrix[m].block(2,2).print_formatted(std::cout);
     //if(m == 0)
 //     block_matrix[m].print(cout);
+    
     assemble_dirichlet(m);
 //     DBGMSG("block_matrix[%d]:\n",m);
 //     block_matrix[m].print(cout);
@@ -1657,8 +1682,6 @@ void XModel::assemble_subsystem (unsigned int m)
                   << Adaptive_integration::n_enrich_quad_points <<std::endl;
         Adaptive_integration::n_enrich_quad_points = 0;
     }
-    
-    
 }
 
 void XModel::assemble_well_permeability_term(unsigned int m)
@@ -1683,7 +1706,7 @@ void XModel::assemble_well_permeability_term(unsigned int m)
                                     value);
                 }
             }
-        }          
+        }
     }
 }
 
@@ -1741,9 +1764,6 @@ void XModel::assemble_communication()
         for (unsigned int w=0; w < wells.size(); w++)
             block_comm_matrix[m].set(w+offset, w+offset, -wells[w]->perm2aquitard(m));
         
-        //DBGMSG("block_comm_matrix[%d]:\n",m);
-        //block_comm_matrix[m].print(cout);
-        
         system_matrix_.enter(block_comm_matrix[m], m+1, m);
         system_matrix_.enter(block_comm_matrix[m], m, m+1);
     }
@@ -1756,24 +1776,17 @@ void XModel::assemble_communication()
     unsigned int w_idx = size - wells.size();
     for (unsigned int w=0; w < wells.size(); w++)
     {
-        double perm2aquitard = wells[w]->perm2aquitard(0),
-               mat_diag = perm2aquitard;                                            // c^{M+1}_w
-                          //+ 2*M_PI*wells[w]->radius()*wells[w]->perm2aquifer(0),   // 2piR_w*sigma_w
-               //elimination_coef = - perm2aquitard / mat_diag;
+        double perm2aquitard = wells[w]->perm2aquitard(0);
+        
         if(wells[w]->is_pressure_set()) 
         {        
-            //DBGMSG("Dirichlet well pressure, %d.\n", w_idx);
-            //dirichlet boundary elimination
-//             block_matrix[1].set(w_idx, w_idx, 
-//                                 block_matrix[1](w_idx,w_idx) + elimination_coef * perm2aquitard);
-//             block_comm_matrix[1].set(w_idx, w_idx, 
-//                                 block_comm_matrix[1](w_idx,w_idx) + elimination_coef * perm2aquitard);
-            block_system_rhs.block(1)(w_idx) = block_system_rhs.block(1)(w_idx) 
-                                               // elimination_coef * mat_diag = -1
-                                               + perm2aquitard * wells[w]->pressure();
+            // write dirichlet bc on the top of the well
             block_matrix[0].set(w,w,1.0);
-            block_solution.block(0)(w) = wells[w]->pressure();
             block_system_rhs.block(0)(w) = wells[w]->pressure();
+            
+            // like in assembly dirichlet - eliminate known presssure - that means put it on the rhs
+            block_system_rhs.block(1)(w_idx) = block_system_rhs.block(1)(w_idx) 
+                                               + perm2aquitard * wells[w]->pressure();
         }
         else
         {
@@ -1794,7 +1807,8 @@ void XModel::assemble_communication()
 
 void XModel::assemble_dirichlet(unsigned int m)
 {
-   // MASSERT(dirichlet_function != NULL, "Dirichlet BC function has not been set.\n");
+    //TODO: enable more dirichlet functions, one for each aquifer
+    // MASSERT(dirichlet_function != NULL, "Dirichlet BC function has not been set.\n");
     MASSERT(dof_handler != NULL, "DoF Handler object does not exist.\n");
 
     std::map<unsigned int,double> boundary_values;
@@ -1962,17 +1976,7 @@ void XModel::solve ()
 
 
 void XModel::output_results (const unsigned int cycle)
-{ 
-    // MATRIX OUTPUT
-    if(output_options_ & OutputOptions::output_matrix)
-    {
-        //TODO: output whole system matrix
-        std::stringstream matrix_name;
-        matrix_name << "matrix_" << cycle;
-        //write_block_sparse_matrix(block_matrix[0],matrix_name.str());
-    }
-  
-    
+{   
     // MESH OUTPUT
     std::stringstream filename; 
     filename << output_dir_ << "xfem_mesh_" << cycle;
@@ -2055,7 +2059,7 @@ void XModel::output_results (const unsigned int cycle)
             dist_solution = dist_unenriched;
             
             double tolerance = output_element_tolerance_;
-            unsigned int iterations = 30;
+            unsigned int iterations = 18;
             
             //TODO: template function
             switch(enrichment_method_)
