@@ -1320,8 +1320,8 @@ void test_convergence_sin_3(std::string output_dir)
            excenter = 0.004,
            radius = p_a*std::sqrt(2),
            well_radius = 0.003,
-           perm2fer = Parameters::perm2fer, 
-           perm2tard = Parameters::perm2tard,
+           perm2fer = 5e1,
+           perm2tard = 1e3,
            transmisivity = Parameters::transmisivity,
            k_wave_num = 1.5,
            amplitude = 0.5,
@@ -1354,8 +1354,8 @@ void test_convergence_sin_3(std::string output_dir)
         well_fem->set_pressure(0);
         well_fem->set_inactive();
         well_fem->evaluate_q_points(n_well_q_points);
-        compare::ExactSolution3 *exact_solution_fem = new compare::ExactSolution3(well_fem, radius, k_wave_num, amplitude);
-        Function<2> *rhs_function_fem = new compare::Source3(*exact_solution_fem);
+        compare::ExactSolution4 *exact_solution_fem = new compare::ExactSolution4(well_fem, radius, k_wave_num, amplitude);
+        Function<2> *rhs_function_fem = new compare::Source4(*exact_solution_fem);
         Model_simple model(well_fem);    
         model.set_name(test_name + "fem");
         model.set_output_dir(output_dir);
@@ -1390,15 +1390,15 @@ void test_convergence_sin_3(std::string output_dir)
         return;
     }
         
-    compare::ExactSolution3 *exact_solution = new compare::ExactSolution3(well, radius, k_wave_num, amplitude);
+    compare::ExactSolution4 *exact_solution = new compare::ExactSolution4(well, radius, k_wave_num, amplitude);
     Function<2> *dirichlet_square = exact_solution;
-    Function<2> *rhs_function = new compare::Source3(*exact_solution);
+    Function<2> *rhs_function = new compare::Source4(*exact_solution);
     
     XModel_simple xmodel(well);  
-    xmodel.set_name(test_name + "sgfem");
-    xmodel.set_enrichment_method(Enrichment_method::sgfem);
-//     xmodel.set_name(test_name + "xfem_shift");
-//     xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//     xmodel.set_name(test_name + "sgfem");
+//     xmodel.set_enrichment_method(Enrichment_method::sgfem);
+    xmodel.set_name(test_name + "xfem_shift");
+    xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
 //       xmodel.set_name(test_name + "xfem_ramp");
 //       xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
 //       xmodel.set_name(test_name + "xfem");
@@ -1416,8 +1416,10 @@ void test_convergence_sin_3(std::string output_dir)
     xmodel.set_output_options(ModelBase::output_gmsh_mesh
 //                               | ModelBase::output_solution
 //                               | ModelBase::output_decomposed
-                            | ModelBase::output_adaptive_plot
-                            | ModelBase::output_error);
+//                             | ModelBase::output_adaptive_plot
+                            | ModelBase::output_error
+//                             | ModelBase::output_matrix
+                             );
     
     ExactModel exact(exact_solution);
 
@@ -1477,8 +1479,8 @@ void test_convergence_sin_3(std::string output_dir)
                                     TableHandler::TextOutputFormat::table_with_separate_column_description);
         out_file.close();
         
-//         xmodel.compute_interpolated_exact(exact_solution);
-//         xmodel.output_results(cycle);
+        xmodel.compute_interpolated_exact(exact_solution);
+        xmodel.output_results(cycle);
 //         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
     } 
     
@@ -2874,8 +2876,8 @@ int main ()
 //     test_radius_convergence_square(o*/utput_dir);
 //     test_radius_convergence_sin(output_dir);
 //   test_convergence_sin(output_dir);
-  test_convergence_sin_2(output_dir);
-//   test_convergence_sin_3(output_dir);
+//   test_convergence_sin_2(output_dir);
+  test_convergence_sin_3(output_dir);
 //   test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);
