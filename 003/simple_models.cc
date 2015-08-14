@@ -256,9 +256,10 @@ void XModel_simple::assemble_dirichlet(unsigned int m)
                                             *dirichlet_function,
                                             boundary_values);
         
-        unsigned int dof = xdata_[0][0]->get_well_dof_index(0);
-        DBGMSG("dof = %d\n",dof);
-        boundary_values[dof] = wells[0]->pressure();
+//         unsigned int dof = xdata_[0][0]->get_well_dof_index(0);
+//         DBGMSG("dof = %d\n",dof);
+//         boundary_values[dof] = wells[0]->pressure();
+            
 //     else return;
     
 //     std::map::iterator it = boundary_values.begin(),
