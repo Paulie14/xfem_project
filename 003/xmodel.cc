@@ -1790,7 +1790,7 @@ void XModel::assemble_communication()
         }
         else
         {
-            block_matrix[0].set(w,w, mat_diag);
+            block_matrix[0].set(w,w, perm2aquitard);
             block_comm_matrix[0].set(w, w+offset, -perm2aquitard);
         }
         w_idx++;
