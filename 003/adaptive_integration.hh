@@ -86,8 +86,7 @@ class Adaptive_integration : public AdaptiveIntegrationBase
 
 
 
-
-
+/// -2 t^3 +3 t^2
 class SmoothStep : public dealii::Function<2>
 {
 public:
@@ -101,9 +100,27 @@ public:
 private:
     Well * well_;
     double band_width_;
-    double coefs_[6];
+    double coefs_[4];
     unsigned int size_;
 };
+
+// /// 6 t^5 -15 t^4 +10 t^3
+// class SmoothStep : public dealii::Function<2>
+// {
+// public:
+//     
+//     SmoothStep(Well* well, double band_width);
+// 
+//     double value (const dealii::Point<2>   &p,
+//                   const unsigned int  component = 0) const override;
+//     double value (const double & r) const;
+//                   
+// private:
+//     Well * well_;
+//     double band_width_;
+//     double coefs_[6];
+//     unsigned int size_;
+// };
 
 /** @brief class doing adaptive integration (in respect to the boundary of the well) on the cell.
  * 

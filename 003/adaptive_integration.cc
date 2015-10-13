@@ -194,12 +194,20 @@ double Adaptive_integration::test_integration(Function< 2 >* func)
 
 
 
+// SmoothStep::SmoothStep(Well* well, double band_width)
+// :  Function< 2 >(),
+//     well_(well),
+//     band_width_(band_width),
+//     coefs_{6, -15, 10, 0, 0, 0},  // fifth degree smooth step polynomial
+//     size_(6)
+// {}
+
 SmoothStep::SmoothStep(Well* well, double band_width)
 :  Function< 2 >(),
     well_(well),
     band_width_(band_width),
-    coefs_{6, -15, 10, 0, 0, 0},  // fifth degree smooth step polynomial
-    size_(6)
+    coefs_{-2, 3, 0, 0},  // third degree smooth step polynomial
+    size_(4)
 {}
 
 double SmoothStep::value(const Point< 2 >& p, const unsigned int component) const

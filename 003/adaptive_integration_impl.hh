@@ -506,7 +506,7 @@ void AdaptiveIntegrationPolar::integrate( FullMatrix<double> &cell_matrix,
     } //for q
     } // if
    
-//     if(n_wells_inside > 0)
+    //if(n_wells_inside > 0)
 //     {
 //         std::cout << "cell_matrix" << std::endl;
 //         cell_matrix.print_formatted(std::cout);
