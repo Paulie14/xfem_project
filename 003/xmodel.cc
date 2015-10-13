@@ -64,10 +64,10 @@
 
 using namespace compare;
 
-const bool XModel::use_polar_quadrature_ = true;
+const bool XModel::use_polar_quadrature_ = false;
 //const double XModel::well_band_width_ratio_ = 0.47;//0.5*std::sqrt(2); //1;//1.5167;//2.5507//
-const unsigned int XModel::polar_refinement_level_ = 4;
-const unsigned int XModel::well_band_gauss_degree_ = 6;
+const unsigned int XModel::polar_refinement_level_ = 3;
+const unsigned int XModel::well_band_gauss_degree_ = 5;
 const unsigned int XModel::well_band_n_phi_ = 500;  //not used, now set automatically
 
 XModel::XModel () 
