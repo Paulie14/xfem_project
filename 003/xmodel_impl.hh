@@ -15,6 +15,16 @@
 #include "adaptive_integration.hh"
 #include "xquadrature_cell.hh"
 
+inline void XModel::set_well_band_width_ratio(double band_ratio)
+{
+    well_band_width_ratio_ = band_ratio;
+}
+
+inline double XModel::well_band_width_ratio(void)
+{
+    return well_band_width_ratio_;
+}
+
 /************************************ TEMPLATE IMPLEMENTATION **********************************************/
 template<Enrichment_method::Type EnrType>
 void XModel::prepare_shape_well_averiges(vector< std::map< unsigned int, double > >& shape_well_averiges, std::vector< XDataCell* > xdata_vec)

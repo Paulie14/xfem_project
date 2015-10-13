@@ -32,8 +32,8 @@ void GlobalSettingWriter::write_global_setting(ostream& stream)
            << "Use polar quadrature = " << (XModel::use_polar_quadrature_ ? "true" : "false")
            << std::endl
            << "Maximal level of refinement for polar quadrature = " << XModel::polar_refinement_level_
-           << std::endl
-           << "Well band width for polar quadrature = " << XModel::well_band_width_ratio_
+//            << std::endl
+//            << "Well band width for polar quadrature = " << XModel::well_band_width_ratio_
            << std::endl
            << "N steps in angle phi in well quadrature = " << XModel::well_band_n_phi_
            << std::endl

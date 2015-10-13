@@ -193,6 +193,8 @@ class XModel : public ModelBase
     
     /// Returns pressure at the top of the well after computation.
     double well_pressure(unsigned int w);
+    
+    double well_band_width_ratio(void);
     //@}
     
     
@@ -220,6 +222,9 @@ class XModel : public ModelBase
      * @param alpha_tolerance is 1e-2 by default.
      */
     void set_adaptive_refinement_by_error(double alpha_tolerance = 1e-2);
+    
+    
+    void set_well_band_width_ratio(double band_ratio);
     //@}
 
     std::pair<double, double> integrate_difference(Vector<double>& diff_vector, 
@@ -238,7 +243,7 @@ class XModel : public ModelBase
     double test_adaptive_integration(Function<2> *func, unsigned int level, unsigned int pol_degree=0);
     //@}
     
-  protected:
+  protected:  
     virtual void make_grid () override;
     virtual void refine_grid() override;
     void setup_system () override;
@@ -352,7 +357,6 @@ class XModel : public ModelBase
     
     ///User defined enrichment radius.
     double rad_enr;
-    double r_enr_tolerance_;
     
     ///Real enrichment radius used in computation.
     ///It may be different for each wells.
@@ -418,7 +422,8 @@ class XModel : public ModelBase
     /// Polar quadrature / edge rules switch
     static const bool use_polar_quadrature_;
     /// Width of the polar quadrature band around the well.
-    static const double well_band_width_ratio_;
+    double well_band_width_ratio_;
+    
     /// Level of refinement for polar quadrature in the vicinity of a well
     static const unsigned int polar_refinement_level_;
     static const unsigned int well_band_gauss_degree_;

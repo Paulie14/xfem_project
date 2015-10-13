@@ -65,10 +65,10 @@
 using namespace compare;
 
 const bool XModel::use_polar_quadrature_ = true;
-const double XModel::well_band_width_ratio_ = 0.47;//0.5*std::sqrt(2); //1;//1.5167;//2.5507//
+//const double XModel::well_band_width_ratio_ = 0.47;//0.5*std::sqrt(2); //1;//1.5167;//2.5507//
 const unsigned int XModel::polar_refinement_level_ = 4;
-const unsigned int XModel::well_band_gauss_degree_ = 5;
-const unsigned int XModel::well_band_n_phi_ = 500;
+const unsigned int XModel::well_band_gauss_degree_ = 6;
+const unsigned int XModel::well_band_n_phi_ = 500;  //not used, now set automatically
 
 XModel::XModel () 
   : ModelBase(),
@@ -141,8 +141,10 @@ void XModel::constructor_init()
     r_enr.resize(wells.size());
     system_matrix_.initialize(n_aquifers_, n_aquifers_);
     if(name_ == "") name_ = "Default_XFEM_Model";
-    r_enr_tolerance_ = 33.5;
     refine_by_error_ = false;
+    
+    //initiliaze default:
+    well_band_width_ratio_ = 0.47;
 }
 
 
@@ -462,83 +464,83 @@ void XModel::find_enriched_cells(unsigned int m)
   
   
   // computing enrichment tolerance
-  for (unsigned int w = 0; w < wells.size(); w++)
-  {
-    Well well = *(wells[w]);
-    Vector<double> diff_vector(triangulation->n_active_cells());
-    QGauss<2> temp_quad(4);
-    FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
-    
-    cell = dof_handler->begin_active();
-    endc = dof_handler->end();
-    for (; cell!=endc; ++cell)
-    { 
-        //integral of s(x)-i(s)(x)
-        fe_values.reinit(cell);
-        
-        //node values of the global enrichment function
-        std::vector<double> node_values(GeometryInfo<2>::vertices_per_cell);
-        for(unsigned int i=0; i < GeometryInfo<2>::vertices_per_cell; i++)
-            node_values[i] = well.global_enrich_value(cell->vertex(i));
-        
-        double integral = 0;
-        for(unsigned int q=0; q < fe_values.n_quadrature_points; q++)
-        {
-            double interpolation = 0;
-            for(unsigned int i=0; i < fe.dofs_per_cell; i++)
-                interpolation += fe_values.shape_value(i,q) * node_values[i];
-            
-            integral += abs(well.global_enrich_value(fe_values.quadrature_point(q)) - interpolation) 
-                        * fe_values.JxW(q);
-        }
-    
-        
-        //tolerance criterion
-        double  distance = cell->center().distance(well.center());
-        double error_estimate = 1.0/12 * cell->diameter() * cell->diameter() * cell->diameter() 
-                                * cell->diameter() / distance / distance / distance;
-//         double error_estimate = M_PI/6 * cell->diameter() * cell->diameter() / distance;
-    
-//         diff_vector[cell->index()] = integral;
-        diff_vector[cell->index()] = error_estimate/integral;
-        //diff_vector[cell->index()] = (integral / cell->measure() > 1e-3)? 1:0;
-        //(error_estimate > 1e-1)? 1 : 0;
-        
-        //DBGMSG("error_estimate = %e,\tintegral = %e\n",error_estimate, integral);
-    }
-        FE_DGQ<2> temp_fe(0);
-        DoFHandler<2>    temp_dof_handler;
-        //ConstraintMatrix hanging_node_constraints;
-  
-        temp_dof_handler.initialize(*triangulation,temp_fe);
-  
-        //DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
-        //hanging_node_constraints.close();
-  
-        //====================vtk output
-        DataOut<2> data_out;
-        data_out.attach_dof_handler (temp_dof_handler);
-  
-        //hanging_node_constraints.distribute(diff_vector);
-  
-        data_out.add_data_vector (diff_vector, "xfem_enrichment");
-        data_out.build_patches ();
-
-        std::stringstream filename;
-        filename << output_dir_ << "xfem_enrichment_" << cycle_ << "_" << w << ".vtk";
-   
-        std::ofstream output (filename.str());
-        if(output.is_open())
-        {
-            data_out.write_vtk (output);
-            data_out.clear();
-            std::cout << "\nenrichment area written in:\t" << filename.str() << std::endl;
-        }
-        else
-        {
-            std::cout << "Could not write the output in file: " << filename.str() << std::endl;
-        }
-  }
+//   for (unsigned int w = 0; w < wells.size(); w++)
+//   {
+//     Well well = *(wells[w]);
+//     Vector<double> diff_vector(triangulation->n_active_cells());
+//     QGauss<2> temp_quad(4);
+//     FEValues<2> temp_fe_values(fe,temp_quad, update_values | update_quadrature_points | update_JxW_values);
+//     
+//     cell = dof_handler->begin_active();
+//     endc = dof_handler->end();
+//     for (; cell!=endc; ++cell)
+//     { 
+//         //integral of s(x)-i(s)(x)
+//         fe_values.reinit(cell);
+//         
+//         //node values of the global enrichment function
+//         std::vector<double> node_values(GeometryInfo<2>::vertices_per_cell);
+//         for(unsigned int i=0; i < GeometryInfo<2>::vertices_per_cell; i++)
+//             node_values[i] = well.global_enrich_value(cell->vertex(i));
+//         
+//         double integral = 0;
+//         for(unsigned int q=0; q < fe_values.n_quadrature_points; q++)
+//         {
+//             double interpolation = 0;
+//             for(unsigned int i=0; i < fe.dofs_per_cell; i++)
+//                 interpolation += fe_values.shape_value(i,q) * node_values[i];
+//             
+//             integral += abs(well.global_enrich_value(fe_values.quadrature_point(q)) - interpolation) 
+//                         * fe_values.JxW(q);
+//         }
+//     
+//         
+//         //tolerance criterion
+//         double  distance = cell->center().distance(well.center());
+//         double error_estimate = 1.0/12 * cell->diameter() * cell->diameter() * cell->diameter() 
+//                                 * cell->diameter() / distance / distance / distance;
+// //         double error_estimate = M_PI/6 * cell->diameter() * cell->diameter() / distance;
+//     
+// //         diff_vector[cell->index()] = integral;
+//         diff_vector[cell->index()] = error_estimate/integral;
+//         //diff_vector[cell->index()] = (integral / cell->measure() > 1e-3)? 1:0;
+//         //(error_estimate > 1e-1)? 1 : 0;
+//         
+//         //DBGMSG("error_estimate = %e,\tintegral = %e\n",error_estimate, integral);
+//     }
+//         FE_DGQ<2> temp_fe(0);
+//         DoFHandler<2>    temp_dof_handler;
+//         //ConstraintMatrix hanging_node_constraints;
+//   
+//         temp_dof_handler.initialize(*triangulation,temp_fe);
+//   
+//         //DoFTools::make_hanging_node_constraints (temp_dof_handler, hanging_node_constraints);  
+//         //hanging_node_constraints.close();
+//   
+//         //====================vtk output
+//         DataOut<2> data_out;
+//         data_out.attach_dof_handler (temp_dof_handler);
+//   
+//         //hanging_node_constraints.distribute(diff_vector);
+//   
+//         data_out.add_data_vector (diff_vector, "xfem_enrichment");
+//         data_out.build_patches ();
+// 
+//         std::stringstream filename;
+//         filename << output_dir_ << "xfem_enrichment_" << cycle_ << "_" << w << ".vtk";
+//    
+//         std::ofstream output (filename.str());
+//         if(output.is_open())
+//         {
+//             data_out.write_vtk (output);
+//             data_out.clear();
+//             std::cout << "\nenrichment area written in:\t" << filename.str() << std::endl;
+//         }
+//         else
+//         {
+//             std::cout << "Could not write the output in file: " << filename.str() << std::endl;
+//         }
+//   }
   
     n_enriched_dofs_ = n_global_enriched_dofs - dof_handler->n_dofs();
     std::cout << "Number of unenriched dofs: "
