@@ -32,6 +32,7 @@
 #include <fstream>
 #include <iostream>
 #include <boost/graph/graph_concepts.hpp>
+#include <boost/graph/page_rank.hpp>
 
 using namespace std;
 
@@ -1328,7 +1329,7 @@ void test_convergence_sin_3(std::string output_dir)
            well_pressure = 9,
            enrichment_radius = 0.3;
          
-    unsigned int n_well_q_points = 100,
+    unsigned int n_well_q_points = 300,
                  initial_refinement = 3;
             
     Point<2> well_center(0+excenter,0+excenter);
@@ -1416,10 +1417,11 @@ void test_convergence_sin_3(std::string output_dir)
     xmodel.set_output_options(ModelBase::output_gmsh_mesh
 //                               | ModelBase::output_solution
 //                               | ModelBase::output_decomposed
-//                             | ModelBase::output_adaptive_plot
+                            | ModelBase::output_adaptive_plot
                             | ModelBase::output_error
 //                             | ModelBase::output_matrix
                              );
+    xmodel.set_well_band_width_ratio(0.61);
     
     ExactModel exact(exact_solution);
 
@@ -1673,7 +1675,7 @@ void test_convergence_sin_4(std::string output_dir)
         
 //         xmodel.compute_interpolated_exact(exact_solution);
         xmodel.output_results(cycle);
-//         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
     } 
     
         
@@ -3048,6 +3050,190 @@ void test_xquadrature_well_band(std::string output_dir)
 }
 
 
+void visualize_source_term()
+{
+    Triangulation<2> tria;
+    string grid_file = "/home/pavel/xfem_project/003/output/xfem_mesh_6.msh";
+    
+    
+    //open filestream with mesh from GMSH
+    std::ifstream in;
+    GridIn<2> gridin;
+    in.open(grid_file);
+    //attaching object of triangulation
+    gridin.attach_triangulation(tria);
+    if(in.is_open())
+    {
+      //reading data from filestream
+      gridin.read_msh(in);
+    }          
+    else
+    {
+      xprintf(Err, "Could not open coarse grid file: %s\n", grid_file.c_str());
+    }
+    
+    double p_a = 2.0,    //area of the model
+           excenter = 0.004,
+           radius = p_a*std::sqrt(2),
+           well_radius = 0.003,
+           perm2fer = 5e1,
+           perm2tard = 1e3,
+           k_wave_num = 1.5,
+           amplitude = 0.5,
+           well_pressure = 9;
+         
+    unsigned int n_well_q_points = 200;
+            
+    Point<2> well_center(0+excenter,0+excenter);
+    //--------------------------END SETTING----------------------------------
+    
+    Well well(well_radius, well_center);
+    well.set_pressure(well_pressure);
+    well.set_perm2aquifer(0,perm2fer);
+    well.set_perm2aquitard({perm2tard, 0.0});
+    well.evaluate_q_points(n_well_q_points);
+
+    compare::ExactSolution4 exact_solution(&well, radius, k_wave_num, amplitude);
+    compare::ExactBase* source = new compare::Source4(exact_solution);
+    ExactModel exact(source);
+    exact.output_distributed_solution(tria);
+    
+    delete source;
+}
+
+
+void test_polar_radius_sin_3(std::string output_dir)
+{
+    std::cout << "\n\n:::::::::::::::: POLAR RADIUS TEST ON SQUARE WITH SIN(x) 3 ::::::::::::::::\n\n" << std::endl;
+    //------------------------------SETTING----------------------------------
+    std::string test_name = "polar_test_sin_3_";
+  
+    double p_a = 2.0,    //area of the model
+           excenter = 0.0,//0.004,
+           radius = p_a*std::sqrt(2),
+           well_radius = 0.007,
+           perm2fer = 1e5,
+           perm2tard = 1e10,
+           transmisivity = Parameters::transmisivity,
+           k_wave_num = 1.5,
+           amplitude = 0.5,
+           well_pressure = 9,
+           enrichment_radius = 0.3;
+         
+    unsigned int n_well_q_points = 300,
+                 initial_refinement = 9;
+            
+    Point<2> well_center(0+excenter,0+excenter);
+    //--------------------------END SETTING----------------------------------
+  
+    Point<2> down_left(-p_a,-p_a);
+    Point<2> up_right(p_a, p_a);
+    std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+    
+    Well *well = new Well( well_radius,
+                            well_center);
+    well->set_pressure(well_pressure);
+    well->set_perm2aquifer(0,perm2fer);
+    well->set_perm2aquitard({perm2tard, 0.0});
+    well->evaluate_q_points(n_well_q_points);
+        
+    compare::ExactSolution4 *exact_solution = new compare::ExactSolution4(well, radius, k_wave_num, amplitude);
+    Function<2> *dirichlet_square = exact_solution;
+    Function<2> *rhs_function = new compare::Source4(*exact_solution);
+    
+    XModel_simple xmodel(well);  
+//     xmodel.set_name(test_name + "sgfem");
+//     xmodel.set_enrichment_method(Enrichment_method::sgfem);
+    xmodel.set_name(test_name + "xfem_shift");
+    xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+//       xmodel.set_name(test_name + "xfem_ramp");
+//       xmodel.set_enrichment_method(Enrichment_method::xfem_ramp);
+//       xmodel.set_name(test_name + "xfem");
+//       xmodel.set_enrichment_method(Enrichment_method::xfem);
+    
+    xmodel.set_output_dir(output_dir);
+    xmodel.set_area(down_left,up_right);
+    xmodel.set_transmisivity(transmisivity,0);
+    xmodel.set_initial_refinement(initial_refinement);                                     
+    xmodel.set_enrichment_radius(enrichment_radius);
+    xmodel.set_grid_create_type(ModelBase::rect);
+    xmodel.set_dirichlet_function(dirichlet_square);
+    xmodel.set_rhs_function(rhs_function);
+    xmodel.set_adaptivity(false);
+    xmodel.set_output_options(ModelBase::output_gmsh_mesh
+//                               | ModelBase::output_solution
+//                               | ModelBase::output_decomposed
+                            | ModelBase::output_adaptive_plot
+                            | ModelBase::output_error
+//                             | ModelBase::output_matrix
+                             );
+    
+    ExactModel exact(exact_solution);
+
+    unsigned int n_cycles = 30;
+    std::pair<double,double> l2_norm_dif_xfem;
+    
+    ConvergenceTable table_convergence;
+    
+    double polar_radius = 0.1;
+    
+    for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
+    { 
+        table_convergence.add_value("Cycle",cycle);
+        table_convergence.set_tex_format("Cycle", "r");
+        table_convergence.add_value("g",polar_radius);
+        table_convergence.set_tex_format("g", "r");
+        
+        std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
+        
+        xmodel.set_well_band_width_ratio(polar_radius);
+        xmodel.run (cycle);  
+        xmodel.output_results(cycle);
+        
+        std::cout << "===== XModel_simple finished =====" << std::endl;
+      
+        Vector<double> diff_vector;
+        l2_norm_dif_xfem = xmodel.integrate_difference(diff_vector, exact_solution);
+        
+        table_convergence.add_value("X_L2",l2_norm_dif_xfem.second);
+        table_convergence.set_tex_caption("X_L2","$\\|x_{XFEM}-x_{exact}\\|_{L^2(\\Omega)}$");
+        table_convergence.set_precision("X_L2", 4);
+        table_convergence.set_scientific("X_L2",true);
+      
+        table_convergence.add_value("XFEM-dofs",
+                                    xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
+        table_convergence.add_value("XFEM-enriched dofs",xmodel.get_number_of_dofs().second);
+        table_convergence.add_value("It_{XFEM}",xmodel.solver_iterations());
+        
+        table_convergence.add_value("XFEM-time",xmodel.last_run_time());
+        table_convergence.set_precision("XFEM-time", 3);
+        
+        table_convergence.set_tex_format("XFEM-dofs", "r");
+        table_convergence.set_tex_format("XFEM-enriched dofs", "r");
+        table_convergence.set_tex_format("It_{XFEM}", "r");
+        table_convergence.set_tex_format("XFEM-time", "r");
+      
+        //write the table every cycle (to have at least some results if program fails)
+        table_convergence.write_text(std::cout);
+        std::ofstream out_file;
+        out_file.open(output_dir + xmodel.name() + ".tex");
+        table_convergence.write_tex(out_file);
+        out_file.close();
+        
+        out_file.open(output_dir + xmodel.name() + ".txt");
+        table_convergence.write_text(out_file, 
+                                    TableHandler::TextOutputFormat::table_with_separate_column_description);
+        out_file.close();
+        
+        xmodel.compute_interpolated_exact(exact_solution);
+        xmodel.output_results(cycle);
+//         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+        
+        polar_radius += 0.03;
+    } 
+}
+    
+
 int main ()
 {
   std::string input_dir = "../input/";
@@ -3071,8 +3257,8 @@ int main ()
 //     test_radius_convergence_sin(output_dir);
 //   test_convergence_sin(output_dir);
 //   test_convergence_sin_2(output_dir);
-//   test_convergence_sin_3(output_dir);
-  test_convergence_sin_4(output_dir);
+     test_convergence_sin_3(output_dir);
+//   test_convergence_sin_4(output_dir);
 //   test_multiple_wells(output_dir);
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);
@@ -3081,6 +3267,9 @@ int main ()
 //   test_xquadrature_well(output_dir);
 //   test_xquadrature_well_2(output_dir);
 //     test_xquadrature_well_band(output_dir);
+//   visualize_source_term();
+  
+//   test_polar_radius_sin_3(output_dir);
   return 0;
 }
 
