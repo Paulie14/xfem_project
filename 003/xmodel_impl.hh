@@ -517,9 +517,8 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
 /****************************            compute_distributed_solution                 ***********************/
 
 template<Enrichment_method::Type EnrType>
-void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& points)
+void XModel::compute_distributed_solution(const std::vector< Point< 2 > >& points, unsigned int m)
 {
-  unsigned int m=1;
   unsigned int n_points = points.size();
   
   //clearing distributed solution vectors

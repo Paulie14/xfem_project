@@ -167,7 +167,7 @@ class XModel : public ModelBase
      * TODO: OBSOLETE - remove or inovate
      */
     template<Enrichment_method::Type EnrType> 
-    void compute_distributed_solution(const std::vector< Point< 2 > >& points);
+    void compute_distributed_solution(const std::vector< Point< 2 > >& points, unsigned int m);
     //@}
     
     /// @name Getters

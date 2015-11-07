@@ -2290,7 +2290,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     std::vector< Point< 2 > > support_points(dist_dof_handler.n_dofs());
     
     DoFTools::map_dofs_to_support_points<2>(dist_fe_values.get_mapping(), dist_dof_handler, support_points);
-    std::cout << "Distributing solution on a given mesh..." << std::endl;
+    std::cout << "Distributing solution on a given mesh, aquifer[" << m_aquifer << "]..." << std::endl;
     std::cout << "...number of nodes in the mesh:   " << dist_dof_handler.n_dofs() << std::endl;
     std::cout << "...number of nodes in the xfem mesh:   " << dof_handler->n_dofs() << std::endl;
     std::cout << "...number of dofs in the xfem mesh:   " << dof_handler->n_dofs() << " unenriched and " 
@@ -2299,24 +2299,22 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     //====================vtk output
     //DataOut<2> data_out;
     data_out.attach_dof_handler (dist_dof_handler);
-    
-    std::cout << "computing solution on given mesh" << std::endl;
             
     switch(enrichment_method_)
     {
         case Enrichment_method::xfem: 
-            compute_distributed_solution<Enrichment_method::xfem>(support_points);
+            compute_distributed_solution<Enrichment_method::xfem>(support_points, m_aquifer);
             break;
         case Enrichment_method::xfem_ramp: 
-            compute_distributed_solution<Enrichment_method::xfem_ramp>(support_points);
+            compute_distributed_solution<Enrichment_method::xfem_ramp>(support_points, m_aquifer);
             break;
         
         case Enrichment_method::xfem_shift:  
-            compute_distributed_solution<Enrichment_method::xfem_shift>(support_points);
+            compute_distributed_solution<Enrichment_method::xfem_shift>(support_points, m_aquifer);
             break;
         
         case Enrichment_method::sgfem:
-            compute_distributed_solution<Enrichment_method::sgfem>(support_points);
+            compute_distributed_solution<Enrichment_method::sgfem>(support_points, m_aquifer);
             break;
         default: 
             MASSERT(0,"Unknown enrichment type or not implemented.");
@@ -2337,7 +2335,7 @@ void XModel::output_distributed_solution(const dealii::Triangulation< 2 > &dist_
     data_out.build_patches ();
 
     std::stringstream filename;
-    filename << output_dir_ << "xmodel_dist_solution_" << cycle << ".vtk";
+    filename << output_dir_ << "xmodel_dist_solution_" << cycle << "_" << m_aquifer << ".vtk";
     
     std::ofstream output (filename.str());
     data_out.write_vtk (output);
