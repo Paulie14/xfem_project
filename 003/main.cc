@@ -1863,7 +1863,199 @@ void test_multiple_wells(std::string output_dir)
   //*/
   std::cout << "\n\n:::::::::::::::: MULTIPLE WELLS TEST END ::::::::::::::::\n\n" << std::endl;
 }
+ 
+ 
+void test_multiple_wells2(std::string output_dir)
+{
+  std::cout << "\n\n:::::::::::::::: MULTIPLE WELLS TEST 2 ::::::::::::::::\n\n" << std::endl;
   
+  //------------------------------SETTING----------------------------------
+  std::string test_name = "multiple_2_";
+  bool fem = true, 
+       fem_create = false;
+  
+  double p_a = 15.0,    //area of the model
+         well_radius = 0.02,
+         perm2fer = Parameters::perm2fer, 
+         perm2tard = Parameters::perm2tard,
+         transmisivity = Parameters::transmisivity,
+         enrichment_radius = 3.0;
+         
+  unsigned int n_well_q_points = 500;
+         
+  unsigned int n_aquifers = 2;
+  std::vector<double> transmisivity_vec = {0.001, 0.1};
+  // top / aq1 / aq2
+  std::vector<double> perm2fer_1 = {0.1, 1e7, 0};
+  std::vector<double> perm2fer_2 = {1e6, 0, 0};
+  std::vector<double> perm2fer_3 = {1e1, 1e8, 0};
+  std::vector<double> perm2fer_4 = {1e6, 1e4, 0};
+  std::vector<double> perm2fer_5 = {1e6, 1e4, 0};
+  
+  std::vector<double> perm2tard_1 = {1e10, 1e10, 1e10};
+ std::vector<double> perm2tard_2 = {1e10, 1e10, 0};
+  
+  
+  //std::string input_dir = "../input/square_convergence/";
+  std::string input_dir = "../output/multiple_2_fem/";
+  std::string coarse_file = input_dir + "real_grid_7.msh";
+  
+  //std::string coarse_file = input_dir + "coarse_grid.msh";
+  std::string ref_flags_fine = input_dir + "ref_flags_7.ptf";
+  
+  //PersistentTriangulation<2>* fine_triangulation = NULL;
+  //--------------------------END SETTING----------------------------------
+  
+  Point<2> down_left(-p_a,-p_a);
+  Point<2> up_right(p_a, p_a);
+  std::cout << "area of the model: " << down_left << "\t" << up_right << std::endl;
+  
+  
+  //vector of wells
+  std::vector<Well*> wells;
+  
+  wells.push_back( new Well( well_radius,
+                             Point<2>(-10.0,-10.0)));
+  wells.back()->set_perm2aquifer(perm2fer_1);
+  wells.back()->set_perm2aquitard(perm2tard_1);
+  
+  wells.push_back( new Well( well_radius,
+                             Point<2>(0.0,0.0)));
+  wells.back()->set_perm2aquifer(perm2fer_2);
+  wells.back()->set_perm2aquitard(perm2tard_1);
+  
+  wells.push_back( new Well( well_radius,
+                             Point<2>(-10.0,8.0)));
+  wells.back()->set_perm2aquifer(perm2fer_3);
+  wells.back()->set_perm2aquitard(perm2tard_1);
+  
+  wells.push_back( new Well( well_radius,
+                             Point<2>(8.0,9.0)));
+  wells.back()->set_perm2aquifer(perm2fer_4);
+  wells.back()->set_perm2aquitard(perm2tard_2);
+  
+  wells.push_back( new Well( well_radius,
+                             Point<2>(5.0,-10.0)));
+  wells.back()->set_perm2aquifer(perm2fer_5);
+  wells.back()->set_perm2aquitard(perm2tard_1);
+
+  
+  //setting BC - pressure at the top of the wells
+  wells[0]->set_pressure(-5*Parameters::pressure_at_top);
+  wells[1]->set_pressure(-1*Parameters::pressure_at_top);
+  wells[2]->set_pressure(12*Parameters::pressure_at_top);
+  wells[3]->set_pressure(Parameters::pressure_at_top);
+  wells[4]->set_pressure(10*Parameters::pressure_at_top);
+  
+  for(unsigned int w=0; w < wells.size(); w++)
+  {
+    wells[w]->evaluate_q_points(n_well_q_points);
+  }
+  
+  //the radius is the half of the diagonal of the square: 2*p_a*sqrt(2)/2 = p_a*sqrt(2)
+  //Function<2> *dirichlet = new ZeroFunction<2>();
+  
+  //FEM model creation
+  Model model_fem(wells);  
+  model_fem.set_name(test_name + "fem");
+  model_fem.set_output_dir(output_dir);
+  model_fem.set_transmisivity(transmisivity,0); 
+  //model_fem.set_dirichlet_function(dirichlet);
+  
+  XModel xmodel(wells,"",n_aquifers);  
+  xmodel.set_name(test_name + "sgfem");
+  xmodel.set_enrichment_method(Enrichment_method::sgfem);
+//   xmodel.set_name(test_name + "xfem_shift");
+//   xmodel.set_enrichment_method(Enrichment_method::xfem_shift);
+  
+  xmodel.set_output_dir(output_dir);
+  xmodel.set_area(down_left,up_right);
+  xmodel.set_transmisivity(transmisivity,0);
+  xmodel.set_initial_refinement(4);                                     
+  xmodel.set_enrichment_radius(enrichment_radius);
+  xmodel.set_grid_create_type(ModelBase::rect);
+  //xmodel.set_dirichlet_function(dirichlet);
+  xmodel.set_adaptivity(true);
+  xmodel.set_output_options(ModelBase::output_vtk_mesh);
+  //xmodel.set_well_computation_type(Well_computation::sources);
+
+  
+  
+  if(fem_create)
+  {
+    model_fem.set_area(down_left,up_right);
+    model_fem.set_initial_refinement(5); 
+    model_fem.set_grid_create_type(ModelBase::rect);
+    model_fem.set_ref_coarse_percentage(0.3,0.05);
+    model_fem.set_adaptivity(true);
+    for (unsigned int cycle=0; cycle < 8; ++cycle)
+    { 
+      std::cout << "===== Model running   " << cycle << "   =====" << std::endl;
+      model_fem.run (cycle);
+      model_fem.output_results (cycle);
+      std::cout << "===== Model finished =====" << std::endl;
+    }
+    return;
+  }
+  
+  if(fem)
+  {
+    model_fem.set_grid_create_type(ModelBase::load);
+    //model_fem.set_computational_mesh(coarse_file, ref_flags_fine);
+    model_fem.set_computational_mesh(coarse_file);
+    model_fem.run();
+    double l2_norm_fem = compare::L2_norm( model_fem.get_solution(),
+                                            model_fem.get_triangulation()
+                                            );
+    
+    std::cout << "l2 norm of fem solution: "  << l2_norm_fem << std::endl;
+//     return;
+  }
+  
+  unsigned int n_cycles = 1;
+  double l2_norm_dif;
+  
+  TableHandler table;
+  
+  for (unsigned int cycle=0; cycle < n_cycles; ++cycle)
+    { 
+      table.add_value("Cycle",cycle);
+ 
+      std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
+      
+      xmodel.run (cycle);  
+      xmodel.output_results(cycle);
+      xmodel.output_distributed_solution(model_fem.get_triangulation(),cycle,1);
+      xmodel.output_distributed_solution(model_fem.get_triangulation(),cycle,2);
+      std::cout << "===== XModel_simple finished =====" << std::endl;
+      
+      l2_norm_dif = compare::L2_norm_diff( model_fem.get_solution(),
+                                             xmodel.get_distributed_solution(),
+                                             model_fem.get_triangulation()
+                                           );
+      
+      table.add_value("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$",l2_norm_dif);
+      table.set_precision("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$", 2);
+      table.set_scientific("$\\|x_{XFEM}-x_{FEM}\\|_{L^2(\\Omega)}$",true);
+      
+      table.add_value("dofs",xmodel.get_number_of_dofs().first+xmodel.get_number_of_dofs().second);
+      table.add_value("enriched dofs",xmodel.get_number_of_dofs().second);
+      table.add_value("Iterations",xmodel.solver_iterations());
+      
+      //table.add_value("XFEM-time",xmodel.get_last_run_time());
+      //table.set_precision("XFEM-time", 3);
+
+      
+      //write the table every cycle (to have at least some results if program fails)
+      table.write_text(std::cout);
+      std::ofstream out_file;
+      out_file.open(output_dir + xmodel.name() + ".tex");
+      table.write_tex(out_file);
+      out_file.close();
+    } 
+  //*/
+  std::cout << "\n\n:::::::::::::::: MULTIPLE WELLS TEST 2 END ::::::::::::::::\n\n" << std::endl;
+}
 
 void test_output(std::string output_dir)
 {
@@ -2481,7 +2673,7 @@ void test_two_aquifers(std::string output_dir)
 //       out_file.close();
     } 
   //*/
-  std::cout << "\n\n:::::::::::::::: MULTIPLE WELLS TEST END ::::::::::::::::\n\n" << std::endl;
+  std::cout << "\n\n:::::::::::::::: TWO AQUIFERS TEST END ::::::::::::::::\n\n" << std::endl;
   
 }
 
@@ -3257,9 +3449,11 @@ int main ()
 //     test_radius_convergence_sin(output_dir);
 //   test_convergence_sin(output_dir);
 //   test_convergence_sin_2(output_dir);
-     test_convergence_sin_3(output_dir);
+//      test_convergence_sin_3(output_dir);
 //   test_convergence_sin_4(output_dir);
 //   test_multiple_wells(output_dir);
+  
+  test_multiple_wells2(output_dir);
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);
 //    test_enr_error(output_dir);
