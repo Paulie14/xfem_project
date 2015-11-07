@@ -807,28 +807,30 @@ void Model::assemble_dirichlet(unsigned int m)
    // MASSERT(dirichlet_function != NULL, "Dirichlet BC function has not been set.\n");
     MASSERT(dof_handler != NULL, "DoF Handler object does not exist.\n");
 
-    std::map<unsigned int,double> boundary_values;
-    if(m == n_aquifers_-1)
-       VectorTools::interpolate_boundary_values (*dof_handler,
-                                             0,
-                                             //Model_simple::Dirichlet_pressure(wells[0]),
-                                             *dirichlet_function,
-                                             boundary_values);
-//     else if(m == 1)
-//             VectorTools::interpolate_boundary_values (*dof_handler,
-//                                             0,
-//                                             *dirichlet_function,
-//                                             boundary_values);
-    else return;
+    if(dirichlet_function)
+    {
+        std::map<unsigned int,double> boundary_values;
+        if(m == n_aquifers_-1)
+        VectorTools::interpolate_boundary_values (*dof_handler,
+                                                0,
+                                                //Model_simple::Dirichlet_pressure(wells[0]),
+                                                *dirichlet_function,
+                                                boundary_values);
+        //     else if(m == 1)
+        //             VectorTools::interpolate_boundary_values (*dof_handler,
+        //                                             0,
+        //                                             *dirichlet_function,
+        //                                             boundary_values);
+            else return;
 
-   DBGMSG("boundary_values size = %d\n",boundary_values.size());
-   MatrixTools::apply_boundary_values (boundary_values,
-                                       block_matrix.block(0,0),
-                                       block_solution.block(0),
-                                       block_system_rhs.block(0));
-   
-   
-   std::cout << "Dirichlet BC assembled succesfully." << std::endl;
+        DBGMSG("boundary_values size = %d\n",boundary_values.size());
+        MatrixTools::apply_boundary_values (boundary_values,
+                                            block_matrix.block(0,0),
+                                            block_solution.block(0),
+                                            block_system_rhs.block(0));
+        std::cout << "Dirichlet BC assembled succesfully." << std::endl;
+    }   
+    else std::cout << "Dirichlet BC not set." << std::endl;
 }
 
 void Model::solve ()
