@@ -8,7 +8,7 @@
 #include <iostream>
 
 #ifndef DEBUG
-# define MASSERT( unused ) do {} while ( false )    
+# define MASSERT( unused1, unused2 ) do {} while ( false )    
 #else
   #define MASSERT(isOK,msg) \
     if ( !(isOK) ) \

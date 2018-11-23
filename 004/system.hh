@@ -44,7 +44,7 @@ string create_subdirectory(string parent_dir, string new_dir);
 #include <iostream>
 
 #ifndef DEBUG
-# define MASSERT( unused ) do {} while ( false ) 
+# define MASSERT( unused1, unused2 ) do {} while ( false ) 
 # define DBGMSG(...)
 #else
   #define MASSERT(isOK,msg) \
