@@ -422,3 +422,82 @@ double Source4::value(const Point< 2 >& p, const unsigned int /*component*/) con
     
     return - amplitude_ * (b_nabla_a + 2*grad_a_grad_b + a_nabla_b);
 }
+
+
+
+ExactSolutionMultiple::ExactSolutionMultiple(Well* well, double radius, double k, double amplitude)
+    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+{
+}
+
+void ExactSolutionMultiple::set_wells(std::vector<Well*> wells, std::vector<double> va, std::vector<double> vb)
+{
+    vec_a = va;
+    vec_b = vb;
+    wells_ = wells;
+}
+
+Tensor< 1, 2 > ExactSolutionMultiple::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    Tensor<1,2> res;
+    for(unsigned int w=0; w<wells_.size(); w++)
+    {
+        Well* well = wells_[w];
+        double distance = well->center().distance(p);
+        double distance_sqr = distance*distance;
+        Tensor<1,2> grad;
+        if(distance > well->radius())
+        {
+            grad[0]= (p[0] - well->center()[0]);
+            grad[1]= (p[1] - well->center()[1]);
+            grad = vec_a[w]/distance_sqr * grad;
+        }
+        res += grad;
+    }
+    
+    res[0] += amplitude_ * k_*std::cos(k_*p[0]);
+    
+    return res;
+}
+
+
+double ExactSolutionMultiple::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+    double val = 0.0;
+    for(unsigned int w=0; w<wells_.size(); w++)
+    {
+        Well* well = wells_[w];
+        double distance = well->center().distance(p);
+//         double distance_from_well = distance - well_->radius();
+        if(distance > well->radius())
+            val += vec_a[w] * std::log(distance);
+        else
+            val += vec_a[w] * std::log(well->radius());
+    }
+    
+    return val + amplitude_*std::sin(k_*p[0]);
+}
+
+SourceMultiple::SourceMultiple(ExactSolutionMultiple &ex_sol)
+: ExactSolutionMultiple(ex_sol.well_, ex_sol.radius_, ex_sol.k_, ex_sol.amplitude_)
+{
+    set_wells(ex_sol.wells_, ex_sol.vec_a, ex_sol.vec_b);
+}
+
+double SourceMultiple::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+//     double val = 0.0;
+//     for(unsigned int w=0; w<wells_.size(); w++)
+//     {
+//         Well* well = wells_[w];
+//         double distance = well->center().distance(p);
+// //         double distance_from_well = distance - well_->radius();
+//         if(distance > well->radius())
+//             val += vec_a[w] * std::log(distance);
+//         else
+//             val += vec_a[w] * std::log(well->radius());
+//     }
+//     
+//     return val + amplitude_*k_*k_*std::sin(k_*p[0]);
+    return amplitude_*k_*k_*std::sin(k_*p[0]);
+}

@@ -185,6 +185,45 @@ namespace compare
                     const unsigned int  component = 0) const override; 
     };
     
+    
+    
+    
+    /** Exact solution taking into account both sigma permeability (well-aquifer) 
+     * and c permeability (aquifer-aquifer).
+     * Currenlty the best and working analytical solution for one aquifer-well model.
+     */
+    class ExactSolutionMultiple : public ExactBase
+    {
+    public:
+      ExactSolutionMultiple(Well *well, double radius, double k, double amplitude);
+      
+      void set_wells(std::vector<Well*> wells, std::vector<double> vec_a, std::vector<double> vec_b);
+      
+        
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
+    protected:
+        double k_, amplitude_;
+        
+        std::vector<double> vec_a, vec_b;
+        std::vector<Well*> wells_;
+        
+    friend class SourceMultiple;
+    };
+    
+    class SourceMultiple : public ExactSolutionMultiple
+    {
+    public:
+      SourceMultiple(ExactSolutionMultiple &ex_sol);
+        
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
+    
+    
+    
 /** @brief Class contains helpful methods for comparing models.
  * 
  * Contains methods computing \f$L^2\f$ norm \f$\|\cdot\|_{L^2(\Omega)}\f$ of 

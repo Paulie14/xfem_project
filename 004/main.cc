@@ -1499,26 +1499,33 @@ void test_convergence_sin_3(std::string output_dir)
 void test_convergence_sin_4(std::string output_dir)
 {
     std::cout << "\n\n:::::::::::::::: CONVERGENCE TEST ON SQUARE WITH SIN(x) 4 ::::::::::::::::\n\n" << std::endl;
-    bool fem = true;
+    bool fem = false;
     //------------------------------SETTING----------------------------------
-    std::string test_name = "sin_square_convergence_4_";
+    std::string test_name = "sin_square_convergence_4_mult";
   
     double p_a = 100.0,    //area of the model
            excenter = 5.43,
            radius = p_a*std::sqrt(2),
+//            well_radius = 0.2,
+//            perm2fer = 1e5,
+//            perm2tard = 1e13,
            well_radius = 0.2,
-           perm2fer = 1e5,
-           perm2tard = 1e13,
+           perm2fer = 10,
+           perm2tard = 1e10,
+           
            transmisivity = Parameters::transmisivity,
            k_wave_num = 0.03,
            amplitude = 8,
-           well_pressure = 100,
+           well_pressure = 10,
            enrichment_radius = 30;
          
     unsigned int n_well_q_points = 200,
                  initial_refinement = 3;
             
     Point<2> well_center(0+excenter,0+excenter);
+    
+    std::vector<double> vec_a ({-4.12554423417639});
+    std::vector<double> vec_b ({100.000000096430});
     //--------------------------END SETTING----------------------------------
   
     Point<2> down_left(-p_a,-p_a);
@@ -1532,7 +1539,7 @@ void test_convergence_sin_4(std::string output_dir)
     well->set_perm2aquitard({perm2tard, 0.0});
     well->evaluate_q_points(n_well_q_points);
     
-
+    std::vector<Well*> wells({well});
     
     if(fem) //computing H1 norm of regular part of solution
     {
@@ -1541,8 +1548,8 @@ void test_convergence_sin_4(std::string output_dir)
         //well_fem->set_pressure(0);
         //well_fem->set_inactive();
         well_fem->evaluate_q_points(n_well_q_points);
-        compare::ExactSolution1 *exact_solution_fem = new compare::ExactSolution1(well_fem, radius, k_wave_num, amplitude);
-        Function<2> *rhs_function_fem = new compare::Source1(*exact_solution_fem);
+        compare::ExactSolution4 *exact_solution_fem = new compare::ExactSolution4(well_fem, radius, k_wave_num, amplitude);
+        Function<2> *rhs_function_fem = new compare::Source4(*exact_solution_fem);
         Model_simple model(well_fem);    
         model.set_name(test_name + "fem");
         model.set_output_dir(output_dir);
@@ -1584,9 +1591,12 @@ void test_convergence_sin_4(std::string output_dir)
         return;
     }
         
-    compare::ExactSolution4 *exact_solution = new compare::ExactSolution4(well, radius, k_wave_num, amplitude);
+//     compare::ExactSolution4 *exact_solution = new compare::ExactSolution4(well, radius, k_wave_num, amplitude);
+    compare::ExactSolutionMultiple *exact_solution = new compare::ExactSolutionMultiple(well, radius, k_wave_num, amplitude);
+    exact_solution->set_wells(wells, vec_a, vec_b);
+    
     Function<2> *dirichlet_square = exact_solution;
-    Function<2> *rhs_function = new compare::Source4(*exact_solution);
+    Function<2> *rhs_function = new compare::SourceMultiple(*exact_solution);
     
     XModel_simple xmodel(well);  
     xmodel.set_name(test_name + "sgfem");
@@ -1612,7 +1622,7 @@ void test_convergence_sin_4(std::string output_dir)
                               | ModelBase::output_decomposed
 //                             | ModelBase::output_adaptive_plot
                             | ModelBase::output_error
-//                             | ModelBase::output_matrix
+                            | ModelBase::output_matrix
                              );
     
     ExactModel exact(exact_solution);
@@ -1633,7 +1643,7 @@ void test_convergence_sin_4(std::string output_dir)
         std::cout << "===== XModel_simple running   " << cycle << "   =====" << std::endl;
       
         xmodel.run (cycle);  
-        xmodel.output_results(cycle);
+//         xmodel.output_results(cycle);
         
         std::cout << "===== XModel_simple finished =====" << std::endl;
       
@@ -1673,9 +1683,9 @@ void test_convergence_sin_4(std::string output_dir)
                                     TableHandler::TextOutputFormat::table_with_separate_column_description);
         out_file.close();
         
-//         xmodel.compute_interpolated_exact(exact_solution);
-        xmodel.output_results(cycle);
-         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
+        xmodel.compute_interpolated_exact(exact_solution);
+//         xmodel.output_results(cycle);
+//         exact.output_distributed_solution(xmodel.get_output_triangulation(), cycle);
     } 
     
         
@@ -3442,7 +3452,7 @@ int main ()
 //   test_adaptive_integration2(output_dir);
 //   test_adaptive_integration3(output_dir);
   //test_squares();
-  //test_solution(output_dir);
+//   test_solution(output_dir);
   //test_circle_grid_creation(input_dir);
 //    test_convergence_square(output/*_dir);
 //     test_radius_convergence_square(o*/utput_dir);
@@ -3450,10 +3460,10 @@ int main ()
 //   test_convergence_sin(output_dir);
 //   test_convergence_sin_2(output_dir);
 //      test_convergence_sin_3(output_dir);
-//   test_convergence_sin_4(output_dir);
+  test_convergence_sin_4(output_dir);
 //   test_multiple_wells(output_dir);
   
-  test_multiple_wells2(output_dir);
+//   test_multiple_wells2(output_dir);
 //   test_two_aquifers(output_dir);
 //   test_output(output_dir);
 //    test_enr_error(output_dir);
