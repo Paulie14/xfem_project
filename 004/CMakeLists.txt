@@ -72,7 +72,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8)
 FIND_PACKAGE(deal.II 8.0 REQUIRED
   HINTS
     ${DEAL_II_DIRS} ../ ../../ $ENV{DEAL_II_DIR}
-    $ENV{HOME}/local/deal.II
+    $ENV{HOME}/local/dealii
   #
   # If the deal.II library cannot be found (because it is not installed at a
   # default location or your project resides at an uncommon place), you
@@ -87,7 +87,9 @@ FIND_PACKAGE(deal.II 8.0 REQUIRED
 DEAL_II_INITIALIZE_CACHED_VARIABLES()
 
 #SET(CMAKE_CXX_FLAGS "${DEAL_II_CXX_FLAGS} -std=c++11")
-SET(CMAKE_CXX_FLAGS "${DEAL_II_CXX_FLAGS} -g")
+#SET(CMAKE_CXX_FLAGS "${DEAL_II_CXX_FLAGS} -g")
+#SET(CMAKE_CXX_FLAGS "${DEAL_II_CXX_FLAGS} -O2")
+SET(CMAKE_BUILD_TYPE RELEASE)
 MESSAGE("CMAKE_CXX_FLAGS:  ${CMAKE_CXX_FLAGS}")
 
 PROJECT(${TARGET})
