@@ -1209,9 +1209,13 @@ void XModel::assemble_system ()
     // MATRIX OUTPUT
     if(output_options_ & OutputOptions::output_matrix)
     {
-        write_sparse_matrix(block_matrix[0], "block_matrix_0");
-        write_sparse_matrix(block_matrix[1], "block_matrix_1");
-        write_sparse_matrix(block_comm_matrix[0], "block_comm_matrix_0");
+        stringstream filename;
+        filename << "block_matrix_" << cycle_;
+        write_sparse_matrix(block_matrix[0], filename.str() + "_0");
+        write_sparse_matrix(block_matrix[1], filename.str() + "_1");
+        filename.clear();
+        filename << "block_comm_matrix_" << cycle_;
+        write_sparse_matrix(block_comm_matrix[0], filename.str());
         
         std::string path = output_dir_ + "rhs.m";
         std::ofstream output (path);
