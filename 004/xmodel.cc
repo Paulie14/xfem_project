@@ -1479,6 +1479,19 @@ void XModel::assemble_subsystem (unsigned int m)
         }    
         else
         {
+//             cell->get_dof_indices (local_dof_indices);
+//             if(rhs_function != nullptr)
+//             {
+//                 // HOMOGENOUS NEUMANN -> = 0, else source term
+//                 for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                 for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+//                     cell_rhs(i) += (fe_values.shape_value (i, q_point) *
+//                                 rhs_function->value(fe_values.quadrature_point(q_point))
+//                                 * fe_values.JxW (q_point));
+// 
+//                 block_system_rhs.block(m).add(local_dof_indices, cell_rhs);
+//             }
+            
             FullMatrix<double>   enrich_cell_matrix;
             std::vector<unsigned int> enrich_dof_indices; //dof indices of enriched and unrenriched dofs
             Vector<double>       enrich_cell_rhs; 
@@ -1704,7 +1717,7 @@ void XModel::assemble_well_permeability_term(unsigned int m)
             {
                 //if(block_sp_pattern.exists(val_i->first,val_j->first))
                 {
-                double value = well->perm2aquifer(m-1) / well->circumference()
+                double value = well->perm2aquifer(m-1) * well->circumference()
                                * val_i->second 
                                * val_j->second;            
                 block_matrix[m].add(val_i->first,
@@ -1818,17 +1831,17 @@ void XModel::assemble_dirichlet(unsigned int m)
     MASSERT(dof_handler != NULL, "DoF Handler object does not exist.\n");
 
     std::map<unsigned int,double> boundary_values;
-    if(m == n_aquifers_)
-            VectorTools::interpolate_boundary_values (*dof_handler,
-                                            0,
-                                            ZeroFunction<2>(),
-                                            boundary_values);
-//     else if(m == 1)
+//     if(m == n_aquifers_)
 //             VectorTools::interpolate_boundary_values (*dof_handler,
 //                                             0,
-//                                             *dirichlet_function,
+//                                             ZeroFunction<2>(),
 //                                             boundary_values);
-    else return;
+//     else if(m == 1)
+            VectorTools::interpolate_boundary_values (*dof_handler,
+                                            0,
+                                            *dirichlet_function,
+                                            boundary_values);
+//     else return;
     
    DBGMSG("boundary_values size = %d\n",boundary_values.size());
    MatrixTools::apply_boundary_values (boundary_values,
@@ -2473,7 +2486,7 @@ std::pair<double,double> XModel::integrate_difference(dealii::Vector< double >& 
 
 
 
-void XModel::compute_interpolated_exact(ExactBase *exact_solution)
+void XModel::compute_interpolated_exact(ExactWellBase *exact_solution)
 {
     Vector<double> unenriched(dof_handler->n_dofs());
     Vector<double> enriched(dof_handler->n_dofs());

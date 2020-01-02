@@ -36,36 +36,36 @@ ExactModel::~ExactModel()
 }
 
 
-void ExactModel::output_distributed_solution(const std::string &flag_file,
-                                             const unsigned int &cycle)
-{
-  if(dist_tria != NULL)
-  {
-    delete dist_tria;
-    dist_coarse_tria.clear();
-  }
-  
-  GridGenerator::hyper_ball<2>(dist_coarse_tria,exact_solution->well()->center(),exact_solution->radius());
-  static const HyperBallBoundary<2> boundary(exact_solution->well()->center(),exact_solution->radius());
-  dist_coarse_tria.set_boundary(0, boundary);
-      
-  dist_tria = new PersistentTriangulation<2>(dist_coarse_tria);
-  std::ifstream in;
-  in.open(flag_file);
-  if(in.is_open())
-    dist_tria->read_flags(in);
-  else
-  {
-    xprintf(Err, "Could not open refinement flags file: %s\n", flag_file.c_str());
-  }
-  //creates actual grid to be available
-  dist_tria->restore();
-  
-  output_distributed_solution(*dist_tria, cycle);
-  
-  //destroy persistent triangulation, release pointer to coarse triangulation
-  //delete dist_tria;
-}
+// void ExactModel::output_distributed_solution(const std::string &flag_file,
+//                                              const unsigned int &cycle)
+// {
+//   if(dist_tria != NULL)
+//   {
+//     delete dist_tria;
+//     dist_coarse_tria.clear();
+//   }
+//   
+//   GridGenerator::hyper_ball<2>(dist_coarse_tria,exact_solution->well()->center(),exact_solution->radius());
+//   static const HyperBallBoundary<2> boundary(exact_solution->well()->center(),exact_solution->radius());
+//   dist_coarse_tria.set_boundary(0, boundary);
+//       
+//   dist_tria = new PersistentTriangulation<2>(dist_coarse_tria);
+//   std::ifstream in;
+//   in.open(flag_file);
+//   if(in.is_open())
+//     dist_tria->read_flags(in);
+//   else
+//   {
+//     xprintf(Err, "Could not open refinement flags file: %s\n", flag_file.c_str());
+//   }
+//   //creates actual grid to be available
+//   dist_tria->restore();
+//   
+//   output_distributed_solution(*dist_tria, cycle);
+//   
+//   //destroy persistent triangulation, release pointer to coarse triangulation
+//   //delete dist_tria;
+// }
 
 
 

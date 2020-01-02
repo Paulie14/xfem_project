@@ -321,7 +321,7 @@ void Model::setup_system ()
   hanging_node_constraints.close();
   
   //hanging_node_constraints.print(std::cout);
-  //std::cout << "number of constrains: " << hanging_node_constraints.n_constraints() << std::endl;
+//   std::cout << "number of constrains: " << hanging_node_constraints.n_constraints() << std::endl;
   
   //BLOCK SPARSITY PATTERN
   //inicialization of (temporary) BlockCompressedSparsityPattern, BlockVector
@@ -334,14 +334,16 @@ void Model::setup_system ()
   block_c_sparsity.block(1,1).reinit(n2,n2);
   block_c_sparsity.collect_sizes();
   
+//   DBGMSG("make_sparsity_pattern\n");
   //sets pattern to block(0,0)
   DoFTools::make_sparsity_pattern(*dof_handler, block_c_sparsity.block(0,0));
   
+//   DBGMSG("find_well_cells\n");
   //find cell on which the wells are
-  find_well_cells();
+//   find_well_cells();
   
   
-  DBGMSG("Printing Data_cell: %d cells on wells boundary\n",data_cell.size());
+//   DBGMSG("Printing Data_cell: %d cells on wells boundary\n",data_cell.size());
   n_wells_q_points.clear();
   n_wells_q_points.resize(wells.size(),0);
   for(unsigned int i =0; i < data_cell.size(); i++)
@@ -358,8 +360,8 @@ void Model::setup_system ()
              //*/
   }
   
-  for(unsigned int w=0; w < wells.size(); w++)
-    DBGMSG("Q_points number check out: %d \t %d\n",wells[w]->q_points().size(), n_wells_q_points[w]);
+//   for(unsigned int w=0; w < wells.size(); w++)
+//     DBGMSG("Q_points number check out: %d \t %d\n",wells[w]->q_points().size(), n_wells_q_points[w]);
   
   
   const unsigned int dofs_per_cell = fe.dofs_per_cell;
@@ -440,7 +442,7 @@ void Model::find_well_cells()
 {
   MASSERT(wells.size() > 0, "No wells are defined in vector of wells");
   
-  //DBGMSG("Number of wells to find: %d\n", wells.size());
+  DBGMSG("Number of wells to find: %d\n", wells.size());
   //iterator over cells
   DoFHandler<2>::active_cell_iterator cell, endc;
   
@@ -479,7 +481,7 @@ void Model::find_well_cells()
     {
       if (cell->point_inside(wells[w]->center()))
       {
-        //std::cout << "accessing well: " << w << "\tfrom cell: "<< cell->index() << std::endl; 
+//         std::cout << "accessing well: " << w << "\tfrom cell: "<< cell->index() << std::endl; 
         add_data_to_cell(cell, wells[w], w);
         break;
       }
@@ -489,7 +491,7 @@ void Model::find_well_cells()
 
 void Model::add_data_to_cell (const DoFHandler<2>::active_cell_iterator cell, Well *well, unsigned int well_index)
 {
-  //std::cout << "CALL add_points_to_cell on cell: " << cell->index() << std::endl;
+//   std::cout << "CALL add_points_to_cell on cell: " << cell->index() << std::endl;
   // if the flag is set = we have been already there, so continue
     if ( cell->user_flag_set() == true)
     {
@@ -500,6 +502,7 @@ void Model::add_data_to_cell (const DoFHandler<2>::active_cell_iterator cell, We
   //sets user flag for the cell in which we have been
   cell->set_user_flag();
   
+//   DBGMSG("cell index %d\n", cell->index());
  
   //is the whole cell inside the well ?
   unsigned int vertex_in_count = 0;
@@ -549,9 +552,10 @@ void Model::add_data_to_cell (const DoFHandler<2>::active_cell_iterator cell, We
   
   // see step30, method assemble_system2()
   // searching neighbors...
+//   DBGMSG("searching neighbors...\n");
   for (unsigned int face_no=0; face_no < GeometryInfo<2>::faces_per_cell; ++face_no)
   {
-    ///std::cout << "\tface(" << face_no << "): ";
+//     std::cout << "\tface(" << face_no << "): ";
     typename DoFHandler<2>::face_iterator face = cell->face(face_no);
     
     //if the face is at the boundary, there is no neighbor, so continue
@@ -598,14 +602,15 @@ void Model::add_data_to_cell (const DoFHandler<2>::active_cell_iterator cell, We
             //neighbor->index() == cell->index() ))
            )
           {
-            ///std::cout << "\tneigh: " << neighbor->index() << "\t same refine level: " 
-            ///          << neighbor->level() << std::endl;
+//             std::cout << "\tneigh: " << neighbor->index() << "\t same refine level: " 
+//                       << neighbor->level() << std::endl;
+//               DBGMSG("same level neighbor...\n");
             add_data_to_cell(neighbor, well, well_index);
           }
         else
           //is coarser
           {
-            ///std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
+//             std::cout << "\tneigh: " << neighbor->index() << "\t is coarser" << std::endl; 
             add_data_to_cell(neighbor, well, well_index);
           }
       }

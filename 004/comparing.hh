@@ -19,6 +19,30 @@ namespace compare
 {
   /** @brief Class representing function of the exact solution.
    * 
+   * Base class (interface) for the exact solution.
+   * @p value returns value of exact solution in given point.
+   */
+  class ExactBase : public dealii::Function<2>
+    {
+      public:
+        /** @brief Constructor.
+         */
+        ExactBase();
+        
+        ///Returns value of exact soution in given point @p p.
+        ///@param p is given point
+        ///@param component is set to 0 cause it is a scalar function
+        virtual double value (const dealii::Point<2>   &p,
+                              const unsigned int  component = 0) const = 0;
+                              
+        virtual dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                             const unsigned int  component = 0) const = 0;    
+      protected:    
+        unsigned int m_;
+    };
+    
+  /** @brief Class representing function of the exact solution.
+   * 
    * We can compute value of analytical solution on a circle area with well source placed in the center.
    * The solution is given by
    *   \f{equation}
@@ -26,7 +50,7 @@ namespace compare
    *   \f}
    * @p value returns value of exact solution in given point.
    */
-  class ExactBase : public dealii::Function<2>
+  class ExactWellBase : public ExactBase
     {
       public:
         /** @brief Constructor.
@@ -34,7 +58,7 @@ namespace compare
          * @param radius is radius of the circle area
          */
         
-        ExactBase(Well *well, double radius, double p_dirichlet = 0);
+        ExactWellBase(Well *well, double radius, double p_dirichlet = 0);
         
         ///Returns value of exact soution in given point @p p.
         ///@param p is given point
@@ -55,15 +79,13 @@ namespace compare
         Well *well_; 
         ///Constants used in computation @p value.
         double radius_, p_dirichlet_, a_, b_;
-        /// Index of aquifer. Only m_=0 is used.
-        unsigned int m_;
     };
 
     
     class ExactSolutionZero : public ExactBase
     {
     public:
-      ExactSolutionZero() : ExactBase(new Well(), 0, 0)
+      ExactSolutionZero() : ExactBase()
       {}
       double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
@@ -71,17 +93,17 @@ namespace compare
                                 const unsigned int  component = 0) const override;   
     };
     
-    class ExactSolution : public ExactBase
+    class ExactSolution : public ExactWellBase
     {
     public:
-      ExactSolution(Well *well, double radius, double p_dirichlet = 0) : ExactBase(well, radius, p_dirichlet) {}
+      ExactSolution(Well *well, double radius, double p_dirichlet = 0) : ExactWellBase(well, radius, p_dirichlet) {}
       double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
       dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
                                 const unsigned int  component = 0) const override;   
     };
     
-    class ExactSolution1 : public ExactBase
+    class ExactSolution1 : public ExactWellBase
     {
     public:
       ExactSolution1(Well *well, double radius, double k, double amplitude);
@@ -106,10 +128,10 @@ namespace compare
                     const unsigned int  component = 0) const override; 
     };
     
-    class ExactSolution2 : public ExactBase
+    class ExactSolution2 : public ExactWellBase
     {
     public:
-      ExactSolution2(Well *well, double radius, double k) : ExactBase(well, radius, 0), k_(k) {}
+      ExactSolution2(Well *well, double radius, double k) : ExactWellBase(well, radius, 0), k_(k) {}
       double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
       dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
@@ -130,7 +152,7 @@ namespace compare
     };
 
 
-    class ExactSolution3 : public ExactBase
+    class ExactSolution3 : public ExactWellBase
     {
     public:
       ExactSolution3(Well *well, double radius, double k, double amplitude);
@@ -154,13 +176,13 @@ namespace compare
       double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
     };
-
+    
     
     /** Exact solution taking into account both sigma permeability (well-aquifer) 
      * and c permeability (aquifer-aquifer).
      * Currenlty the best and working analytical solution for one aquifer-well model.
      */
-    class ExactSolution4 : public ExactBase
+    class ExactSolution4 : public ExactWellBase
     {
     public:
       ExactSolution4(Well *well, double radius, double k, double amplitude);
@@ -186,6 +208,97 @@ namespace compare
     };
     
     
+    /** Exact solution taking into account both sigma permeability (well-aquifer) 
+     * and c permeability (aquifer-aquifer).
+     * Currenlty the best and working analytical solution for one aquifer-well model.
+     */
+    class ExactSolution5 : public ExactWellBase
+    {
+    public:
+      ExactSolution5(Well *well, double amplitude);
+      
+      void set_well_parameter(double a);
+      
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
+    protected:
+        double amplitude_;
+        
+    friend class Source5;
+    };
+    
+    class Source5 : public ExactSolution5
+    {
+    public:
+      Source5(ExactSolution5 &ex_sol) 
+        : ExactSolution5(ex_sol.well_, ex_sol.amplitude_) {}
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
+    
+    
+    /** Exact solution taking into account both sigma permeability (well-aquifer) 
+     * and c permeability (aquifer-aquifer).
+     * Currenlty the best and working analytical solution for one aquifer-well model.
+     */
+    class ExactSolution6 : public ExactWellBase
+    {
+    public:
+      ExactSolution6(Well *well, double k, double amplitude);
+      
+      void set_well_parameter(double a);
+      
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
+    protected:
+        double k_, amplitude_;
+        
+    friend class Source6;
+    };
+    
+    class Source6 : public ExactSolution6
+    {
+    public:
+      Source6(ExactSolution6 &ex_sol) 
+        : ExactSolution6(ex_sol.well_, ex_sol.k_, ex_sol.amplitude_) {}
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
+    
+    
+    /** Exact solution taking into account both sigma permeability (well-aquifer) 
+     * and c permeability (aquifer-aquifer).
+     * Currenlty the best and working analytical solution for one aquifer-well model.
+     */
+    class ExactSolution7 : public ExactWellBase
+    {
+    public:
+      ExactSolution7(Well *well, double k, double amplitude);
+      
+      void set_well_parameter(double a);
+      
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+      dealii::Tensor<1,2> grad (const dealii::Point<2>   &p,
+                                const unsigned int  component = 0) const override;   
+    protected:
+        double k_, amplitude_;
+        
+    friend class Source7;
+    };
+    
+    class Source7 : public ExactSolution7
+    {
+    public:
+      Source7(ExactSolution7 &ex_sol) 
+        : ExactSolution7(ex_sol.well_, ex_sol.k_, ex_sol.amplitude_) {}
+      double value (const dealii::Point<2>   &p,
+                    const unsigned int  component = 0) const override; 
+    };
     
     
     /** Exact solution taking into account both sigma permeability (well-aquifer) 
@@ -195,7 +308,7 @@ namespace compare
     class ExactSolutionMultiple : public ExactBase
     {
     public:
-      ExactSolutionMultiple(Well *well, double radius, double k, double amplitude);
+      ExactSolutionMultiple(double k, double amplitude);
       
       void set_wells(std::vector<Well*> wells, std::vector<double> vec_a, std::vector<double> vec_b);
       
@@ -216,10 +329,12 @@ namespace compare
     class SourceMultiple : public ExactSolutionMultiple
     {
     public:
-      SourceMultiple(ExactSolutionMultiple &ex_sol);
+      SourceMultiple(double transmisivity, ExactSolutionMultiple &ex_sol);
         
       double value (const dealii::Point<2>   &p,
                     const unsigned int  component = 0) const override; 
+    protected:
+        double transmisivity_;
     };
     
     

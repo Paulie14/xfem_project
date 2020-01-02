@@ -153,12 +153,16 @@ double L2_norm(const Vector< double >& input_vector,
 
 /******************         SOLUTIONS           **************************/
 
-ExactBase::ExactBase(Well* well, double radius, double p_dirichlet)
-  : Function< 2 >(),
+ExactBase::ExactBase()
+: Function<2>(),
+m_(0)
+{}
+
+ExactWellBase::ExactWellBase(Well* well, double radius, double p_dirichlet)
+  : ExactBase(),
     well_(well),
     radius_(radius),
-    p_dirichlet_(p_dirichlet),
-    m_(0)
+    p_dirichlet_(p_dirichlet)
 {
 //   a_ = (well_->pressure() - p_dirichlet) / (std::log(well_->radius() / radius));
 //   b_ = p_dirichlet - a_ * std::log(radius);
@@ -214,7 +218,7 @@ Tensor< 1, 2 > ExactSolution::grad(const Point< 2 >& p, const unsigned int compo
 
 
 ExactSolution1::ExactSolution1(Well* well, double radius, double k, double amplitude)
-    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+    : ExactWellBase(well, radius, 0), k_(k), amplitude_(amplitude)
 {
     double delta = std::log(well_->radius()/radius_);
     double gamma = 1.0 / (1.0 - well_->radius()*well->perm2aquifer(m_)*delta);
@@ -294,12 +298,12 @@ double Source2::value(const Point< 2 >& p, const unsigned int /*component*/) con
 
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
+////////////////////////////////////////////////////////////////////////////////////////////////// EXACT SOLUTION 3
 
 ExactSolution3::ExactSolution3(Well* well, double radius, double k, double amplitude)
-    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+    : ExactWellBase(well, radius, 0), k_(k), amplitude_(amplitude)
 {
     if(well->is_active())
     {
@@ -357,11 +361,12 @@ double Source3::value(const Point< 2 >& p, const unsigned int /*component*/) con
 
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
+////////////////////////////////////////////////////////////////////////////////////////////////// EXACT SOLUTION 4
 
 ExactSolution4::ExactSolution4(Well* well, double radius, double k, double amplitude)
-    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+    : ExactWellBase(well, radius, 0), k_(k), amplitude_(amplitude)
 {
     double p = well_->radius()*well_->perm2aquifer(m_)*std::log(well_->radius()/radius_);
     double cs = well_->perm2aquitard(m_) / well_->perm2aquifer(m_) / well_->circumference();
@@ -422,11 +427,127 @@ double Source4::value(const Point< 2 >& p, const unsigned int /*component*/) con
     
     return - amplitude_ * (b_nabla_a + 2*grad_a_grad_b + a_nabla_b);
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////// EXACT SOLUTION 5
+
+ExactSolution5::ExactSolution5(Well* well, double amplitude)
+    : ExactWellBase(well, 0, 0), amplitude_(amplitude)
+{
+}
+
+void ExactSolution5::set_well_parameter(double a)
+{
+    a_ = a;
+}
 
 
+double ExactSolution5::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  double distance = well_->center().distance(p);
+  double res = 0.0;
+  if(well_->is_active())
+  {
+    if(distance > well_->radius())
+        res += a_ * std::log(distance);
+    else
+        res += a_ * std::log(well_->radius());
+  }
+  res += amplitude_ * distance * distance;
+  return res;
+}
 
-ExactSolutionMultiple::ExactSolutionMultiple(Well* well, double radius, double k, double amplitude)
-    : ExactBase(well, radius, 0), k_(k), amplitude_(amplitude)
+Tensor< 1, 2 > ExactSolution5::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    double distance = well_->center().distance(p);
+    double distance_sqr = distance*distance;
+    Tensor<1,2> grad, grad_reg;
+    grad_reg[0]= (p[0] - well_->center()[0]);
+    grad_reg[1]= (p[1] - well_->center()[1]);
+    
+    if(well_->is_active() && distance > well_->radius())
+    {
+        grad = a_/distance_sqr * grad_reg;
+    }
+    
+    grad_reg = amplitude_ * 2 * grad_reg;
+    return grad + grad_reg;
+        
+}
+
+double Source5::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+    return - amplitude_ * 2 * 2;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////// EXACT SOLUTION 6
+
+ExactSolution6::ExactSolution6(Well* well, double k, double amplitude)
+    : ExactWellBase(well, 0, 0), k_(k), amplitude_(amplitude)
+{
+}
+
+void ExactSolution6::set_well_parameter(double a)
+{
+    a_ = a;
+}
+
+
+double ExactSolution6::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  double distance = well_->center().distance(p);
+  double res = 0.0;
+  if(well_->is_active())
+  {
+    if(distance > well_->radius())
+        res += a_ * std::log(distance);
+    else
+        res += a_ * std::log(well_->radius());
+  }
+  res += amplitude_ * std::sin(distance - well_->radius());
+  return res;
+}
+
+Tensor< 1, 2 > ExactSolution6::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    double distance = well_->center().distance(p);
+    Tensor<1,2> grad, grad_reg;
+    grad_reg[0]= (p[0] - well_->center()[0]);
+    grad_reg[1]= (p[1] - well_->center()[1]);
+    
+    if(well_->is_active() && distance > well_->radius())
+    {
+        double distance_sqr = distance*distance;
+        grad = a_/distance_sqr * grad_reg;
+    }
+    
+    grad_reg = amplitude_ / distance * std::cos(distance - well_->radius()) * grad_reg;
+    return grad + grad_reg;
+        
+}
+
+double Source6::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+    double res = 0.0;
+    double distance = well_->center().distance(p);
+
+//     if(distance > well_->radius())
+    {
+        double distance_from_well = distance - well_->radius();
+        res += - amplitude_ * ( 1/distance * std::cos(distance_from_well) - std::sin(distance_from_well));
+    }
+    
+    return res;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////// EXACT SOLUTION MULTIPLE
+
+ExactSolutionMultiple::ExactSolutionMultiple(double k, double amplitude)
+    : ExactBase(), k_(k), amplitude_(amplitude)
 {
 }
 
@@ -441,21 +562,28 @@ Tensor< 1, 2 > ExactSolutionMultiple::grad(const Point< 2 >& p, const unsigned i
 {
     Tensor<1,2> res;
     for(unsigned int w=0; w<wells_.size(); w++)
-    {
+    {   
         Well* well = wells_[w];
+        if( ! well->is_active())
+            continue;
+        
         double distance = well->center().distance(p);
         double distance_sqr = distance*distance;
         Tensor<1,2> grad;
+        
         if(distance > well->radius())
         {
             grad[0]= (p[0] - well->center()[0]);
             grad[1]= (p[1] - well->center()[1]);
+            
             grad = vec_a[w]/distance_sqr * grad;
         }
         res += grad;
     }
     
-    res[0] += amplitude_ * k_*std::cos(k_*p[0]);
+    Tensor<1,2> grad_reg;
+    grad_reg[0] = amplitude_ * k_*std::cos(k_*p[0]);
+    res += grad_reg;
     
     return res;
 }
@@ -467,25 +595,31 @@ double ExactSolutionMultiple::value(const Point< 2 >& p, const unsigned int /*co
     for(unsigned int w=0; w<wells_.size(); w++)
     {
         Well* well = wells_[w];
+        if( ! well->is_active())
+            continue;
+        
         double distance = well->center().distance(p);
-//         double distance_from_well = distance - well_->radius();
         if(distance > well->radius())
+        {
             val += vec_a[w] * std::log(distance);
+        }
         else
             val += vec_a[w] * std::log(well->radius());
     }
     
-    return val + amplitude_*std::sin(k_*p[0]);
+    val += amplitude_*std::sin(k_*p[0]);
+    return val;
 }
 
-SourceMultiple::SourceMultiple(ExactSolutionMultiple &ex_sol)
-: ExactSolutionMultiple(ex_sol.well_, ex_sol.radius_, ex_sol.k_, ex_sol.amplitude_)
+SourceMultiple::SourceMultiple(double transmisivity, ExactSolutionMultiple &ex_sol)
+: ExactSolutionMultiple(ex_sol.k_, ex_sol.amplitude_), transmisivity_(transmisivity)
 {
     set_wells(ex_sol.wells_, ex_sol.vec_a, ex_sol.vec_b);
 }
 
 double SourceMultiple::value(const Point< 2 >& p, const unsigned int /*component*/) const
 {
+    return transmisivity_ * amplitude_ * k_*k_ * std::sin(k_*p[0]);
 //     double val = 0.0;
 //     for(unsigned int w=0; w<wells_.size(); w++)
 //     {
@@ -499,5 +633,72 @@ double SourceMultiple::value(const Point< 2 >& p, const unsigned int /*component
 //     }
 //     
 //     return val + amplitude_*k_*k_*std::sin(k_*p[0]);
-    return amplitude_*k_*k_*std::sin(k_*p[0]);
+//     return amplitude_*k_*k_*std::sin(k_*p[0]);
+    
+//     double res = 0.0;
+//     Well* well = wells_[0];
+//     double distance = well->center().distance(p);
+//     double distance_from_well = distance - well->radius();
+//     if(distance > well->radius())
+//         res += - amplitude_ * ( 1/distance * std::cos(distance_from_well) - std::sin(distance_from_well));
+//     
+//     return res;
+}
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////// EXACT SOLUTION 7
+
+ExactSolution7::ExactSolution7(Well* well, double k, double amplitude)
+    : ExactWellBase(well, 0, 0), k_(k), amplitude_(amplitude)
+{
+}
+
+void ExactSolution7::set_well_parameter(double a)
+{
+    a_ = a;
+}
+
+
+double ExactSolution7::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+  double distance = well_->center().distance(p);
+  double res = 0.0;
+  if(well_->is_active())
+  {
+    if(distance > well_->radius())
+        res += a_ * std::log(distance);
+    else
+        res += a_ * std::log(well_->radius());
+  }
+  res += amplitude_*std::sin(k_*p[0]);
+  return res;
+}
+
+Tensor< 1, 2 > ExactSolution7::grad(const Point< 2 >& p, const unsigned int component) const
+{
+    double distance = well_->center().distance(p);
+    double distance_sqr = distance*distance;
+    Tensor<1,2> grad, grad_reg;
+    grad_reg[0]= (p[0] - well_->center()[0]);
+    grad_reg[1]= (p[1] - well_->center()[1]);
+    
+    if(well_->is_active() && distance > well_->radius())
+    {
+        grad = a_/distance_sqr * grad_reg;
+    }
+    
+    grad_reg[0] = amplitude_ * k_*std::cos(k_*p[0]);
+    grad_reg[1] = 0;
+    
+    return grad + grad_reg;
+        
+}
+
+double Source7::value(const Point< 2 >& p, const unsigned int /*component*/) const
+{
+    return amplitude_ * k_*k_ * std::sin(k_*p[0]);
 }

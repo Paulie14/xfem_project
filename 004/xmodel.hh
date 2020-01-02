@@ -33,6 +33,7 @@ class XQuadratureWell;
 class GlobalSettingWriter;
 namespace compare {
     class ExactBase;
+    class ExactWellBase;
 }
 namespace dealii{
     template<int,int> class PersistentTriangulation;
@@ -159,7 +160,7 @@ class XModel : public ModelBase
                                       const unsigned int &m_aquifer=0);
     
     
-    void compute_interpolated_exact(compare::ExactBase *exact_solution);
+    void compute_interpolated_exact(compare::ExactWellBase *exact_solution);
     
     /** Computes decomposed (enriched, unenriched and complete) solution at specified points.
      * It is called by @p output_distributed_solution with the nodes of the output triangulation.
@@ -234,7 +235,7 @@ class XModel : public ModelBase
     /// @name Testing methods
     //@{
     /// Set the solution vector (dofs) accurately according to the exact solution and test XFEValues etc.
-    void test_method(compare::ExactBase *exact_solution);
+    void test_method(compare::ExactWellBase *exact_solution);
     
     /// Computes the H1 norm of [log - approx(log)] on elements on the band of enrichment radius.
     void test_enr_error();

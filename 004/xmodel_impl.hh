@@ -75,7 +75,8 @@ void XModel::prepare_shape_well_averiges(vector< std::map< unsigned int, double 
             xfevalues.reinit(xdata);
 
             //dx along the well edge = radius of the well; weights are the same all around
-            double dx = well->circumference() / well->q_points().size();
+//             double dx = well->circumference() / well->q_points().size();
+            double dx = 1.0 / well->q_points().size();
             
             std::vector<double> shape_val_vec(n_dofs,0);
             
@@ -114,7 +115,7 @@ void XModel::prepare_shape_well_averiges(vector< std::map< unsigned int, double 
     for(unsigned int w = 0; w < wells.size(); w++)   //iterate over all well affecting the cell 
     {
         unsigned int well_dof_index = n_dofs_ - wells.size() + w;
-        shape_well_averiges[w][well_dof_index] = -1.0*wells[w]->circumference();
+        shape_well_averiges[w][well_dof_index] = -1.0; //*wells[w]->circumference();
     }
 }
 

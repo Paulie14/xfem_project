@@ -12,7 +12,7 @@
 
 using namespace compare;
 
-void XModel::test_method(ExactBase* exact_solution)
+void XModel::test_method(ExactWellBase* exact_solution)
 {
     // Setup part of run() method
     cycle_++;
@@ -184,10 +184,11 @@ void XModel::test_method(ExactBase* exact_solution)
 
 double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level, unsigned int pol_degree)
 {  
-    for(unsigned int i=0; i < xdata_[0].size(); i++)
-        delete xdata_[0][i];
-    
-    xdata_[0].clear();
+    std::cout << "ERROR" << std::endl;
+//     for(unsigned int i=0; i < xdata_[0].size(); i++)
+//         delete xdata_[0][i];
+    std::cout << "ERROR" << std::endl;
+//     xdata_[0].clear();
     make_grid();
 
     clock_t start, stop;
@@ -195,14 +196,14 @@ double XModel::test_adaptive_integration(Function< 2 >* func, unsigned int level
 
     // Start timer 
     MASSERT((start = clock())!=-1, "Measure time error.");
-
+std::cout << "ERROR" << std::endl;
     dof_handler->initialize(*triangulation,fe);
     find_enriched_cells(0);
     XDataCell::initialize_node_values(node_enrich_values[0], xdata_[0], wells.size());
   
     const unsigned int dofs_per_cell = fe.dofs_per_cell;
     std::vector<unsigned int> local_dof_indices (dofs_per_cell);
-
+std::cout << "ERROR" << std::endl;
     double adaptive_integral = 0;
     DoFHandler<2>::active_cell_iterator
         cell = dof_handler->begin_active(),
